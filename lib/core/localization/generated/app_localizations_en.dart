@@ -400,6 +400,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get off => 'Off';
 
   @override
+  String get testNotification => 'Test Notification Sound';
+
+  @override
+  String get testNotifSent => 'Test notification sent! Check your sound.';
+
+  @override
   String get setDarkMode => 'Appearance';
 
   @override

@@ -135,6 +135,22 @@ class SettingsScreen extends StatelessWidget {
               labelOf: (v) => v == 0 ? l10n.off : l10n.minutes(v),
               onSelected: settings.setAdvanceMinutes,
             ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: () async {
+                await appState.notifications.showTestNotification(
+                  title: '🔔 ${l10n.setNotificationSound}',
+                  body: l10n.setNotifDesc,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.testNotifSent)),
+                  );
+                }
+              },
+              icon: const Icon(Icons.volume_up_rounded),
+              label: Text(l10n.testNotification),
+            ),
             const SizedBox(height: 24),
 
             _SectionHeader(l10n.pauseAll),

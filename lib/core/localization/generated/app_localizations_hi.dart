@@ -400,6 +400,12 @@ class AppLocalizationsHi extends AppLocalizations {
   String get off => 'बंद';
 
   @override
+  String get testNotification => 'सूचना ध्वनि परीक्षण';
+
+  @override
+  String get testNotifSent => 'परीक्षण सूचना भेजी गई! अपनी आवाज़ जाँचें।';
+
+  @override
   String get setDarkMode => 'रूप-रंग';
 
   @override

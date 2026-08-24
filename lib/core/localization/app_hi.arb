@@ -174,6 +174,8 @@
   "setAdvanceAlarm": "अग्रिम अलार्म",
   "setAdvanceAlarmDesc": "दवा के समय से पहले अलार्म शुरू करें",
   "off": "बंद",
+  "testNotification": "सूचना ध्वनि परीक्षण",
+  "testNotifSent": "परीक्षण सूचना भेजी गई! अपनी आवाज़ जाँचें।",
   "setDarkMode": "रूप-रंग",
   "themeSystem": "सिस्टम",
   "themeLight": "हल्का",

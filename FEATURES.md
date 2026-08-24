@@ -198,6 +198,11 @@ deployment) and `.freebuff/run.md` (how to run the web preview).
 
 Newest first. Format: `date — what changed (why)`.
 
+- **2026-08-24 — Notification sound fixes (critical)**: versioned channel IDs
+  (v2) to force Android to recreate channels with correct sound/vibration;
+  louder triple-beep WAV (880 Hz + harmonic, 3s); `USE_FULL_SCREEN_INTENT`
+  permission added; "Test Notification Sound" button in Settings; Hindi
+  localization for test notification.
 - **2026-08-24 — Advance alarm (pre-dose looping)**: configurable advance
   alarm that starts 1-10 minutes before dose time, re-firing every minute
   until taken; settings UI with chip selector (Off / 1 / 2 / 3 / 5 / 10 min);

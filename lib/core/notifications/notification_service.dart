@@ -94,15 +94,36 @@ class NotificationService implements ReminderScheduler {
     }
   }
 
+  /// Version suffix for channel IDs. Bump this whenever you change channel
+  /// sound/vibration settings — Android caches channel config after first
+  /// creation and ignores subsequent createNotificationChannel calls.
+  static const String _channelVersion = 'v2';
+
   Future<void> _createChannels() async {
     final android = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
     if (android == null) return;
+
+    // Delete old channels (any version) so Android recreates them fresh
+    // with the correct sound, vibration, and importance settings.
+    for (final oldId in [
+      AppConstants.channelId,
+      AppConstants.silentChannelId,
+      AppConstants.familyChannelId,
+      '${AppConstants.channelId}_v2',
+      '${AppConstants.silentChannelId}_v2',
+      '${AppConstants.familyChannelId}_v2',
+    ]) {
+      try {
+        await android.deleteNotificationChannel(channelId: oldId);
+      } catch (_) {}
+    }
+
     await android.createNotificationChannel(
       AndroidNotificationChannel(
-        AppConstants.channelId,
+        '${AppConstants.channelId}_$_channelVersion',
         AppConstants.channelName,
         description: AppConstants.channelDescription,
         importance: Importance.max,
@@ -116,7 +137,7 @@ class NotificationService implements ReminderScheduler {
     );
     await android.createNotificationChannel(
       AndroidNotificationChannel(
-        AppConstants.silentChannelId,
+        '${AppConstants.silentChannelId}_$_channelVersion',
         AppConstants.silentChannelName,
         description: AppConstants.channelDescription,
         importance: Importance.max,
@@ -129,7 +150,7 @@ class NotificationService implements ReminderScheduler {
     );
     await android.createNotificationChannel(
       AndroidNotificationChannel(
-        AppConstants.familyChannelId,
+        '${AppConstants.familyChannelId}_$_channelVersion',
         AppConstants.familyChannelName,
         description: AppConstants.channelDescription,
         importance: Importance.max,
@@ -165,7 +186,7 @@ class NotificationService implements ReminderScheduler {
         body: body,
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
-            AppConstants.familyChannelId,
+            '${AppConstants.familyChannelId}_v2',
             AppConstants.familyChannelName,
             channelDescription: AppConstants.channelDescription,
             importance: Importance.max,
@@ -196,7 +217,7 @@ class NotificationService implements ReminderScheduler {
         body: body,
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
-            AppConstants.familyChannelId,
+            '${AppConstants.familyChannelId}_v2',
             AppConstants.familyChannelName,
             channelDescription: AppConstants.channelDescription,
             importance: Importance.max,
@@ -313,7 +334,7 @@ class NotificationService implements ReminderScheduler {
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        _soundEnabled ? AppConstants.channelId : AppConstants.silentChannelId,
+        _soundEnabled ? '${AppConstants.channelId}_v2' : '${AppConstants.silentChannelId}_v2',
         _soundEnabled
             ? AppConstants.channelName
             : AppConstants.silentChannelName,
@@ -434,7 +455,7 @@ class NotificationService implements ReminderScheduler {
     // No action buttons — this is just the looping alarm.
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        AppConstants.channelId,
+        '${AppConstants.channelId}_v2',
         AppConstants.channelName,
         channelDescription: AppConstants.channelDescription,
         importance: Importance.max,
@@ -526,6 +547,46 @@ class NotificationService implements ReminderScheduler {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Shows an immediate test notification so the user can verify sound.
+  Future<void> showTestNotification({
+    required String title,
+    required String body,
+  }) async {
+    if (!_initialized) return;
+    try {
+      await _plugin.show(
+        id: 99999,
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            '${AppConstants.channelId}_v2',
+            AppConstants.channelName,
+            channelDescription: AppConstants.channelDescription,
+            importance: Importance.max,
+            priority: Priority.high,
+            category: AndroidNotificationCategory.reminder,
+            playSound: true,
+            sound: const RawResourceAndroidNotificationSound(
+              'medicine_alarm',
+            ),
+            enableVibration: true,
+            enableLights: true,
+            ledColor: const Color(0xFF2E7D32),
+            vibrationPattern: _vibrationPattern,
+            styleInformation: BigTextStyleInformation(
+              body,
+              htmlFormatBigText: false,
+              contentTitle: title,
+              htmlFormatContentTitle: false,
+              summaryText: AppConstants.channelName,
+            ),
+          ),
+        ),
+      );
+    } catch (_) {}
   }
 
   // ---- Time zone -----------------------------------------------------------

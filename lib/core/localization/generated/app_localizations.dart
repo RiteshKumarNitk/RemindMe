@@ -836,6 +836,18 @@ abstract class AppLocalizations {
   /// **'Off'**
   String get off;
 
+  /// No description provided for @testNotification.
+  ///
+  /// In en, this message translates to:
+  /// **'Test Notification Sound'**
+  String get testNotification;
+
+  /// No description provided for @testNotifSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Test notification sent! Check your sound.'**
+  String get testNotifSent;
+
   /// No description provided for @setDarkMode.
   ///
   /// In en, this message translates to:
