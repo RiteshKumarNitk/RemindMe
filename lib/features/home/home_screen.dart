@@ -43,6 +43,37 @@ class HomeScreen extends StatelessWidget {
             name.isEmpty ? '$greeting ❤️' : '$greeting, $name ❤️',
             style: theme.textTheme.headlineMedium,
           ),
+          if (appState.todayStats.taken > 0 &&
+              appState.todayStats.missed == 0 &&
+              appState.todayStats.pending == 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.successColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    const Text('🔥', style: TextStyle(fontSize: 22)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.homeAllDoneToday,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.successColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           const SizedBox(height: 16),
           PermissionBanner(
             show: !appState.notificationsEnabled,
@@ -84,17 +115,54 @@ class HomeScreen extends StatelessWidget {
                 hasMedicines: appState.medicines.isNotEmpty,
                 onAddMedicine: onAddMedicine,
               )
-            else
+            else ...[
               for (final entry in appState.todayDoses)
                 _TodayDoseTile(
                   entry: entry,
                   locale: locale,
                   grace: settings.graceDuration,
                 ),
+              if (appState.todayDoses.any(
+                (e) =>
+                    e.effectiveStatus(settings.graceDuration, now) ==
+                    DoseStatus.pending,
+              )) ...[
+                const SizedBox(height: 8),
+                BigTextButton(
+                  label: l10n.homeBatchMarkAll,
+                  onPressed: () => _batchMarkAll(context, appState, l10n),
+                ),
+              ],
+            ],
           ],
         ],
       ),
     );
+  }
+
+  void _batchMarkAll(
+    BuildContext context,
+    AppState appState,
+    AppLocalizations l10n,
+  ) async {
+    final pending = appState.todayDoses
+        .where(
+          (e) =>
+              e.effectiveStatus(
+                appState.settings.graceDuration,
+                DateTime.now(),
+              ) ==
+              DoseStatus.pending,
+        )
+        .toList();
+    for (final entry in pending) {
+      await appState.markTaken(entry);
+    }
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.homeBatchMarkAll)));
+    }
   }
 }
 

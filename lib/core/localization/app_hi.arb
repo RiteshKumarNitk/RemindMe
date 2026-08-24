@@ -39,6 +39,21 @@
       "minutes": {"type": "int"}
     }
   },
+  "medPresetWeekdays": "सप्ताह के दिन",
+  "medPresetWeekends": "वीकेंड",
+  "medDuplicate": "कॉपी बनाएं",
+  "medDuplicateHint": "इस दवा की एक कॉपी बनाएं",
+  "pauseAll": "सभी दवाएं रोकें",
+  "pauseAllConfirm": "यह सभी सक्रिय दवाओं और उनके रिमाइंडर को रोक देगा। आप बाद में इन्हें फिर से शुरू कर सकते हैं।",
+  "resumeAll": "सभी शुरू करें",
+  "homeStreak": "{days} दिन की स्ट्रीक! जारी रखें! 🎉",
+  "@homeStreak": {
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
+  "homeBatchMarkAll": "सभी ले लीं",
+  "homeAllDoneToday": "आज के लिए सब हो गया! 🎉",
   "homeOverdueHours": "{hours} घंटे देर",
   "@homeOverdueHours": {
     "placeholders": {
@@ -107,6 +122,17 @@
   "medNoMedicines": "अभी कोई दवा नहीं।\nशुरू करने के लिए \"दवा जोड़ें\" दबाएँ।",
   "medSearch": "दवाएं खोजें...",
   "medSearchEmpty": "आपकी खोज से कोई दवा मेल नहीं खाती",
+  "medStockTracking": "स्टॉक ट्रैकिंग (वैकल्पिक)",
+  "medStockCountHint": "मौजूदा गोलियां (जैसे 30)",
+  "medRefillAtHint": "याद दिलाएं जब (जैसे 5)",
+  "medRefillTitle": "रिफिल का समय!",
+  "medRefillBody": "{name} कम हो रही है ({remaining} बची हैं)। रिफिल का समय।",
+  "@medRefillBody": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "remaining": {"type": "int"}
+    }
+  },
   "medOnceDate": "तारीख़",
   "medTime": "समय",
   "histTitle": "इतिहास",
@@ -119,6 +145,19 @@
   "histSkippedCount": "छोड़ा",
   "histPendingCount": "बाकी",
   "histEmpty": "अभी कोई इतिहास नहीं",
+  "histExport": "CSV एक्सपोर्ट",
+  "medConflictTitle": "शेड्यूल टकराव",
+  "medConflictBody": "ये दवाएं पहले से उसी समय निर्धारित हैं: {names}। क्या फिर भी जारी रखें?",
+  "histTrendGood": "अनुपालन अच्छा दिख रहा है!",
+  "histTrendNeedsWork": "अनुपालन में सुधार की ज़रूरत है",
+  "setData": "डेटा",
+  "setExportJson": "बैकअप एक्सपोर्ट",
+  "setExportJsonDesc": "सभी दवाएं और इतिहास JSON में सेव करें",
+  "@medConflictBody": {
+    "placeholders": {
+      "names": {"type": "String"}
+    }
+  },
   "histTotal": "कुल: {count}",
   "@histTotal": {
     "placeholders": {

@@ -39,6 +39,21 @@
       "minutes": {"type": "int"}
     }
   },
+  "medPresetWeekdays": "Weekdays",
+  "medPresetWeekends": "Weekends",
+  "medDuplicate": "Duplicate",
+  "medDuplicateHint": "Create a copy of this medicine",
+  "pauseAll": "Pause All Medicines",
+  "pauseAllConfirm": "This will pause all active medicines and their reminders. You can resume them later.",
+  "resumeAll": "Resume All",
+  "homeStreak": "{days}-day streak! Keep it up! 🎉",
+  "@homeStreak": {
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
+  "homeBatchMarkAll": "Mark all as taken",
+  "homeAllDoneToday": "All done for today! 🎉",
   "homeOverdueHours": "{hours}h late",
   "@homeOverdueHours": {
     "placeholders": {
@@ -107,6 +122,17 @@
   "medNoMedicines": "No medicines yet.\nTap \"Add Medicine\" to get started.",
   "medSearch": "Search medicines...",
   "medSearchEmpty": "No medicines match your search",
+  "medStockTracking": "Stock tracking (optional)",
+  "medStockCountHint": "Current pills (e.g. 30)",
+  "medRefillAtHint": "Remind at (e.g. 5)",
+  "medRefillTitle": "Time to refill!",
+  "medRefillBody": "{name} is running low ({remaining} left). Time to refill.",
+  "@medRefillBody": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "remaining": {"type": "int"}
+    }
+  },
   "medOnceDate": "Date",
   "medTime": "Time",
   "histTitle": "History",
@@ -119,6 +145,19 @@
   "histSkippedCount": "Skipped",
   "histPendingCount": "Pending",
   "histEmpty": "No history yet",
+  "histExport": "Export CSV",
+  "medConflictTitle": "Schedule conflict",
+  "medConflictBody": "These medicines are already scheduled at the same time: {names}. Continue anyway?",
+  "histTrendGood": "Adherence is looking good!",
+  "histTrendNeedsWork": "Adherence needs improvement",
+  "setData": "Data",
+  "setExportJson": "Export backup",
+  "setExportJsonDesc": "Save all medicines and history as JSON",
+  "@medConflictBody": {
+    "placeholders": {
+      "names": {"type": "String"}
+    }
+  },
   "histTotal": "Total: {count}",
   "@histTotal": {
     "placeholders": {

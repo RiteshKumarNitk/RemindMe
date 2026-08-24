@@ -19,7 +19,7 @@ class AppSettings {
   const AppSettings({
     this.locale = 'en',
     this.soundEnabled = true,
-    this.voiceEnabled = false,
+    this.voiceEnabled = true,
     this.snoozeMinutes = 10,
     this.graceMinutes = 30,
     this.themeMode = 'system',

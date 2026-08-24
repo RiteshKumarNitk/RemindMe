@@ -29,6 +29,8 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
   late final TextEditingController _dose;
   late final TextEditingController _unit;
   late final TextEditingController _notes;
+  late final TextEditingController _stockCount;
+  late final TextEditingController _refillAt;
   late MedicineFrequency _frequency;
   late FoodInstruction _food;
   late List<int> _selectedDays;
@@ -44,6 +46,8 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
     _dose = TextEditingController(text: m?.dosage ?? '');
     _unit = TextEditingController(text: m?.dosageUnit ?? '');
     _notes = TextEditingController(text: m?.notes ?? '');
+    _stockCount = TextEditingController(text: m?.stockCount?.toString() ?? '');
+    _refillAt = TextEditingController(text: m?.refillAt?.toString() ?? '');
     _frequency = m?.frequency ?? MedicineFrequency.daily;
     _food = m?.foodInstruction ?? FoodInstruction.none;
     _selectedDays = [...?m?.selectedDays];
@@ -58,6 +62,8 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
     _dose.dispose();
     _unit.dispose();
     _notes.dispose();
+    _stockCount.dispose();
+    _refillAt.dispose();
     super.dispose();
   }
 
@@ -160,6 +166,33 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
+                  ActionChip(
+                    avatar: const Icon(Icons.work_rounded, size: 20),
+                    label: Text(
+                      l10n.medPresetWeekdays,
+                      style: theme.textTheme.labelLarge,
+                    ),
+                    onPressed: () => setState(() {
+                      _selectedDays = [1, 2, 3, 4, 5];
+                    }),
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.weekend_rounded, size: 20),
+                    label: Text(
+                      l10n.medPresetWeekends,
+                      style: theme.textTheme.labelLarge,
+                    ),
+                    onPressed: () => setState(() {
+                      _selectedDays = [6, 7];
+                    }),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
                   for (var d = DateTime.monday; d <= DateTime.sunday; d++)
                     FilterChip(
                       label: Text(
@@ -250,6 +283,31 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
               maxLines: 3,
               style: theme.textTheme.bodyLarge,
               decoration: InputDecoration(hintText: l10n.medNotes),
+            ),
+            const SizedBox(height: 20),
+            _SectionLabel(l10n.medStockTracking),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _stockCount,
+                    keyboardType: TextInputType.number,
+                    style: theme.textTheme.titleMedium,
+                    decoration: InputDecoration(
+                      hintText: l10n.medStockCountHint,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: _refillAt,
+                    keyboardType: TextInputType.number,
+                    style: theme.textTheme.titleMedium,
+                    decoration: InputDecoration(hintText: l10n.medRefillAtHint),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 28),
             BigButton(
@@ -355,6 +413,24 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
     ];
   }
 
+  /// Returns names of other medicines that share any of the current times.
+  List<String> _findConflicts(List<Medicine> allMedicines) {
+    final currentTimes = _times
+        .map((t) => '${t.hour}:${t.minute.toString().padLeft(2, '0')}')
+        .toSet();
+    final conflicts = <String>[];
+    for (final med in allMedicines) {
+      if (med.id == widget.medicine?.id) continue;
+      for (final s in med.schedules) {
+        final key = '${s.hour}:${s.minute.toString().padLeft(2, '0')}';
+        if (currentTimes.contains(key)) {
+          if (!conflicts.contains(med.name)) conflicts.add(med.name);
+        }
+      }
+    }
+    return conflicts;
+  }
+
   Future<void> _addTime() async {
     final l10n = AppLocalizations.of(context);
     final picked = await showTimePicker(
@@ -402,6 +478,31 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
       return;
     }
 
+    // Check for schedule conflicts with other medicines.
+    if (!mounted) return;
+    final appState = context.read<AppState>();
+    final conflicts = _findConflicts(appState.medicines);
+    if (conflicts.isNotEmpty && mounted) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(l10n.medConflictTitle),
+          content: Text(l10n.medConflictBody(conflicts.join(', '))),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.btnCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l10n.medSave),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) return;
+    }
+
     setState(() => _saving = true);
     final now = DateTime.now();
     final medicine = Medicine(
@@ -415,6 +516,8 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
       selectedDays: _selectedDays,
       onceDate: _onceDate,
       active: widget.medicine?.active ?? true,
+      stockCount: int.tryParse(_stockCount.text.trim()),
+      refillAt: int.tryParse(_refillAt.text.trim()),
       createdAt: widget.medicine?.createdAt ?? now,
       updatedAt: now,
       schedules: [
@@ -427,6 +530,7 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
       ],
     );
 
+    if (!mounted) return;
     await context.read<AppState>().saveMedicine(medicine);
     if (!mounted) return;
     ScaffoldMessenger.of(

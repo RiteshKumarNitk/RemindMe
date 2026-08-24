@@ -7,6 +7,7 @@ import '../../core/utilities/date_utils.dart';
 import '../../data/models/food_instruction.dart';
 import '../../data/models/medicine.dart';
 import '../../data/models/medicine_frequency.dart';
+import '../../data/models/medicine_schedule.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
 import 'medicine_form_screen.dart';
@@ -39,9 +40,7 @@ class _MedicinesScreenState extends State<MedicinesScreen> {
     final filtered = _query.isEmpty
         ? appState.medicines
         : appState.medicines
-              .where(
-                (m) => m.name.toLowerCase().contains(_query.toLowerCase()),
-              )
+              .where((m) => m.name.toLowerCase().contains(_query.toLowerCase()))
               .toList();
 
     return Scaffold(
@@ -236,6 +235,13 @@ class _MedicineCard extends StatelessWidget {
                   ),
                 ),
                 IconButton(
+                  tooltip: l10n.medDuplicate,
+                  iconSize: 30,
+                  icon: const Icon(Icons.content_copy_rounded),
+                  onPressed: () =>
+                      _duplicate(context, appState, medicine, l10n),
+                ),
+                IconButton(
                   tooltip: l10n.medDelete,
                   iconSize: 30,
                   icon: Icon(Icons.delete_rounded, color: theme.missedColor),
@@ -247,6 +253,35 @@ class _MedicineCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _duplicate(
+    BuildContext context,
+    AppState appState,
+    Medicine med,
+    AppLocalizations l10n,
+  ) async {
+    final duplicate = med.copyWith(
+      id: null,
+      name: '${med.name} (copy)',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      schedules: [
+        for (final s in med.schedules)
+          MedicineSchedule(
+            medicineId: 0,
+            hour: s.hour,
+            minute: s.minute,
+            enabled: s.enabled,
+          ),
+      ],
+    );
+    await appState.saveMedicine(duplicate);
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.medSaved)));
+    }
   }
 
   void _confirmDelete(BuildContext context, AppState appState) async {

@@ -110,9 +110,31 @@ class AppState extends ChangeNotifier {
     );
     _medicines = await medicineRepository.getAll();
     _nextDose = _computeNext(_todayDoses, grace, now);
+    // Check for low-stock medicines and show refill reminder.
+    _checkRefillReminders();
     _loading = false;
     _revision++;
     notifyListeners();
+  }
+
+  // ---- Refill reminders -----------------------------------------------------
+
+  void _checkRefillReminders() {
+    for (final med in _medicines) {
+      if (!med.active ||
+          !med.hasStockTracking ||
+          med.stockCount == null ||
+          med.refillAt == null) {
+        continue;
+      }
+      if (med.stockCount! <= med.refillAt!) {
+        final l10n = l10nFor(settings.settings.locale);
+        notifications.showRefillAlert(
+          title: l10n.medRefillTitle,
+          body: l10n.medRefillBody(med.name, med.stockCount!),
+        );
+      }
+    }
   }
 
   // ---- Dose actions ---------------------------------------------------------

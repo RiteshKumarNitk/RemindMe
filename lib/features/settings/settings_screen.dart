@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
+import '../../services/export_service.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
 import 'family_sync_screen.dart';
@@ -127,6 +128,29 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
+            _SectionHeader(l10n.pauseAll),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              minTileHeight: 68,
+              leading: Icon(
+                Icons.pause_circle_filled_rounded,
+                size: 32,
+                color: theme.missedColor,
+              ),
+              title: Text(l10n.pauseAll, style: theme.textTheme.titleMedium),
+              subtitle: Text(
+                l10n.pauseAllConfirm,
+                style: theme.textTheme.bodyMedium,
+              ),
+              trailing: Icon(
+                Icons.chevron_right_rounded,
+                size: 30,
+                color: theme.colorScheme.outline,
+              ),
+              onTap: () => _confirmPauseAll(context, appState, l10n),
+            ),
+            const SizedBox(height: 24),
+
             _SectionHeader(l10n.setDarkMode),
             SegmentedButton<String>(
               segments: [
@@ -141,6 +165,32 @@ class SettingsScreen extends StatelessWidget {
                 textStyle: theme.textTheme.titleMedium,
               ),
               onSelectionChanged: (s) => settings.setThemeMode(s.first),
+            ),
+            const SizedBox(height: 24),
+
+            _SectionHeader(l10n.setData),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              minTileHeight: 68,
+              leading: Icon(
+                Icons.download_rounded,
+                size: 32,
+                color: theme.colorScheme.primary,
+              ),
+              title: Text(
+                l10n.setExportJson,
+                style: theme.textTheme.titleMedium,
+              ),
+              subtitle: Text(
+                l10n.setExportJsonDesc,
+                style: theme.textTheme.bodyMedium,
+              ),
+              trailing: Icon(
+                Icons.chevron_right_rounded,
+                size: 30,
+                color: theme.colorScheme.outline,
+              ),
+              onTap: () => _exportData(context, appState, l10n),
             ),
             const SizedBox(height: 24),
 
@@ -197,6 +247,80 @@ class SettingsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _exportData(
+    BuildContext context,
+    AppState appState,
+    AppLocalizations l10n,
+  ) async {
+    final export = ExportService(
+      medicineRepository: appState.medicineRepository,
+      doseRepository: appState.doseRepository,
+    );
+    final json = await export.exportToJson();
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.setExportJson),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 300,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              json,
+              style: Theme.of(
+                ctx,
+              ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.btnClose),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmPauseAll(
+    BuildContext context,
+    AppState appState,
+    AppLocalizations l10n,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.pauseAll),
+        content: Text(l10n.pauseAllConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.btnCancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).missedColor,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.pauseAll),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      for (final med in appState.medicines.where((m) => m.active)) {
+        await appState.setMedicineActive(med.id!, false);
+      }
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.pauseAll)));
+      }
+    }
   }
 }
 

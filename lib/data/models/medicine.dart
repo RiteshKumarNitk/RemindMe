@@ -23,6 +23,11 @@ class Medicine {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// Optional pill count for refill tracking. When the stock reaches
+  /// [refillAt], a refill reminder notification is shown.
+  final int? stockCount;
+  final int? refillAt;
+
   /// Reminder times. Always populated after hydration from the database.
   final List<MedicineSchedule> schedules;
 
@@ -37,10 +42,19 @@ class Medicine {
     this.selectedDays = const [],
     this.onceDate,
     this.active = true,
+    this.stockCount,
+    this.refillAt,
     required this.createdAt,
     required this.updatedAt,
     this.schedules = const [],
   });
+
+  /// Whether stock tracking is enabled for this medicine.
+  bool get hasStockTracking => stockCount != null;
+
+  /// Whether the stock is at or below the refill threshold.
+  bool get needsRefill =>
+      stockCount != null && refillAt != null && stockCount! <= refillAt!;
 
   Medicine copyWithSchedules(List<MedicineSchedule> schedules) {
     return copyWith(schedules: schedules);
@@ -66,6 +80,8 @@ class Medicine {
     List<int>? selectedDays,
     DateTime? onceDate,
     bool? active,
+    int? stockCount,
+    int? refillAt,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<MedicineSchedule>? schedules,
@@ -81,6 +97,8 @@ class Medicine {
       selectedDays: selectedDays ?? this.selectedDays,
       onceDate: onceDate ?? this.onceDate,
       active: active ?? this.active,
+      stockCount: stockCount ?? this.stockCount,
+      refillAt: refillAt ?? this.refillAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       schedules: schedules ?? this.schedules,
@@ -103,6 +121,8 @@ class Medicine {
                 '${onceDate!.month.toString().padLeft(2, '0')}-'
                 '${onceDate!.day.toString().padLeft(2, '0')}',
       'active': active ? 1 : 0,
+      'stock_count': stockCount,
+      'refill_at': refillAt,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -126,6 +146,8 @@ class Medicine {
       selectedDays: days,
       onceDate: once == null ? null : DateTime.tryParse(once),
       active: (map['active'] as int? ?? 1) == 1,
+      stockCount: map['stock_count'] as int?,
+      refillAt: map['refill_at'] as int?,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );

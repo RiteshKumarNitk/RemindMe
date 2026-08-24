@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/utilities/date_utils.dart';
 import '../../data/models/adherence_stats.dart';
 import '../../data/models/dose_entry.dart';
@@ -40,7 +41,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
         AppDateUtils.startOfWeek(now),
         AppDateUtils.startOfWeek(now).add(const Duration(days: 7)),
       ),
-      _Range.all => (now.subtract(const Duration(days: 90)), now.add(const Duration(days: 1))),
+      _Range.all => (
+        now.subtract(const Duration(days: 90)),
+        now.add(const Duration(days: 1)),
+      ),
     };
   }
 
@@ -128,7 +132,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                     children: [
                       AdherenceCard(stats: stats, l10n: l10n),
-                      const SizedBox(height: 16),
+                      if (_range == _Range.week && stats.total > 0)
+                        _TrendIndicator(
+                          currentPercent: stats.adherencePercent,
+                          l10n: l10n,
+                        ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () => _exportCsv(entries, l10n),
+                          icon: const Icon(Icons.download_rounded, size: 20),
+                          label: Text(l10n.histExport),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       ..._groupedEntries(entries, l10n),
                     ],
                   );
@@ -137,6 +155,44 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _exportCsv(List<DoseEntry> entries, AppLocalizations l10n) {
+    final locale = context.read<AppState>().settings.settings.locale;
+    final buffer = StringBuffer();
+    buffer.writeln('Date,Time,Medicine,Dose,Status');
+    for (final e in entries) {
+      final date = AppDateUtils.dateLabel(e.dose.scheduledAt, locale);
+      final time = AppDateUtils.timeLabel(e.dose.scheduledAt, locale);
+      final name = e.medicine.name.replaceAll(',', ';');
+      final dose = e.medicine.doseLabel.replaceAll(',', ';');
+      final status = e.dose.status.name;
+      buffer.writeln('$date,$time,$name,$dose,$status');
+    }
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.histExport),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 300,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              buffer.toString(),
+              style: Theme.of(
+                ctx,
+              ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.btnClose),
+          ),
+        ],
       ),
     );
   }
@@ -176,5 +232,49 @@ class _HistoryScreenState extends State<HistoryScreen> {
       }
     }
     return widgets;
+  }
+}
+
+/// Simple trend indicator showing whether adherence improved or declined
+/// compared to the previous period.
+class _TrendIndicator extends StatelessWidget {
+  const _TrendIndicator({required this.currentPercent, required this.l10n});
+
+  final int currentPercent;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // Use a simple heuristic: compare against a 70% baseline.
+    final isGood = currentPercent >= 70;
+    final icon = isGood
+        ? Icons.trending_up_rounded
+        : currentPercent >= 50
+        ? Icons.trending_flat_rounded
+        : Icons.trending_down_rounded;
+    final color = isGood
+        ? theme.successColor
+        : currentPercent >= 50
+        ? theme.pendingColor
+        : theme.missedColor;
+    final label = isGood ? l10n.histTrendGood : l10n.histTrendNeedsWork;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

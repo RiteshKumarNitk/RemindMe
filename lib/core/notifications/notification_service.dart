@@ -1,3 +1,7 @@
+import 'dart:ui';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
@@ -27,6 +31,12 @@ abstract class ReminderScheduler {
 
 /// Wraps flutter_local_notifications. All reminder delivery goes through this
 /// service: exact alarms when permitted, inexact as a graceful fallback.
+///
+/// Important for elderly users:
+/// - Custom loud vibration pattern (double vibrate)
+/// - LED lights enabled
+/// - Foreground notifications displayed
+/// - Alarm-level importance on all channels
 class NotificationService implements ReminderScheduler {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -34,6 +44,17 @@ class NotificationService implements ReminderScheduler {
   bool _soundEnabled = true;
 
   bool get initialized => _initialized;
+
+  /// Custom vibration pattern: two short buzzes, pause, then long buzz.
+  /// Designed to be noticeable for elderly users who may not feel a single
+  /// vibration through clothing or while resting.
+  static final Int64List _vibrationPattern = Int64List.fromList(<int>[
+    0, 300, 200, // buzz, pause, buzz
+    500, // long pause
+    400, 200, 400, // buzz, pause, buzz
+  ]);
+
+
 
   /// Initializes the plugin, creates channels and registers the callback for
   /// notification taps / action buttons.
@@ -71,7 +92,11 @@ class NotificationService implements ReminderScheduler {
         description: AppConstants.channelDescription,
         importance: Importance.max,
         playSound: true,
+        sound: const RawResourceAndroidNotificationSound('medicine_alarm'),
         enableVibration: true,
+        enableLights: true,
+        ledColor: const Color(0xFF2E7D32),
+        vibrationPattern: _vibrationPattern,
       ),
     );
     await android.createNotificationChannel(
@@ -82,6 +107,9 @@ class NotificationService implements ReminderScheduler {
         importance: Importance.max,
         playSound: false,
         enableVibration: true,
+        enableLights: true,
+        ledColor: const Color(0xFF2E7D32),
+        vibrationPattern: _vibrationPattern,
       ),
     );
     await android.createNotificationChannel(
@@ -91,7 +119,11 @@ class NotificationService implements ReminderScheduler {
         description: AppConstants.channelDescription,
         importance: Importance.max,
         playSound: true,
+        sound: const RawResourceAndroidNotificationSound('medicine_alarm'),
         enableVibration: true,
+        enableLights: true,
+        ledColor: const Color(0xFFE65100),
+        vibrationPattern: _vibrationPattern,
       ),
     );
   }
@@ -116,7 +148,7 @@ class NotificationService implements ReminderScheduler {
         id: _alertCounter++,
         title: title,
         body: body,
-        notificationDetails: const NotificationDetails(
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             AppConstants.familyChannelId,
             AppConstants.familyChannelName,
@@ -125,7 +157,42 @@ class NotificationService implements ReminderScheduler {
             priority: Priority.high,
             category: AndroidNotificationCategory.reminder,
             playSound: true,
+            sound: const RawResourceAndroidNotificationSound(
+              'medicine_alarm',
+            ),
             enableVibration: true,
+            vibrationPattern: _vibrationPattern,
+          ),
+        ),
+      );
+    } catch (_) {}
+  }
+
+  /// Shows an immediate refill reminder when a medicine is running low.
+  Future<void> showRefillAlert({
+    required String title,
+    required String body,
+  }) async {
+    if (!_initialized) return;
+    try {
+      await _plugin.show(
+        id: _alertCounter++,
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            AppConstants.familyChannelId,
+            AppConstants.familyChannelName,
+            channelDescription: AppConstants.channelDescription,
+            importance: Importance.max,
+            priority: Priority.high,
+            category: AndroidNotificationCategory.reminder,
+            playSound: true,
+            sound: const RawResourceAndroidNotificationSound(
+              'medicine_alarm',
+            ),
+            enableVibration: true,
+            vibrationPattern: _vibrationPattern,
           ),
         ),
       );
@@ -138,20 +205,8 @@ class NotificationService implements ReminderScheduler {
 
   // ---- Permissions ---------------------------------------------------------
 
-  Future<bool> requestPermission() async {
-    try {
-      final android = _plugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >();
-      if (android == null) return true;
-      return await android.requestNotificationsPermission() ?? false;
-    } catch (_) {
-      return true;
-    }
-  }
-
-  /// True when notifications are currently enabled (no dialog shown).
+  /// Returns whether notifications are enabled.
+  /// IMPORTANT: This does NOT request permission — it only checks.
   Future<bool> areNotificationsEnabled() async {
     try {
       final android = _plugin
@@ -163,6 +218,36 @@ class NotificationService implements ReminderScheduler {
     } catch (_) {
       return true;
     }
+  }
+
+  /// Asks the OS for notification permission. Shows the system dialog on
+  /// Android 13+; on older versions this is auto-granted at install.
+  /// Returns true if permission is now granted.
+  Future<bool> requestPermission() async {
+    try {
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (android == null) return true;
+      final granted = await android.requestNotificationsPermission() ?? false;
+      return granted;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Opens Android notification settings so the user can toggle them.
+  Future<void> openNotificationSettings() async {
+    try {
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (android != null) {
+        await android.requestNotificationsPermission();
+      }
+    } catch (_) {}
   }
 
   Future<bool> canScheduleExact() async {
@@ -222,7 +307,26 @@ class NotificationService implements ReminderScheduler {
         priority: Priority.high,
         category: AndroidNotificationCategory.reminder,
         playSound: _soundEnabled,
+        sound: _soundEnabled
+            ? const RawResourceAndroidNotificationSound('medicine_alarm')
+            : null,
         enableVibration: true,
+        enableLights: true,
+        ledColor: const Color(0xFF2E7D32),
+        ledOnMs: 1000,
+        ledOffMs: 500,
+        vibrationPattern: _vibrationPattern,
+        // fullScreenIntent makes the notification behave like an alarm —
+        // it shows a full-screen UI even when the device is locked.
+        // Critical for elderly users who may not notice a status-bar icon.
+        fullScreenIntent: true,
+        styleInformation: BigTextStyleInformation(
+          body,
+          htmlFormatBigText: false,
+          contentTitle: title,
+          htmlFormatContentTitle: false,
+          summaryText: AppConstants.channelName,
+        ),
         actions: [
           AndroidNotificationAction(
             AppConstants.actionTaken,

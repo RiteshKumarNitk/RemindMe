@@ -13,7 +13,7 @@ class AppDatabase {
       _path = path;
 
   static const String dbFileName = 'medireminder.db';
-  static const int _version = 5;
+  static const int _version = 6;
 
   /// Pending-changes queue for cloud sync (v4). One row per entity that has
   /// changed locally and not yet been uploaded; rows are removed after a
@@ -74,6 +74,14 @@ class AppDatabase {
                 UNIQUE (medicine_id, scheduled_at)
               )
             ''');
+          }
+          if (oldVersion < 6) {
+            await db.execute(
+              'ALTER TABLE medicines ADD COLUMN stock_count INTEGER',
+            );
+            await db.execute(
+              'ALTER TABLE medicines ADD COLUMN refill_at INTEGER',
+            );
           }
         },
         onCreate: (db, version) async {
@@ -137,6 +145,12 @@ class AppDatabase {
               UNIQUE (medicine_id, scheduled_at)
             )
           ''');
+          await db.execute(
+            'ALTER TABLE medicines ADD COLUMN stock_count INTEGER',
+          );
+          await db.execute(
+            'ALTER TABLE medicines ADD COLUMN refill_at INTEGER',
+          );
         },
       ),
     );

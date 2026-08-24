@@ -74,6 +74,39 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get medPresetWeekdays => 'Weekdays';
+
+  @override
+  String get medPresetWeekends => 'Weekends';
+
+  @override
+  String get medDuplicate => 'Duplicate';
+
+  @override
+  String get medDuplicateHint => 'Create a copy of this medicine';
+
+  @override
+  String get pauseAll => 'Pause All Medicines';
+
+  @override
+  String get pauseAllConfirm =>
+      'This will pause all active medicines and their reminders. You can resume them later.';
+
+  @override
+  String get resumeAll => 'Resume All';
+
+  @override
+  String homeStreak(int days) {
+    return '$days-day streak! Keep it up! 🎉';
+  }
+
+  @override
+  String get homeBatchMarkAll => 'Mark all as taken';
+
+  @override
+  String get homeAllDoneToday => 'All done for today! 🎉';
+
+  @override
   String homeOverdueHours(int hours) {
     return '${hours}h late';
   }
@@ -247,6 +280,29 @@ class AppLocalizationsEn extends AppLocalizations {
       'No medicines yet.\nTap \"Add Medicine\" to get started.';
 
   @override
+  String get medSearch => 'Search medicines...';
+
+  @override
+  String get medSearchEmpty => 'No medicines match your search';
+
+  @override
+  String get medStockTracking => 'Stock tracking (optional)';
+
+  @override
+  String get medStockCountHint => 'Current pills (e.g. 30)';
+
+  @override
+  String get medRefillAtHint => 'Remind at (e.g. 5)';
+
+  @override
+  String get medRefillTitle => 'Time to refill!';
+
+  @override
+  String medRefillBody(String name, int remaining) {
+    return '$name is running low ($remaining left). Time to refill.';
+  }
+
+  @override
   String get medOnceDate => 'Date';
 
   @override
@@ -281,6 +337,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get histEmpty => 'No history yet';
+
+  @override
+  String get histExport => 'Export CSV';
+
+  @override
+  String get medConflictTitle => 'Schedule conflict';
+
+  @override
+  String medConflictBody(String names) {
+    return 'These medicines are already scheduled at the same time: $names. Continue anyway?';
+  }
+
+  @override
+  String get histTrendGood => 'Adherence is looking good!';
+
+  @override
+  String get histTrendNeedsWork => 'Adherence needs improvement';
+
+  @override
+  String get setData => 'Data';
+
+  @override
+  String get setExportJson => 'Export backup';
+
+  @override
+  String get setExportJsonDesc => 'Save all medicines and history as JSON';
 
   @override
   String histTotal(int count) {

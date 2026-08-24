@@ -74,6 +74,39 @@ class AppLocalizationsHi extends AppLocalizations {
   }
 
   @override
+  String get medPresetWeekdays => 'सप्ताह के दिन';
+
+  @override
+  String get medPresetWeekends => 'वीकेंड';
+
+  @override
+  String get medDuplicate => 'कॉपी बनाएं';
+
+  @override
+  String get medDuplicateHint => 'इस दवा की एक कॉपी बनाएं';
+
+  @override
+  String get pauseAll => 'सभी दवाएं रोकें';
+
+  @override
+  String get pauseAllConfirm =>
+      'यह सभी सक्रिय दवाओं और उनके रिमाइंडर को रोक देगा। आप बाद में इन्हें फिर से शुरू कर सकते हैं।';
+
+  @override
+  String get resumeAll => 'सभी शुरू करें';
+
+  @override
+  String homeStreak(int days) {
+    return '$days दिन की स्ट्रीक! जारी रखें! 🎉';
+  }
+
+  @override
+  String get homeBatchMarkAll => 'सभी ले लीं';
+
+  @override
+  String get homeAllDoneToday => 'आज के लिए सब हो गया! 🎉';
+
+  @override
   String homeOverdueHours(int hours) {
     return '$hours घंटे देर';
   }
@@ -247,6 +280,29 @@ class AppLocalizationsHi extends AppLocalizations {
       'अभी कोई दवा नहीं।\nशुरू करने के लिए \"दवा जोड़ें\" दबाएँ।';
 
   @override
+  String get medSearch => 'दवाएं खोजें...';
+
+  @override
+  String get medSearchEmpty => 'आपकी खोज से कोई दवा मेल नहीं खाती';
+
+  @override
+  String get medStockTracking => 'स्टॉक ट्रैकिंग (वैकल्पिक)';
+
+  @override
+  String get medStockCountHint => 'मौजूदा गोलियां (जैसे 30)';
+
+  @override
+  String get medRefillAtHint => 'याद दिलाएं जब (जैसे 5)';
+
+  @override
+  String get medRefillTitle => 'रिफिल का समय!';
+
+  @override
+  String medRefillBody(String name, int remaining) {
+    return '$name कम हो रही है ($remaining बची हैं)। रिफिल का समय।';
+  }
+
+  @override
   String get medOnceDate => 'तारीख़';
 
   @override
@@ -281,6 +337,32 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get histEmpty => 'अभी कोई इतिहास नहीं';
+
+  @override
+  String get histExport => 'CSV एक्सपोर्ट';
+
+  @override
+  String get medConflictTitle => 'शेड्यूल टकराव';
+
+  @override
+  String medConflictBody(String names) {
+    return 'ये दवाएं पहले से उसी समय निर्धारित हैं: $names। क्या फिर भी जारी रखें?';
+  }
+
+  @override
+  String get histTrendGood => 'अनुपालन अच्छा दिख रहा है!';
+
+  @override
+  String get histTrendNeedsWork => 'अनुपालन में सुधार की ज़रूरत है';
+
+  @override
+  String get setData => 'डेटा';
+
+  @override
+  String get setExportJson => 'बैकअप एक्सपोर्ट';
+
+  @override
+  String get setExportJsonDesc => 'सभी दवाएं और इतिहास JSON में सेव करें';
 
   @override
   String histTotal(int count) {

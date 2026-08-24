@@ -212,6 +212,66 @@ abstract class AppLocalizations {
   /// **'{minutes} min late'**
   String homeOverdueMin(int minutes);
 
+  /// No description provided for @medPresetWeekdays.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekdays'**
+  String get medPresetWeekdays;
+
+  /// No description provided for @medPresetWeekends.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekends'**
+  String get medPresetWeekends;
+
+  /// No description provided for @medDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get medDuplicate;
+
+  /// No description provided for @medDuplicateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a copy of this medicine'**
+  String get medDuplicateHint;
+
+  /// No description provided for @pauseAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause All Medicines'**
+  String get pauseAll;
+
+  /// No description provided for @pauseAllConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'This will pause all active medicines and their reminders. You can resume them later.'**
+  String get pauseAllConfirm;
+
+  /// No description provided for @resumeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume All'**
+  String get resumeAll;
+
+  /// No description provided for @homeStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'{days}-day streak! Keep it up! 🎉'**
+  String homeStreak(int days);
+
+  /// No description provided for @homeBatchMarkAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all as taken'**
+  String get homeBatchMarkAll;
+
+  /// No description provided for @homeAllDoneToday.
+  ///
+  /// In en, this message translates to:
+  /// **'All done for today! 🎉'**
+  String get homeAllDoneToday;
+
   /// No description provided for @homeOverdueHours.
   ///
   /// In en, this message translates to:
@@ -548,6 +608,48 @@ abstract class AppLocalizations {
   /// **'No medicines yet.\nTap \"Add Medicine\" to get started.'**
   String get medNoMedicines;
 
+  /// No description provided for @medSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search medicines...'**
+  String get medSearch;
+
+  /// No description provided for @medSearchEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No medicines match your search'**
+  String get medSearchEmpty;
+
+  /// No description provided for @medStockTracking.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock tracking (optional)'**
+  String get medStockTracking;
+
+  /// No description provided for @medStockCountHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Current pills (e.g. 30)'**
+  String get medStockCountHint;
+
+  /// No description provided for @medRefillAtHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind at (e.g. 5)'**
+  String get medRefillAtHint;
+
+  /// No description provided for @medRefillTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Time to refill!'**
+  String get medRefillTitle;
+
+  /// No description provided for @medRefillBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is running low ({remaining} left). Time to refill.'**
+  String medRefillBody(String name, int remaining);
+
   /// No description provided for @medOnceDate.
   ///
   /// In en, this message translates to:
@@ -619,6 +721,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No history yet'**
   String get histEmpty;
+
+  /// No description provided for @histExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export CSV'**
+  String get histExport;
+
+  /// No description provided for @medConflictTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule conflict'**
+  String get medConflictTitle;
+
+  /// No description provided for @medConflictBody.
+  ///
+  /// In en, this message translates to:
+  /// **'These medicines are already scheduled at the same time: {names}. Continue anyway?'**
+  String medConflictBody(String names);
+
+  /// No description provided for @histTrendGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Adherence is looking good!'**
+  String get histTrendGood;
+
+  /// No description provided for @histTrendNeedsWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Adherence needs improvement'**
+  String get histTrendNeedsWork;
+
+  /// No description provided for @setData.
+  ///
+  /// In en, this message translates to:
+  /// **'Data'**
+  String get setData;
+
+  /// No description provided for @setExportJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Export backup'**
+  String get setExportJson;
+
+  /// No description provided for @setExportJsonDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Save all medicines and history as JSON'**
+  String get setExportJsonDesc;
 
   /// No description provided for @histTotal.
   ///

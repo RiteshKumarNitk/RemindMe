@@ -88,6 +88,18 @@ Future<void> main() async {
   await sync.init();
   await appState.init();
 
+  // Auto-request notification permission on every launch.
+  // For elderly users we should never assume they granted it — ask every
+  // time until they do.  The OS dialog only shows once; subsequent calls
+  // return the current state silently.
+  if (!await notifications.areNotificationsEnabled()) {
+    await notifications.requestPermission();
+  }
+  // Also ensure exact alarms are available (Android 12+).
+  await notifications.requestExactAlarmPermission();
+  // Re-check after the request so the UI can show the correct banner.
+  await appState.refreshPermissionStatus();
+
   // Cold start from a notification tap / action button.
   final launch = await notifications.getLaunchDetails();
   final launchResponse = launch?.notificationResponse;
