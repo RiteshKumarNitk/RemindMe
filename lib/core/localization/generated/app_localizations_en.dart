@@ -391,6 +391,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setGracePeriod => 'Mark missed after';
 
   @override
+  String get setAdvanceAlarm => 'Advance alarm';
+
+  @override
+  String get setAdvanceAlarmDesc => 'Start alarm sound before dose time';
+
+  @override
+  String get off => 'Off';
+
+  @override
   String get setDarkMode => 'Appearance';
 
   @override

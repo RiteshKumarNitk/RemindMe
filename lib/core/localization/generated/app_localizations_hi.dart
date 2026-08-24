@@ -391,6 +391,15 @@ class AppLocalizationsHi extends AppLocalizations {
   String get setGracePeriod => 'कितनी देर बाद \'छूटी\' मानें';
 
   @override
+  String get setAdvanceAlarm => 'अग्रिम अलार्म';
+
+  @override
+  String get setAdvanceAlarmDesc => 'दवा के समय से पहले अलार्म शुरू करें';
+
+  @override
+  String get off => 'बंद';
+
+  @override
   String get setDarkMode => 'रूप-रंग';
 
   @override

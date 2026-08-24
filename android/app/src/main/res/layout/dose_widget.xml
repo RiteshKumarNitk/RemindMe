@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="14dp"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@drawable/dose_widget_background">
+
+    <!-- App icon + label row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="6dp">
+
+        <ImageView
+            android:id="@+id/widget_icon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@mipmap/ic_launcher"
+            android:layout_marginEnd="6dp" />
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Next Dose"
+            android:textColor="#B0FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.04" />
+    </LinearLayout>
+
+    <!-- Medicine name -->
+    <TextView
+        android:id="@+id/medicine_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="—"
+        android:textColor="#FFFFFF"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif-black"
+        android:gravity="center"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:layout_marginBottom="2dp" />
+
+    <!-- Dose info -->
+    <TextView
+        android:id="@+id/dose_info"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="#D0FFFFFF"
+        android:textSize="13sp"
+        android:fontFamily="sans-serif-medium"
+        android:gravity="center"
+        android:maxLines="1" />
+
+    <!-- Time display -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="4dp">
+
+        <TextView
+            android:id="@+id/time_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🕐"
+            android:textSize="16sp"
+            android:layout_marginEnd="4dp" />
+
+        <TextView
+            android:id="@+id/dose_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium" />
+    </LinearLayout>
+
+    <!-- Status badge -->
+    <TextView
+        android:id="@+id/dose_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="#FFFFFF"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.05"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="3dp"
+        android:background="@drawable/status_badge_background" />
+
+    <!-- All done message (hidden by default) -->
+    <TextView
+        android:id="@+id/all_done_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="✅ All done today!"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif-medium"
+        android:gravity="center"
+        android:visibility="gone" />
+
+</LinearLayout>

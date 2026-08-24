@@ -7,7 +7,7 @@ class BigButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.icon,
-    this.height = 72,
+    this.height = 56,
     this.outlined = false,
   });
 
@@ -35,7 +35,7 @@ class BigButton extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (icon != null) ...[Icon(icon, size: 30), const SizedBox(width: 12)],
+        if (icon != null) ...[Icon(icon, size: 24), const SizedBox(width: 10)],
         Flexible(child: Text(label, textAlign: TextAlign.center)),
       ],
     );

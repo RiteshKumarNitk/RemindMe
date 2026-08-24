@@ -128,6 +128,15 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
+            _SectionHeader(l10n.setAdvanceAlarm),
+            _ChipSelector<int>(
+              values: const [0, 1, 2, 3, 5, 10],
+              selected: settings.advanceMinutes,
+              labelOf: (v) => v == 0 ? l10n.off : l10n.minutes(v),
+              onSelected: settings.setAdvanceMinutes,
+            ),
+            const SizedBox(height: 24),
+
             _SectionHeader(l10n.pauseAll),
             ListTile(
               contentPadding: EdgeInsets.zero,

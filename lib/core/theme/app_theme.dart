@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// Material 3 theme tuned for elderly users: high contrast, generous type
-/// sizes, large touch targets, calm colors.
+/// Material 3 theme tuned for elderly users: high contrast,
+/// large touch targets, calm colors.
+/// Font sizes follow Material 3 defaults and scale with the system
+/// font-size / accessibility setting — no hardcoded overrides.
 class AppTheme {
   AppTheme._();
 
@@ -30,7 +32,7 @@ class AppTheme {
     final text = _textTheme(base.textTheme);
 
     final filledStyle = ButtonStyle(
-      minimumSize: const WidgetStatePropertyAll(Size.fromHeight(64)),
+      minimumSize: const WidgetStatePropertyAll(Size.fromHeight(54)),
       textStyle: WidgetStatePropertyAll(
         text.labelLarge?.copyWith(
           fontWeight: FontWeight.w700,
@@ -41,7 +43,7 @@ class AppTheme {
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
       padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       ),
     );
 
@@ -75,20 +77,20 @@ class AppTheme {
       ),
       iconButtonTheme: IconButtonThemeData(
         style: ButtonStyle(
-          minimumSize: const WidgetStatePropertyAll(Size(56, 56)),
-          iconSize: const WidgetStatePropertyAll(28),
+          minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+          iconSize: const WidgetStatePropertyAll(24),
           visualDensity: VisualDensity.standard,
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        height: 84,
+        height: 72,
         backgroundColor: scheme.surfaceContainer,
         indicatorColor: scheme.primaryContainer,
         labelTextStyle: WidgetStatePropertyAll(
           text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
         iconTheme: WidgetStatePropertyAll(
-          IconThemeData(size: 30, color: scheme.onSurfaceVariant),
+          IconThemeData(size: 26, color: scheme.onSurfaceVariant),
         ),
       ),
       cardTheme: CardThemeData(
@@ -118,8 +120,8 @@ class AppTheme {
           borderSide: BorderSide.none,
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 18,
+          horizontal: 16,
+          vertical: 14,
         ),
         labelStyle: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
         hintStyle: text.bodyLarge?.copyWith(color: scheme.outline),
@@ -152,38 +154,28 @@ class AppTheme {
 
   static TextTheme _textTheme(TextTheme base) => base.copyWith(
     displaySmall: base.displaySmall?.copyWith(
-      fontSize: 40,
       fontWeight: FontWeight.w800,
       height: 1.15,
     ),
     headlineLarge: base.headlineLarge?.copyWith(
-      fontSize: 34,
       fontWeight: FontWeight.w700,
       height: 1.2,
     ),
     headlineMedium: base.headlineMedium?.copyWith(
-      fontSize: 30,
       fontWeight: FontWeight.w700,
       height: 1.2,
     ),
     headlineSmall: base.headlineSmall?.copyWith(
-      fontSize: 26,
       fontWeight: FontWeight.w700,
     ),
     titleLarge: base.titleLarge?.copyWith(
-      fontSize: 24,
       fontWeight: FontWeight.w600,
     ),
     titleMedium: base.titleMedium?.copyWith(
-      fontSize: 21,
       fontWeight: FontWeight.w600,
     ),
-    titleSmall: base.titleSmall?.copyWith(fontSize: 18),
-    bodyLarge: base.bodyLarge?.copyWith(fontSize: 19, height: 1.4),
-    bodyMedium: base.bodyMedium?.copyWith(fontSize: 17, height: 1.4),
-    bodySmall: base.bodySmall?.copyWith(fontSize: 15),
-    labelLarge: base.labelLarge?.copyWith(fontSize: 18),
-    labelMedium: base.labelMedium?.copyWith(fontSize: 16),
+    bodyLarge: base.bodyLarge?.copyWith(height: 1.4),
+    bodyMedium: base.bodyMedium?.copyWith(height: 1.4),
   );
 }
 

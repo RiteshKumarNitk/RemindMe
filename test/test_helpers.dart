@@ -50,6 +50,29 @@ class FakeScheduler implements ReminderScheduler {
   }
 
   @override
+  Future<void> cancelAll(List<int> ids) async {
+    for (final id in ids) {
+      scheduled.remove(id);
+    }
+    log.add('cancelAll:${ids.join(',')}');
+  }
+
+  @override
+  Future<bool> scheduleAdvanceAlarm({
+    required int doseId,
+    required int offset,
+    required String title,
+    required String body,
+    required DateTime when,
+    required bool exact,
+  }) async {
+    final notifId = doseId * 1000 + offset;
+    scheduled[notifId] = when;
+    log.add('advance:$notifId@${when.toIso8601String()}');
+    return true;
+  }
+
+  @override
   Future<Set<int>> pendingIds() async => scheduled.keys.toSet();
 }
 

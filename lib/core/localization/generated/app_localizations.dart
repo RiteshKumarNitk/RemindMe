@@ -818,6 +818,24 @@ abstract class AppLocalizations {
   /// **'Mark missed after'**
   String get setGracePeriod;
 
+  /// No description provided for @setAdvanceAlarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Advance alarm'**
+  String get setAdvanceAlarm;
+
+  /// No description provided for @setAdvanceAlarmDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Start alarm sound before dose time'**
+  String get setAdvanceAlarmDesc;
+
+  /// No description provided for @off.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get off;
+
   /// No description provided for @setDarkMode.
   ///
   /// In en, this message translates to:

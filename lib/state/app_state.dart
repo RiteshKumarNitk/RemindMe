@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../core/constants/app_constants.dart';
 import '../core/localization/l10n_helper.dart';
 import '../core/notifications/notification_service.dart';
+import '../services/home_widget_service.dart';
 import '../core/notifications/reminder_text.dart';
 import '../core/utilities/date_utils.dart';
 import '../data/models/adherence_stats.dart';
@@ -97,6 +98,7 @@ class AppState extends ChangeNotifier {
         settings.settings.locale,
         snoozeMinutes: settings.snoozeMinutes,
       ),
+      advanceMinutes: settings.advanceMinutes,
     );
 
     final start = AppDateUtils.startOfDay(now);
@@ -112,6 +114,12 @@ class AppState extends ChangeNotifier {
     _nextDose = _computeNext(_todayDoses, grace, now);
     // Check for low-stock medicines and show refill reminder.
     _checkRefillReminders();
+    // Update home screen widget with next dose info.
+    HomeWidgetService.update(
+      todayDoses: _todayDoses,
+      now: now,
+      locale: settings.settings.locale,
+    );
     _loading = false;
     _revision++;
     notifyListeners();

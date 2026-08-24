@@ -338,6 +338,12 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
       helpText: l10n.medReminderTime,
       cancelText: l10n.btnCancel,
       confirmText: l10n.permOk,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() => _times[index] = picked);
@@ -439,6 +445,12 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
       helpText: l10n.medReminderTime,
       cancelText: l10n.btnCancel,
       confirmText: l10n.permOk,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() => _times.add(picked));

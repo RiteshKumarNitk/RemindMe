@@ -19,6 +19,7 @@ class SettingsController extends ChangeNotifier {
   bool get voiceEnabled => _settings.voiceEnabled;
   int get snoozeMinutes => _settings.snoozeMinutes;
   int get graceMinutes => _settings.graceMinutes;
+  int get advanceMinutes => _settings.advanceMinutes;
   Duration get snoozeDuration => _settings.snoozeDuration;
   Duration get graceDuration => _settings.graceDuration;
   bool get syncEnabled => _settings.syncEnabled;
@@ -62,6 +63,8 @@ class SettingsController extends ChangeNotifier {
       update(_settings.copyWith(snoozeMinutes: value));
   Future<void> setGraceMinutes(int value) =>
       update(_settings.copyWith(graceMinutes: value));
+  Future<void> setAdvanceMinutes(int value) =>
+      update(_settings.copyWith(advanceMinutes: value));
   Future<void> setThemeMode(String value) =>
       update(_settings.copyWith(themeMode: value));
   Future<void> setUserName(String value) =>

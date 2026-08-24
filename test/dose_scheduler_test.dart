@@ -21,6 +21,7 @@ void main() {
         days: 14,
         exact: true,
         text: text(),
+        advanceMinutes: 0,
       );
 
       // 14 doses (today through +13 days)...
@@ -50,6 +51,7 @@ void main() {
         days: 14,
         exact: true,
         text: text(),
+        advanceMinutes: 0,
       );
 
       final entries = await env.doseRepository.getEntriesBetween(
@@ -80,6 +82,7 @@ void main() {
         days: 14,
         exact: true,
         text: text(),
+        advanceMinutes: 0,
       );
 
       final entries = await env.doseRepository.getEntriesBetween(
@@ -100,6 +103,7 @@ void main() {
         days: 14,
         exact: true,
         text: text(),
+        advanceMinutes: 0,
       );
 
       expect(env.fakeScheduler.scheduled, isEmpty);
@@ -128,6 +132,7 @@ void main() {
         days: 14,
         exact: true,
         text: text(),
+        advanceMinutes: 0,
       );
 
       final entries = await env.doseRepository.getEntriesBetween(
@@ -145,6 +150,7 @@ void main() {
         days: 14,
         exact: true,
         text: text(),
+        advanceMinutes: 0,
       );
       expect(env.fakeScheduler.scheduled.length, 13);
 
@@ -163,6 +169,7 @@ void main() {
         days: 14,
         exact: true,
         text: text(),
+        advanceMinutes: 0,
       );
       expect(
         env.fakeScheduler.scheduled.containsKey(tomorrow.dose.id!),
@@ -183,6 +190,7 @@ void main() {
         days: 14,
         exact: true,
         text: text(),
+        advanceMinutes: 0,
       );
 
       // Today's 8:00 dose (already past) gets snoozed to 9:30.
@@ -198,6 +206,7 @@ void main() {
         days: 14,
         exact: true,
         text: text(),
+        advanceMinutes: 0,
       );
       expect(env.fakeScheduler.scheduled[today.dose.id], snoozeUntil);
     });
@@ -210,6 +219,7 @@ void main() {
         days: 14,
         exact: true,
         text: text(),
+        advanceMinutes: 0,
       );
       expect(env.fakeScheduler.scheduled.length, 13);
 
@@ -224,6 +234,7 @@ void main() {
         days: 14,
         exact: true,
         text: text(),
+        advanceMinutes: 0,
       );
 
       // Today's past dose is regenerated (for history), but the schedule is

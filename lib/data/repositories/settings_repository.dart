@@ -13,6 +13,7 @@ class SettingsRepository {
   static const _kVoice = 'voice_enabled';
   static const _kSnooze = 'snooze_minutes';
   static const _kGrace = 'grace_minutes';
+  static const _kAdvance = 'advance_minutes';
   static const _kTheme = 'theme_mode';
   static const _kUserName = 'user_name';
   static const _kOnboarding = 'onboarding_done';
@@ -29,6 +30,7 @@ class SettingsRepository {
       voiceEnabled: _prefs.getBool(_kVoice) ?? false,
       snoozeMinutes: _prefs.getInt(_kSnooze) ?? 10,
       graceMinutes: _prefs.getInt(_kGrace) ?? 30,
+      advanceMinutes: _prefs.getInt(_kAdvance) ?? 5,
       themeMode: _prefs.getString(_kTheme) ?? 'system',
       userName: _prefs.getString(_kUserName) ?? '',
       onboardingDone: _prefs.getBool(_kOnboarding) ?? false,
@@ -48,6 +50,7 @@ class SettingsRepository {
     await _prefs.setBool(_kVoice, settings.voiceEnabled);
     await _prefs.setInt(_kSnooze, settings.snoozeMinutes);
     await _prefs.setInt(_kGrace, settings.graceMinutes);
+    await _prefs.setInt(_kAdvance, settings.advanceMinutes);
     await _prefs.setString(_kTheme, settings.themeMode);
     await _prefs.setString(_kUserName, settings.userName);
     await _prefs.setBool(_kOnboarding, settings.onboardingDone);

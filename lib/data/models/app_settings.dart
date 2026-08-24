@@ -5,6 +5,7 @@ class AppSettings {
   final bool voiceEnabled;
   final int snoozeMinutes;
   final int graceMinutes;
+  final int advanceMinutes; // minutes before dose to start looping alarm
   final String themeMode; // 'system' | 'light' | 'dark'
   final String userName;
   final bool onboardingDone;
@@ -22,6 +23,7 @@ class AppSettings {
     this.voiceEnabled = true,
     this.snoozeMinutes = 10,
     this.graceMinutes = 30,
+    this.advanceMinutes = 5,
     this.themeMode = 'system',
     this.userName = '',
     this.onboardingDone = false,
@@ -41,6 +43,7 @@ class AppSettings {
     bool? voiceEnabled,
     int? snoozeMinutes,
     int? graceMinutes,
+    int? advanceMinutes,
     String? themeMode,
     String? userName,
     bool? onboardingDone,
@@ -56,6 +59,7 @@ class AppSettings {
       voiceEnabled: voiceEnabled ?? this.voiceEnabled,
       snoozeMinutes: snoozeMinutes ?? this.snoozeMinutes,
       graceMinutes: graceMinutes ?? this.graceMinutes,
+      advanceMinutes: advanceMinutes ?? this.advanceMinutes,
       themeMode: themeMode ?? this.themeMode,
       userName: userName ?? this.userName,
       onboardingDone: onboardingDone ?? this.onboardingDone,

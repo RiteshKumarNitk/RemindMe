@@ -25,6 +25,21 @@ abstract class ReminderScheduler {
 
   Future<void> cancel(int id);
 
+  /// Cancels multiple notifications by their ids.
+  Future<void> cancelAll(List<int> ids);
+
+  /// Schedules an advance alarm notification (loops before dose time).
+  /// [doseId] is the base dose id; [offset] differentiates advance
+  /// notifications so they don't collide with the main one.
+  Future<bool> scheduleAdvanceAlarm({
+    required int doseId,
+    required int offset,
+    required String title,
+    required String body,
+    required DateTime when,
+    required bool exact,
+  });
+
   /// Ids of all scheduled (not yet shown) notifications.
   Future<Set<int>> pendingIds();
 }
@@ -390,6 +405,95 @@ class NotificationService implements ReminderScheduler {
     try {
       await _plugin.cancel(id: id);
     } catch (_) {}
+  }
+
+  @override
+  Future<void> cancelAll(List<int> ids) async {
+    if (!_initialized) return;
+    for (final id in ids) {
+      try {
+        await _plugin.cancel(id: id);
+      } catch (_) {}
+    }
+  }
+
+  @override
+  Future<bool> scheduleAdvanceAlarm({
+    required int doseId,
+    required int offset,
+    required String title,
+    required String body,
+    required DateTime when,
+    required bool exact,
+  }) async {
+    if (!_initialized) return false;
+    final tzWhen = tz.TZDateTime.from(when, tz.local);
+    if (!tzWhen.isAfter(tz.TZDateTime.now(tz.local))) return false;
+
+    // Advance alarms use the alarm sound channel + fullScreenIntent.
+    // No action buttons — this is just the looping alarm.
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        AppConstants.channelId,
+        AppConstants.channelName,
+        channelDescription: AppConstants.channelDescription,
+        importance: Importance.max,
+        priority: Priority.max,
+        category: AndroidNotificationCategory.alarm,
+        playSound: _soundEnabled,
+        sound: _soundEnabled
+            ? const RawResourceAndroidNotificationSound('medicine_alarm')
+            : null,
+        enableVibration: true,
+        enableLights: true,
+        ledColor: const Color(0xFFFF6D00),
+        ledOnMs: 500,
+        ledOffMs: 250,
+        vibrationPattern: _vibrationPattern,
+        fullScreenIntent: true,
+        styleInformation: BigTextStyleInformation(
+          body,
+          htmlFormatBigText: false,
+          contentTitle: title,
+          htmlFormatContentTitle: false,
+          summaryText: AppConstants.channelName,
+        ),
+      ),
+    );
+    // Use doseId * 1000 + offset as notification id to avoid collisions
+    // with the main dose notification (which uses doseId directly).
+    final notifId = doseId * 1000 + offset;
+    final payload = '${AppConstants.payloadPrefix}$doseId';
+
+    try {
+      await _plugin.zonedSchedule(
+        id: notifId,
+        title: title,
+        body: body,
+        scheduledDate: tzWhen,
+        notificationDetails: details,
+        androidScheduleMode: exact
+            ? AndroidScheduleMode.exactAllowWhileIdle
+            : AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: payload,
+      );
+      return true;
+    } on Exception {
+      try {
+        await _plugin.zonedSchedule(
+          id: notifId,
+          title: title,
+          body: body,
+          scheduledDate: tzWhen,
+          notificationDetails: details,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          payload: payload,
+        );
+        return true;
+      } on Exception {
+        return false;
+      }
+    }
   }
 
   @override

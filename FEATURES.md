@@ -198,6 +198,11 @@ deployment) and `.freebuff/run.md` (how to run the web preview).
 
 Newest first. Format: `date — what changed (why)`.
 
+- **2026-08-24 — Advance alarm (pre-dose looping)**: configurable advance
+  alarm that starts 1-10 minutes before dose time, re-firing every minute
+  until taken; settings UI with chip selector (Off / 1 / 2 / 3 / 5 / 10 min);
+  advance notifications use fullScreenIntent + alarm sound for maximum
+  visibility on lock screen.
 - **2026-08-24 — Notification sound & permission fixes**: custom triple-beep
   alarm WAV in `res/raw/medicine_alarm.wav`; custom double-buzz vibration
   pattern; LED lights; fullScreenIntent for lock-screen alarm; auto-request

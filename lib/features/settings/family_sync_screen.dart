@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utilities/date_utils.dart';
 import '../../services/settings_controller.dart';
 import '../../services/sync/sync_service.dart';
 import '../caregiver/caregiver_dashboard_screen.dart';
@@ -260,8 +261,7 @@ class _StatusCard extends StatelessWidget {
                     lastSync == null
                         ? l10n.syncNever
                         : l10n.syncLastSync(
-                            '${lastSync.hour.toString().padLeft(2, '0')}:'
-                            '${lastSync.minute.toString().padLeft(2, '0')}',
+                            AppDateUtils.timeLabel(lastSync, Localizations.localeOf(context).languageCode),
                           ),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,

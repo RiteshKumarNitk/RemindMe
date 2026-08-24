@@ -21,6 +21,9 @@ class DoseScheduler {
   final DoseRepository doseRepository;
   final ReminderScheduler scheduler;
 
+  /// Id range for advance alarm notifications: doseId * 1000 + offset.
+  /// Offsets 1..advanceMinutes are used; offset 0 is the main notification.
+
   /// Reconciles scheduled notifications with the desired state:
   ///  - creates any missing dose rows for the window (today .. +days),
   ///  - schedules notifications for pending future doses,
@@ -34,6 +37,7 @@ class DoseScheduler {
     required int days,
     required bool exact,
     required ReminderText text,
+    required int advanceMinutes,
   }) async {
     final start = DateTime(now.year, now.month, now.day);
     final end = start.add(Duration(days: days));
@@ -85,9 +89,40 @@ class DoseScheduler {
         snoozeLabel: text.snoozeLabel,
         skipLabel: text.skipLabel,
       );
+
+      // Schedule advance alarm notifications that fire 1..advanceMinutes
+      // minutes before the dose time, creating a looping alarm effect.
+      final doseWhen = entry.value.when;
+      for (int offset = 1; offset <= advanceMinutes; offset++) {
+        final advanceTime = doseWhen.subtract(Duration(minutes: offset));
+        if (!advanceTime.isAfter(now)) continue;
+        final advanceKey = entry.key * 1000 + offset;
+        if (pending.contains(advanceKey)) continue;
+        await scheduler.scheduleAdvanceAlarm(
+          doseId: entry.key,
+          offset: offset,
+          title: text.title,
+          body: text.body(med.name, med.doseLabel),
+          when: advanceTime,
+          exact: exact,
+        );
+      }
     }
     for (final id in pending) {
       if (!desired.containsKey(id)) {
+        await scheduler.cancel(id);
+      }
+    }
+    // Cancel advance alarm notifications for doses no longer needed.
+    // Advance IDs are doseId * 1000 + offset.
+    final desiredAdvanceIds = <int>{};
+    for (final doseId in desired.keys) {
+      for (int offset = 1; offset <= advanceMinutes; offset++) {
+        desiredAdvanceIds.add(doseId * 1000 + offset);
+      }
+    }
+    for (final id in pending) {
+      if (id > 999 && !desiredAdvanceIds.contains(id)) {
         await scheduler.cancel(id);
       }
     }
