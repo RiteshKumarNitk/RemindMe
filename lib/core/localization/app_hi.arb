@@ -1,0 +1,258 @@
+{
+  "@@locale": "hi",
+  "appTitle": "दवा रिमाइंडर",
+  "navHome": "घर",
+  "greetingMorning": "सुप्रभात",
+  "greetingAfternoon": "नमस्ते",
+  "greetingEvening": "शुभ संध्या",
+  "homeNextMedicine": "अगली दवा",
+  "homeTakeMedicine": "दवा लें",
+  "homeSkip": "छोड़ें",
+  "homeTaken": "लिया",
+  "homeRemaining": "बाकी",
+  "homeMissed": "छूटी",
+  "homeTodayMedicines": "आज की दवाएँ",
+  "homeNoMedicines": "अभी कोई दवा नहीं जोड़ी गई",
+  "homeNoMoreToday": "आज के लिए कोई और दवा नहीं 🎉",
+  "homeDosesDone": "खुराक पूरी हुई",
+  "homeInMin": "{minutes} मिनट में",
+  "@homeInMin": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "homeInHours": "{hours} घंटे में",
+  "@homeInHours": {
+    "placeholders": {
+      "hours": {"type": "int"}
+    }
+  },
+  "homeInDays": "{days} दिन में",
+  "@homeInDays": {
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
+  "homeOverdueMin": "{minutes} मिनट देर",
+  "@homeOverdueMin": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "homeOverdueHours": "{hours} घंटे देर",
+  "@homeOverdueHours": {
+    "placeholders": {
+      "hours": {"type": "int"}
+    }
+  },
+  "homeAddFirst": "अपनी पहली दवा जोड़ें",
+  "homeEmptySchedule": "आज के लिए कोई रिमाइंडर नहीं",
+  "statusTaken": "लिया",
+  "statusSkipped": "छोड़ा",
+  "statusMissed": "छूटी",
+  "statusPending": "बाकी",
+  "statusSnoozed": "स्नूज़",
+  "medTitle": "मेरी दवाएँ",
+  "medAdd": "दवा जोड़ें",
+  "medEdit": "दवा बदलें",
+  "medName": "दवा का नाम",
+  "medNameHint": "जैसे: BP टैबलेट",
+  "medDose": "मात्रा",
+  "medDoseHint": "जैसे: 1",
+  "medDoseUnit": "इकाई",
+  "medDoseUnitHint": "जैसे: गोली, बूँद, चम्मच",
+  "medNotes": "नोट (वैकल्पिक)",
+  "medFoodInstruction": "खाने से संबंध",
+  "foodNone": "कोई विशेष निर्देश नहीं",
+  "foodBefore": "खाने से पहले",
+  "foodAfter": "खाने के बाद",
+  "foodWith": "खाने के साथ",
+  "medFrequency": "कितनी बार?",
+  "freqEveryDay": "रोज़",
+  "freqSpecificDays": "कुछ दिन",
+  "freqOnce": "एक बार",
+  "freqMultiple": "दिन में कई बार",
+  "medSelectDays": "दिन चुनें",
+  "medReminderTime": "रिमाइंडर का समय",
+  "medQuickTimes": "त्वरित समय — एक दबाव में",
+  "medTimeSlotMorning": "सुबह",
+  "medTimeSlotAfternoon": "दोपहर",
+  "medTimeSlotEvening": "शाम",
+  "medTimeSlotNight": "रात",
+  "medUnitQuick": "सामान्य इकाइयाँ — एक दबाव में",
+  "medUnitMg": "mg",
+  "medUnitMl": "ml",
+  "medUnitTablet": "गोली",
+  "medUnitCapsule": "कैप्सूल",
+  "medUnitDrop": "बूँद",
+  "medUnitSpoon": "चम्मच",
+  "medAddAnotherTime": "और समय जोड़ें",
+  "medSave": "सेव करें",
+  "medDelete": "हटाएँ",
+  "medPause": "रोकें",
+  "medResume": "फिर शुरू करें",
+  "medActive": "चालू",
+  "medInactive": "रोका हुआ",
+  "medDeleteTitle": "दवा हटाएँ?",
+  "medDeleteBody": "इससे \"{name}\" और इसके भविष्य के रिमाइंडर हट जाएँगे। इसे वापस नहीं लाया जा सकता।",
+  "@medDeleteBody": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "medDeleted": "दवा हटा दी गई",
+  "medSaved": "दवा सेव हो गई",
+  "medPausedMsg": "रिमाइंडर रोक दिए गए",
+  "medResumedMsg": "रिमाइंडर फिर शुरू हो गए",
+  "medNoMedicines": "अभी कोई दवा नहीं।\nशुरू करने के लिए \"दवा जोड़ें\" दबाएँ।",
+  "medSearch": "दवाएं खोजें...",
+  "medSearchEmpty": "आपकी खोज से कोई दवा मेल नहीं खाती",
+  "medOnceDate": "तारीख़",
+  "medTime": "समय",
+  "histTitle": "इतिहास",
+  "histToday": "आज",
+  "histThisWeek": "इस हफ़्ते",
+  "histAll": "सब",
+  "histAdherence": "अनुपालन",
+  "histTakenCount": "लिया",
+  "histMissedCount": "छूटी",
+  "histSkippedCount": "छोड़ा",
+  "histPendingCount": "बाकी",
+  "histEmpty": "अभी कोई इतिहास नहीं",
+  "histTotal": "कुल: {count}",
+  "@histTotal": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "setTitle": "सेटिंग्स",
+  "setLanguage": "भाषा",
+  "setNotificationSound": "सूचना की आवाज़",
+  "setVoiceReminder": "आवाज़ से रिमाइंडर",
+  "setVoiceOn": "दवा का नाम बोलकर बताएँ",
+  "setSnoozeDuration": "स्नूज़ की अवधि",
+  "setGracePeriod": "कितनी देर बाद 'छूटी' मानें",
+  "setDarkMode": "रूप-रंग",
+  "themeSystem": "सिस्टम",
+  "themeLight": "हल्का",
+  "themeDark": "गहरा",
+  "setAbout": "जानकारी",
+  "setPermissions": "अनुमतियाँ",
+  "setNotifyPermission": "सूचना की अनुमति",
+  "setExactAlarm": "सटीक अलार्म की अनुमति",
+  "setBattery": "बैटरी / बैकग्राउंड",
+  "permissionGranted": "मिल गई",
+  "permissionDenied": "नहीं मिली — अनुमति देने के लिए दबाएँ",
+  "setNotifDesc": "रिमाइंडर दिखाने की अनुमति दें",
+  "setExactDesc": "रिमाइंडर ठीक समय पर बजने दें",
+  "setBatteryDesc": "बैकग्राउंड में रिमाइंडर काम करते रहें",
+  "aboutBody": "दवा रिमाइंडर सिर्फ़ याद दिलाने और रिकॉर्ड रखने का साधन है। यह कोई चिकित्सीय सलाह नहीं देता। हमेशा अपने डॉक्टर के निर्देशों का पालन करें।",
+  "notifTitle": "💊 दवा का समय हो गया है",
+  "notifBody": "लें: {name} — {dose}",
+  "@notifBody": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "dose": {"type": "String"}
+    }
+  },
+  "notifActionTaken": "लिया",
+  "notifActionSnooze": "{minutes} मिनट बाद",
+  "@notifActionSnooze": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "notifActionSkip": "छोड़ें",
+  "permNotifTitle": "सूचनाएँ अनुमति दें?",
+  "permNotifBody": "रिमाइंडर सूचना के रूप में दिखेंगे, भले ही ऐप बंद हो। कृपया सूचनाएँ अनुमति दें।",
+  "permExactTitle": "सटीक अलार्म की अनुमति दें?",
+  "permExactBody": "रिमाइंडर ठीक समय पर बजने के लिए Android को अनुमति चाहिए। सिस्टम सेटिंग्स खुलेंगी — कृपया \"सटीक अलार्म दें\" चालू करें।",
+  "permOk": "ठीक है",
+  "permCancel": "अभी नहीं",
+  "obWelcome": "स्वागत है!",
+  "obTitle": "दवा रिमाइंडर",
+  "obBody": "मैं आपको समय पर दवा लेने की याद दिलाऊँगा। इसमें बस एक मिनट लगेगा।",
+  "obName": "मैं आपको क्या बुलाऊँ? (वैकल्पिक)",
+  "obNameHint": "जैसे: माँ",
+  "obStart": "शुरू करें",
+  "obSkip": "अभी छोड़ें",
+  "voiceTimeToTake": "दवा लेने का समय हो गया है। {name}, {dose}।",
+  "@voiceTimeToTake": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "dose": {"type": "String"}
+    }
+  },
+  "voiceTaken": "शाबाश! दवा ले ली गई।",
+  "voiceSkipped": "दवा छोड़ दी गई।",
+  "undo": "वापस करें",
+  "undoTaken": "दवा ले ली गई",
+  "undoSkipped": "दवा छोड़ दी गई",
+  "homeSkipConfirmTitle": "यह खुराक छोड़ें?",
+  "homeSkipConfirmBody": "क्या आप {name} को छोड़ना चाहते हैं? इसे छोड़ा हुआ चिह्नित किया जाएगा।",
+  "@homeSkipConfirmBody": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "btnSave": "सेव करें",
+  "btnCancel": "रद्द करें",
+  "btnClose": "बंद करें",
+  "minutes": "{minutes} मिनट",
+  "@minutes": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "speakReminder": "रिमाइंडर बोलें",
+  "missedAlertTitle": "⚠️ दवा छूट गई",
+  "missedAlertBody": "{time} पर {name} नहीं ली गई",
+  "@missedAlertBody": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "time": {"type": "String"}
+    }
+  },
+  "familySync": "परिवार और सिंक",
+  "familySyncDesc": "दवाइयाँ और इतिहास परिवार से साझा करें",
+  "familySyncIntro": "परिवार देख सकता है कि दवा ली गई या नहीं और दवा छूटने पर सूचना मिलती है। सब कुछ आपके परिवार तक ही सीमित रहता है।",
+  "syncRolePrimary": "मैं यहाँ दवा लेती/लेता हूँ",
+  "syncRolePrimaryDesc": "यह फ़ोन दवा लेने वाले व्यक्ति का है",
+  "syncRoleWatcher": "मैं परिवार से हूँ — मदद करना चाहता/चाहती हूँ",
+  "syncRoleWatcherDesc": "दवाइयों पर नज़र रखें और छूटने पर सूचना पाएँ",
+  "syncCodeLabel": "परिवार कोड",
+  "syncCodeHint": "6 अक्षर का कोड दर्ज करें",
+  "syncJoin": "परिवार से जुड़ें",
+  "syncCreate": "परिवार बनाएँ",
+  "syncCopied": "कोड कॉपी हो गया",
+  "syncNow": "अभी सिंक करें",
+  "syncOn": "सिंक चालू है",
+  "syncOff": "सिंक बंद है",
+  "syncLastSync": "आख़िरी सिंक: {time}",
+  "@syncLastSync": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "syncNever": "कभी नहीं",
+  "syncFailed": "सिंक विफल",
+  "syncDisable": "सिंक बंद करें",
+  "syncDisableConfirm": "सिंक बंद करने पर यह फ़ोन परिवार से अलग हो जाएगा। दवाइयाँ इसी फ़ोन पर रहेंगी।",
+  "syncNotConfigured": "इस ऐप के लिए क्लाउड सिंक अभी तैयार नहीं है (google-services.json जोड़ें)। इसके बिना भी ऐप पूरी तरह से काम करता है।",
+  "missedAlerts": "छूटी दवा की सूचना",
+  "missedAlertsDesc": "दवा छूटने पर सूचना पाएँ",
+  "syncStatusSynced": "सब सिंक हो गया",
+  "syncStatusSyncing": "सिंक हो रहा है…",
+  "syncPendingCount": "{count} परिवर्तन सिंक होने की प्रतीक्षा में",
+  "@syncPendingCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "syncRetrying": "अपने आप फिर कोशिश होगी",
+  "syncCodeShare": "यह कोड परिवार को दें",
+  "caregiverTitle": "परिवार डैशबोर्ड",
+  "caregiverDesc": "साप्ताहिक अनुपालन और आज की दवाएँ",
+  "caregiverRefresh": "रीफ़्रेश करें",
+  "caregiverThisWeek": "इस हफ़्ते"
+}

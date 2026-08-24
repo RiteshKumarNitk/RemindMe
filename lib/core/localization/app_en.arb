@@ -1,0 +1,258 @@
+{
+  "@@locale": "en",
+  "appTitle": "Medicine Reminder",
+  "navHome": "Home",
+  "greetingMorning": "Good Morning",
+  "greetingAfternoon": "Good Afternoon",
+  "greetingEvening": "Good Evening",
+  "homeNextMedicine": "Next Medicine",
+  "homeTakeMedicine": "TAKE MEDICINE",
+  "homeSkip": "Skip",
+  "homeTaken": "Taken",
+  "homeRemaining": "Remaining",
+  "homeMissed": "Missed",
+  "homeTodayMedicines": "Today's Medicines",
+  "homeNoMedicines": "No medicines added yet",
+  "homeNoMoreToday": "No more medicines today 🎉",
+  "homeDosesDone": "doses done",
+  "homeInMin": "in {minutes} min",
+  "@homeInMin": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "homeInHours": "in {hours}h",
+  "@homeInHours": {
+    "placeholders": {
+      "hours": {"type": "int"}
+    }
+  },
+  "homeInDays": "in {days}d",
+  "@homeInDays": {
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
+  "homeOverdueMin": "{minutes} min late",
+  "@homeOverdueMin": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "homeOverdueHours": "{hours}h late",
+  "@homeOverdueHours": {
+    "placeholders": {
+      "hours": {"type": "int"}
+    }
+  },
+  "homeAddFirst": "Add your first medicine",
+  "homeEmptySchedule": "No reminders for today",
+  "statusTaken": "Taken",
+  "statusSkipped": "Skipped",
+  "statusMissed": "Missed",
+  "statusPending": "Pending",
+  "statusSnoozed": "Snoozed",
+  "medTitle": "My Medicines",
+  "medAdd": "Add Medicine",
+  "medEdit": "Edit Medicine",
+  "medName": "Medicine name",
+  "medNameHint": "e.g. BP Tablet",
+  "medDose": "Dose",
+  "medDoseHint": "e.g. 1",
+  "medDoseUnit": "Unit",
+  "medDoseUnitHint": "e.g. tablet, drop, spoon",
+  "medNotes": "Notes (optional)",
+  "medFoodInstruction": "Food instruction",
+  "foodNone": "No special instruction",
+  "foodBefore": "Before food",
+  "foodAfter": "After food",
+  "foodWith": "With food",
+  "medFrequency": "How often?",
+  "freqEveryDay": "Every day",
+  "freqSpecificDays": "Specific days",
+  "freqOnce": "Once",
+  "freqMultiple": "Multiple times a day",
+  "medSelectDays": "Select days",
+  "medReminderTime": "Reminder time",
+  "medQuickTimes": "Quick times — one tap",
+  "medTimeSlotMorning": "Morning",
+  "medTimeSlotAfternoon": "Afternoon",
+  "medTimeSlotEvening": "Evening",
+  "medTimeSlotNight": "Night",
+  "medUnitQuick": "Common units — one tap",
+  "medUnitMg": "mg",
+  "medUnitMl": "ml",
+  "medUnitTablet": "tablet",
+  "medUnitCapsule": "capsule",
+  "medUnitDrop": "drop",
+  "medUnitSpoon": "spoon",
+  "medAddAnotherTime": "Add another time",
+  "medSave": "Save",
+  "medDelete": "Delete",
+  "medPause": "Pause",
+  "medResume": "Resume",
+  "medActive": "Active",
+  "medInactive": "Paused",
+  "medDeleteTitle": "Delete medicine?",
+  "medDeleteBody": "This will remove \"{name}\" and its future reminders. This cannot be undone.",
+  "@medDeleteBody": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "medDeleted": "Medicine deleted",
+  "medSaved": "Medicine saved",
+  "medPausedMsg": "Reminders paused",
+  "medResumedMsg": "Reminders resumed",
+  "medNoMedicines": "No medicines yet.\nTap \"Add Medicine\" to get started.",
+  "medSearch": "Search medicines...",
+  "medSearchEmpty": "No medicines match your search",
+  "medOnceDate": "Date",
+  "medTime": "Time",
+  "histTitle": "History",
+  "histToday": "Today",
+  "histThisWeek": "This Week",
+  "histAll": "All",
+  "histAdherence": "Adherence",
+  "histTakenCount": "Taken",
+  "histMissedCount": "Missed",
+  "histSkippedCount": "Skipped",
+  "histPendingCount": "Pending",
+  "histEmpty": "No history yet",
+  "histTotal": "Total: {count}",
+  "@histTotal": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "setTitle": "Settings",
+  "setLanguage": "Language",
+  "setNotificationSound": "Notification sound",
+  "setVoiceReminder": "Voice reminder",
+  "setVoiceOn": "Speak the reminder aloud",
+  "setSnoozeDuration": "Snooze duration",
+  "setGracePeriod": "Mark missed after",
+  "setDarkMode": "Appearance",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "setAbout": "About",
+  "setPermissions": "Permissions",
+  "setNotifyPermission": "Notification permission",
+  "setExactAlarm": "Exact alarm permission",
+  "setBattery": "Battery / background",
+  "permissionGranted": "Granted",
+  "permissionDenied": "Not granted — tap to allow",
+  "setNotifDesc": "Allow reminders to appear",
+  "setExactDesc": "Allow reminders at the exact time",
+  "setBatteryDesc": "Keep reminders working in the background",
+  "aboutBody": "Medicine Reminder is a reminder and tracking tool only. It does not provide medical advice. Always follow your doctor's instructions.",
+  "notifTitle": "💊 Medicine Time",
+  "notifBody": "Take {name} — {dose}",
+  "@notifBody": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "dose": {"type": "String"}
+    }
+  },
+  "notifActionTaken": "TAKEN",
+  "notifActionSnooze": "Snooze {minutes} min",
+  "@notifActionSnooze": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "notifActionSkip": "SKIP",
+  "permNotifTitle": "Allow notifications?",
+  "permNotifBody": "Reminders appear as notifications, even when the app is closed. Please allow notifications.",
+  "permExactTitle": "Allow exact alarms?",
+  "permExactBody": "For reminders to ring at the exact time, Android needs your permission. The system settings will open — please turn on \"Allow exact alarms\" for this app.",
+  "permOk": "OK",
+  "permCancel": "Not now",
+  "obWelcome": "Welcome!",
+  "obTitle": "Medicine Reminder",
+  "obBody": "I will remind you to take your medicines on time. Setting this up takes just one minute.",
+  "obName": "What should I call you? (optional)",
+  "obNameHint": "e.g. Mom",
+  "obStart": "Start",
+  "obSkip": "Skip for now",
+  "voiceTimeToTake": "It is time to take your medicine. {name}, {dose}.",
+  "@voiceTimeToTake": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "dose": {"type": "String"}
+    }
+  },
+  "voiceTaken": "Well done! Medicine taken.",
+  "voiceSkipped": "Medicine skipped.",
+  "undo": "Undo",
+  "undoTaken": "Medicine marked as taken",
+  "undoSkipped": "Medicine skipped",
+  "homeSkipConfirmTitle": "Skip this dose?",
+  "homeSkipConfirmBody": "Are you sure you want to skip {name}? This will be marked as skipped.",
+  "@homeSkipConfirmBody": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "btnSave": "Save",
+  "btnCancel": "Cancel",
+  "btnClose": "Close",
+  "minutes": "{minutes} minutes",
+  "@minutes": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "speakReminder": "Speak reminder",
+  "missedAlertTitle": "⚠️ Missed medicine",
+  "missedAlertBody": "{name} at {time} was not taken",
+  "@missedAlertBody": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "time": {"type": "String"}
+    }
+  },
+  "familySync": "Family & Sync",
+  "familySyncDesc": "Share medicines and history with family",
+  "familySyncIntro": "Family can see whether medicines were taken and get an alert when a dose is missed. Everything stays private to your family.",
+  "syncRolePrimary": "I take medicines here",
+  "syncRolePrimaryDesc": "This phone belongs to the person taking medicines",
+  "syncRoleWatcher": "I am family — I want to help",
+  "syncRoleWatcherDesc": "Watch over medicines and get missed-dose alerts",
+  "syncCodeLabel": "Family code",
+  "syncCodeHint": "Enter the 6-letter code",
+  "syncJoin": "Join family",
+  "syncCreate": "Create family",
+  "syncCopied": "Code copied",
+  "syncNow": "Sync now",
+  "syncOn": "Sync is on",
+  "syncOff": "Sync is off",
+  "syncLastSync": "Last synced: {time}",
+  "@syncLastSync": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "syncNever": "Never",
+  "syncFailed": "Sync failed",
+  "syncDisable": "Turn off sync",
+  "syncDisableConfirm": "Turning off sync removes this phone from the family. Medicines stay on this phone.",
+  "syncNotConfigured": "Cloud sync is not set up for this app yet (add google-services.json). The app works fully offline without it.",
+  "missedAlerts": "Missed-dose alerts",
+  "missedAlertsDesc": "Get an alert when a medicine is missed",
+  "syncStatusSynced": "All synced",
+  "syncStatusSyncing": "Syncing…",
+  "syncPendingCount": "{count} changes waiting to sync",
+  "@syncPendingCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "syncRetrying": "Will retry automatically",
+  "syncCodeShare": "Share this code with family",
+  "caregiverTitle": "Family Dashboard",
+  "caregiverDesc": "Weekly adherence and today's doses",
+  "caregiverRefresh": "Refresh",
+  "caregiverThisWeek": "This Week"
+}

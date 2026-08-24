@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // A household can only be read/written by authenticated members.
+    // `members` is a map { uid: { role, joinedAt, fcmToken } } on the
+    // household document.
+    match /households/{code} {
+      allow read, update: if request.auth != null &&
+        request.auth.uid in resource.data.members.keys();
+      allow create: if request.auth != null;
+
+      match /medicines/{medicineId} {
+        allow read, write: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/households/$(code)).data.members.keys();
+      }
+
+      match /doses/{doseId} {
+        allow read, write: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/households/$(code)).data.members.keys();
+      }
+    }
+  }
+}

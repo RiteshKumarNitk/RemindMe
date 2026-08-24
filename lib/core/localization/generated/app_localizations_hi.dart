@@ -1,0 +1,574 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for Hindi (`hi`).
+class AppLocalizationsHi extends AppLocalizations {
+  AppLocalizationsHi([String locale = 'hi']) : super(locale);
+
+  @override
+  String get appTitle => 'दवा रिमाइंडर';
+
+  @override
+  String get navHome => 'घर';
+
+  @override
+  String get greetingMorning => 'सुप्रभात';
+
+  @override
+  String get greetingAfternoon => 'नमस्ते';
+
+  @override
+  String get greetingEvening => 'शुभ संध्या';
+
+  @override
+  String get homeNextMedicine => 'अगली दवा';
+
+  @override
+  String get homeTakeMedicine => 'दवा लें';
+
+  @override
+  String get homeSkip => 'छोड़ें';
+
+  @override
+  String get homeTaken => 'लिया';
+
+  @override
+  String get homeRemaining => 'बाकी';
+
+  @override
+  String get homeMissed => 'छूटी';
+
+  @override
+  String get homeTodayMedicines => 'आज की दवाएँ';
+
+  @override
+  String get homeNoMedicines => 'अभी कोई दवा नहीं जोड़ी गई';
+
+  @override
+  String get homeNoMoreToday => 'आज के लिए कोई और दवा नहीं 🎉';
+
+  @override
+  String get homeDosesDone => 'खुराक पूरी हुई';
+
+  @override
+  String homeInMin(int minutes) {
+    return '$minutes मिनट में';
+  }
+
+  @override
+  String homeInHours(int hours) {
+    return '$hours घंटे में';
+  }
+
+  @override
+  String homeInDays(int days) {
+    return '$days दिन में';
+  }
+
+  @override
+  String homeOverdueMin(int minutes) {
+    return '$minutes मिनट देर';
+  }
+
+  @override
+  String homeOverdueHours(int hours) {
+    return '$hours घंटे देर';
+  }
+
+  @override
+  String get homeAddFirst => 'अपनी पहली दवा जोड़ें';
+
+  @override
+  String get homeEmptySchedule => 'आज के लिए कोई रिमाइंडर नहीं';
+
+  @override
+  String get statusTaken => 'लिया';
+
+  @override
+  String get statusSkipped => 'छोड़ा';
+
+  @override
+  String get statusMissed => 'छूटी';
+
+  @override
+  String get statusPending => 'बाकी';
+
+  @override
+  String get statusSnoozed => 'स्नूज़';
+
+  @override
+  String get medTitle => 'मेरी दवाएँ';
+
+  @override
+  String get medAdd => 'दवा जोड़ें';
+
+  @override
+  String get medEdit => 'दवा बदलें';
+
+  @override
+  String get medName => 'दवा का नाम';
+
+  @override
+  String get medNameHint => 'जैसे: BP टैबलेट';
+
+  @override
+  String get medDose => 'मात्रा';
+
+  @override
+  String get medDoseHint => 'जैसे: 1';
+
+  @override
+  String get medDoseUnit => 'इकाई';
+
+  @override
+  String get medDoseUnitHint => 'जैसे: गोली, बूँद, चम्मच';
+
+  @override
+  String get medNotes => 'नोट (वैकल्पिक)';
+
+  @override
+  String get medFoodInstruction => 'खाने से संबंध';
+
+  @override
+  String get foodNone => 'कोई विशेष निर्देश नहीं';
+
+  @override
+  String get foodBefore => 'खाने से पहले';
+
+  @override
+  String get foodAfter => 'खाने के बाद';
+
+  @override
+  String get foodWith => 'खाने के साथ';
+
+  @override
+  String get medFrequency => 'कितनी बार?';
+
+  @override
+  String get freqEveryDay => 'रोज़';
+
+  @override
+  String get freqSpecificDays => 'कुछ दिन';
+
+  @override
+  String get freqOnce => 'एक बार';
+
+  @override
+  String get freqMultiple => 'दिन में कई बार';
+
+  @override
+  String get medSelectDays => 'दिन चुनें';
+
+  @override
+  String get medReminderTime => 'रिमाइंडर का समय';
+
+  @override
+  String get medQuickTimes => 'त्वरित समय — एक दबाव में';
+
+  @override
+  String get medTimeSlotMorning => 'सुबह';
+
+  @override
+  String get medTimeSlotAfternoon => 'दोपहर';
+
+  @override
+  String get medTimeSlotEvening => 'शाम';
+
+  @override
+  String get medTimeSlotNight => 'रात';
+
+  @override
+  String get medUnitQuick => 'सामान्य इकाइयाँ — एक दबाव में';
+
+  @override
+  String get medUnitMg => 'mg';
+
+  @override
+  String get medUnitMl => 'ml';
+
+  @override
+  String get medUnitTablet => 'गोली';
+
+  @override
+  String get medUnitCapsule => 'कैप्सूल';
+
+  @override
+  String get medUnitDrop => 'बूँद';
+
+  @override
+  String get medUnitSpoon => 'चम्मच';
+
+  @override
+  String get medAddAnotherTime => 'और समय जोड़ें';
+
+  @override
+  String get medSave => 'सेव करें';
+
+  @override
+  String get medDelete => 'हटाएँ';
+
+  @override
+  String get medPause => 'रोकें';
+
+  @override
+  String get medResume => 'फिर शुरू करें';
+
+  @override
+  String get medActive => 'चालू';
+
+  @override
+  String get medInactive => 'रोका हुआ';
+
+  @override
+  String get medDeleteTitle => 'दवा हटाएँ?';
+
+  @override
+  String medDeleteBody(String name) {
+    return 'इससे \"$name\" और इसके भविष्य के रिमाइंडर हट जाएँगे। इसे वापस नहीं लाया जा सकता।';
+  }
+
+  @override
+  String get medDeleted => 'दवा हटा दी गई';
+
+  @override
+  String get medSaved => 'दवा सेव हो गई';
+
+  @override
+  String get medPausedMsg => 'रिमाइंडर रोक दिए गए';
+
+  @override
+  String get medResumedMsg => 'रिमाइंडर फिर शुरू हो गए';
+
+  @override
+  String get medNoMedicines =>
+      'अभी कोई दवा नहीं।\nशुरू करने के लिए \"दवा जोड़ें\" दबाएँ।';
+
+  @override
+  String get medOnceDate => 'तारीख़';
+
+  @override
+  String get medTime => 'समय';
+
+  @override
+  String get histTitle => 'इतिहास';
+
+  @override
+  String get histToday => 'आज';
+
+  @override
+  String get histThisWeek => 'इस हफ़्ते';
+
+  @override
+  String get histAll => 'सब';
+
+  @override
+  String get histAdherence => 'अनुपालन';
+
+  @override
+  String get histTakenCount => 'लिया';
+
+  @override
+  String get histMissedCount => 'छूटी';
+
+  @override
+  String get histSkippedCount => 'छोड़ा';
+
+  @override
+  String get histPendingCount => 'बाकी';
+
+  @override
+  String get histEmpty => 'अभी कोई इतिहास नहीं';
+
+  @override
+  String histTotal(int count) {
+    return 'कुल: $count';
+  }
+
+  @override
+  String get setTitle => 'सेटिंग्स';
+
+  @override
+  String get setLanguage => 'भाषा';
+
+  @override
+  String get setNotificationSound => 'सूचना की आवाज़';
+
+  @override
+  String get setVoiceReminder => 'आवाज़ से रिमाइंडर';
+
+  @override
+  String get setVoiceOn => 'दवा का नाम बोलकर बताएँ';
+
+  @override
+  String get setSnoozeDuration => 'स्नूज़ की अवधि';
+
+  @override
+  String get setGracePeriod => 'कितनी देर बाद \'छूटी\' मानें';
+
+  @override
+  String get setDarkMode => 'रूप-रंग';
+
+  @override
+  String get themeSystem => 'सिस्टम';
+
+  @override
+  String get themeLight => 'हल्का';
+
+  @override
+  String get themeDark => 'गहरा';
+
+  @override
+  String get setAbout => 'जानकारी';
+
+  @override
+  String get setPermissions => 'अनुमतियाँ';
+
+  @override
+  String get setNotifyPermission => 'सूचना की अनुमति';
+
+  @override
+  String get setExactAlarm => 'सटीक अलार्म की अनुमति';
+
+  @override
+  String get setBattery => 'बैटरी / बैकग्राउंड';
+
+  @override
+  String get permissionGranted => 'मिल गई';
+
+  @override
+  String get permissionDenied => 'नहीं मिली — अनुमति देने के लिए दबाएँ';
+
+  @override
+  String get setNotifDesc => 'रिमाइंडर दिखाने की अनुमति दें';
+
+  @override
+  String get setExactDesc => 'रिमाइंडर ठीक समय पर बजने दें';
+
+  @override
+  String get setBatteryDesc => 'बैकग्राउंड में रिमाइंडर काम करते रहें';
+
+  @override
+  String get aboutBody =>
+      'दवा रिमाइंडर सिर्फ़ याद दिलाने और रिकॉर्ड रखने का साधन है। यह कोई चिकित्सीय सलाह नहीं देता। हमेशा अपने डॉक्टर के निर्देशों का पालन करें।';
+
+  @override
+  String get notifTitle => '💊 दवा का समय हो गया है';
+
+  @override
+  String notifBody(String name, String dose) {
+    return 'लें: $name — $dose';
+  }
+
+  @override
+  String get notifActionTaken => 'लिया';
+
+  @override
+  String notifActionSnooze(int minutes) {
+    return '$minutes मिनट बाद';
+  }
+
+  @override
+  String get notifActionSkip => 'छोड़ें';
+
+  @override
+  String get permNotifTitle => 'सूचनाएँ अनुमति दें?';
+
+  @override
+  String get permNotifBody =>
+      'रिमाइंडर सूचना के रूप में दिखेंगे, भले ही ऐप बंद हो। कृपया सूचनाएँ अनुमति दें।';
+
+  @override
+  String get permExactTitle => 'सटीक अलार्म की अनुमति दें?';
+
+  @override
+  String get permExactBody =>
+      'रिमाइंडर ठीक समय पर बजने के लिए Android को अनुमति चाहिए। सिस्टम सेटिंग्स खुलेंगी — कृपया \"सटीक अलार्म दें\" चालू करें।';
+
+  @override
+  String get permOk => 'ठीक है';
+
+  @override
+  String get permCancel => 'अभी नहीं';
+
+  @override
+  String get obWelcome => 'स्वागत है!';
+
+  @override
+  String get obTitle => 'दवा रिमाइंडर';
+
+  @override
+  String get obBody =>
+      'मैं आपको समय पर दवा लेने की याद दिलाऊँगा। इसमें बस एक मिनट लगेगा।';
+
+  @override
+  String get obName => 'मैं आपको क्या बुलाऊँ? (वैकल्पिक)';
+
+  @override
+  String get obNameHint => 'जैसे: माँ';
+
+  @override
+  String get obStart => 'शुरू करें';
+
+  @override
+  String get obSkip => 'अभी छोड़ें';
+
+  @override
+  String voiceTimeToTake(String name, String dose) {
+    return 'दवा लेने का समय हो गया है। $name, $dose।';
+  }
+
+  @override
+  String get voiceTaken => 'शाबाश! दवा ले ली गई।';
+
+  @override
+  String get voiceSkipped => 'दवा छोड़ दी गई।';
+
+  @override
+  String get undo => 'वापस करें';
+
+  @override
+  String get undoTaken => 'दवा ले ली गई';
+
+  @override
+  String get undoSkipped => 'दवा छोड़ दी गई';
+
+  @override
+  String get homeSkipConfirmTitle => 'यह खुराक छोड़ें?';
+
+  @override
+  String homeSkipConfirmBody(String name) {
+    return 'क्या आप $name को छोड़ना चाहते हैं? इसे छोड़ा हुआ चिह्नित किया जाएगा।';
+  }
+
+  @override
+  String get btnSave => 'सेव करें';
+
+  @override
+  String get btnCancel => 'रद्द करें';
+
+  @override
+  String get btnClose => 'बंद करें';
+
+  @override
+  String minutes(int minutes) {
+    return '$minutes मिनट';
+  }
+
+  @override
+  String get speakReminder => 'रिमाइंडर बोलें';
+
+  @override
+  String get missedAlertTitle => '⚠️ दवा छूट गई';
+
+  @override
+  String missedAlertBody(String name, String time) {
+    return '$time पर $name नहीं ली गई';
+  }
+
+  @override
+  String get familySync => 'परिवार और सिंक';
+
+  @override
+  String get familySyncDesc => 'दवाइयाँ और इतिहास परिवार से साझा करें';
+
+  @override
+  String get familySyncIntro =>
+      'परिवार देख सकता है कि दवा ली गई या नहीं और दवा छूटने पर सूचना मिलती है। सब कुछ आपके परिवार तक ही सीमित रहता है।';
+
+  @override
+  String get syncRolePrimary => 'मैं यहाँ दवा लेती/लेता हूँ';
+
+  @override
+  String get syncRolePrimaryDesc => 'यह फ़ोन दवा लेने वाले व्यक्ति का है';
+
+  @override
+  String get syncRoleWatcher => 'मैं परिवार से हूँ — मदद करना चाहता/चाहती हूँ';
+
+  @override
+  String get syncRoleWatcherDesc =>
+      'दवाइयों पर नज़र रखें और छूटने पर सूचना पाएँ';
+
+  @override
+  String get syncCodeLabel => 'परिवार कोड';
+
+  @override
+  String get syncCodeHint => '6 अक्षर का कोड दर्ज करें';
+
+  @override
+  String get syncJoin => 'परिवार से जुड़ें';
+
+  @override
+  String get syncCreate => 'परिवार बनाएँ';
+
+  @override
+  String get syncCopied => 'कोड कॉपी हो गया';
+
+  @override
+  String get syncNow => 'अभी सिंक करें';
+
+  @override
+  String get syncOn => 'सिंक चालू है';
+
+  @override
+  String get syncOff => 'सिंक बंद है';
+
+  @override
+  String syncLastSync(String time) {
+    return 'आख़िरी सिंक: $time';
+  }
+
+  @override
+  String get syncNever => 'कभी नहीं';
+
+  @override
+  String get syncFailed => 'सिंक विफल';
+
+  @override
+  String get syncDisable => 'सिंक बंद करें';
+
+  @override
+  String get syncDisableConfirm =>
+      'सिंक बंद करने पर यह फ़ोन परिवार से अलग हो जाएगा। दवाइयाँ इसी फ़ोन पर रहेंगी।';
+
+  @override
+  String get syncNotConfigured =>
+      'इस ऐप के लिए क्लाउड सिंक अभी तैयार नहीं है (google-services.json जोड़ें)। इसके बिना भी ऐप पूरी तरह से काम करता है।';
+
+  @override
+  String get missedAlerts => 'छूटी दवा की सूचना';
+
+  @override
+  String get missedAlertsDesc => 'दवा छूटने पर सूचना पाएँ';
+
+  @override
+  String get syncStatusSynced => 'सब सिंक हो गया';
+
+  @override
+  String get syncStatusSyncing => 'सिंक हो रहा है…';
+
+  @override
+  String syncPendingCount(int count) {
+    return '$count परिवर्तन सिंक होने की प्रतीक्षा में';
+  }
+
+  @override
+  String get syncRetrying => 'अपने आप फिर कोशिश होगी';
+
+  @override
+  String get syncCodeShare => 'यह कोड परिवार को दें';
+
+  @override
+  String get caregiverTitle => 'परिवार डैशबोर्ड';
+
+  @override
+  String get caregiverDesc => 'साप्ताहिक अनुपालन और आज की दवाएँ';
+
+  @override
+  String get caregiverRefresh => 'रीफ़्रेश करें';
+
+  @override
+  String get caregiverThisWeek => 'इस हफ़्ते';
+}
