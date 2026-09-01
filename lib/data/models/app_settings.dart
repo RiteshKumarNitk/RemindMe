@@ -8,6 +8,7 @@ class AppSettings {
   final int advanceMinutes; // minutes before dose to start looping alarm
   final String themeMode; // 'system' | 'light' | 'dark'
   final String userName;
+  final int? userAge;
   final bool onboardingDone;
 
   // Family sync
@@ -26,6 +27,7 @@ class AppSettings {
     this.advanceMinutes = 5,
     this.themeMode = 'system',
     this.userName = '',
+    this.userAge,
     this.onboardingDone = false,
     this.syncEnabled = false,
     this.householdCode = '',
@@ -46,6 +48,7 @@ class AppSettings {
     int? advanceMinutes,
     String? themeMode,
     String? userName,
+    int? userAge,
     bool? onboardingDone,
     bool? syncEnabled,
     String? householdCode,
@@ -62,6 +65,7 @@ class AppSettings {
       advanceMinutes: advanceMinutes ?? this.advanceMinutes,
       themeMode: themeMode ?? this.themeMode,
       userName: userName ?? this.userName,
+      userAge: userAge ?? this.userAge,
       onboardingDone: onboardingDone ?? this.onboardingDone,
       syncEnabled: syncEnabled ?? this.syncEnabled,
       householdCode: householdCode ?? this.householdCode,

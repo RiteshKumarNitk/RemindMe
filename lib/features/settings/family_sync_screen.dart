@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/localization/generated/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utilities/date_utils.dart';
+import '../../services/auth_service.dart';
 import '../../services/settings_controller.dart';
 import '../../services/sync/sync_service.dart';
 import '../caregiver/caregiver_dashboard_screen.dart';
@@ -22,6 +23,7 @@ class FamilySyncScreen extends StatefulWidget {
 
 class _FamilySyncScreenState extends State<FamilySyncScreen> {
   bool _busy = false;
+  String? _authError;
 
   Future<void> _enable(String role, {String? code}) async {
     final sync = context.read<SyncService>();
@@ -112,13 +114,167 @@ class _FamilySyncScreenState extends State<FamilySyncScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
+    final auth = context.watch<AuthService>();
+
     return Scaffold(
       appBar: AppBar(title: Text(l10n.familySync)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
-          Text(l10n.familySyncIntro, style: theme.textTheme.bodyLarge),
-          const SizedBox(height: 20),
+          // Firebase not configured warning
+          if (!auth.firebaseAvailable) ...[
+            Card(
+              color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.cloud_off_rounded,
+                      color: theme.colorScheme.onErrorContainer,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        l10n.familySyncNotConfigured,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          // Google Sign-In card
+          if (!auth.isSignedIn && auth.firebaseAvailable) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.account_circle_rounded,
+                      size: 56,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      l10n.familySyncIntro,
+                      style: theme.textTheme.bodyLarge,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _busy ? null : () async {
+                          setState(() {
+                            _busy = true;
+                            _authError = null;
+                          });
+                          final user = await auth.signInWithGoogle();
+                          if (mounted) {
+                            setState(() {
+                              _busy = false;
+                              if (user == null) {
+                                _authError = l10n.syncSignInFailed;
+                              }
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
+                        label: Text(l10n.syncGoogleSignIn),
+                      ),
+                    ),
+                    if (_authError != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.errorContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline_rounded,
+                              color: theme.colorScheme.onErrorContainer,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _authError!,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onErrorContainer,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ] else ...[
+            // Signed-in user card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: theme.colorScheme.primaryContainer,
+                      child: Text(
+                        auth.displayName.isNotEmpty
+                            ? auth.displayName[0].toUpperCase()
+                            : '?',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            auth.displayName.isNotEmpty
+                                ? auth.displayName
+                                : auth.email,
+                            style: theme.textTheme.titleMedium,
+                          ),
+                          if (auth.email.isNotEmpty && auth.displayName.isNotEmpty)
+                            Text(
+                              auth.email,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: l10n.syncSignOut,
+                      icon: const Icon(Icons.logout_rounded),
+                      onPressed: () => auth.signOut(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (sync.enabled) ...[
             _StatusCard(sync: sync, l10n: l10n),
             const SizedBox(height: 20),

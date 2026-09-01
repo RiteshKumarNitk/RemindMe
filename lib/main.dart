@@ -1,4 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -12,6 +13,7 @@ import 'data/repositories/dose_repository.dart';
 import 'data/repositories/medicine_repository.dart';
 import 'data/repositories/settings_repository.dart';
 import 'data/repositories/sync_repository.dart';
+import 'services/auth_service.dart';
 import 'services/dose_action_handler.dart';
 import 'services/dose_scheduler.dart';
 import 'services/settings_controller.dart';
@@ -23,6 +25,14 @@ import 'state/app_state.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.initTimeZone();
+
+  // Initialize Firebase BEFORE anything touches FirebaseAuth/Firestore.
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    // Firebase not configured (missing google-services.json) — app works
+    // fully offline. AuthService and SyncService handle this gracefully.
+  }
 
   final prefs = await SharedPreferences.getInstance();
   final settings = SettingsController(SettingsRepository(prefs));
@@ -52,6 +62,8 @@ Future<void> main() async {
     settings: settings,
     voice: voice,
   );
+
+  final auth = AuthService();
 
   final sync = SyncService(
     backend: FirebaseBackend(),
@@ -89,9 +101,6 @@ Future<void> main() async {
   await appState.init();
 
   // Auto-request notification permission on every launch.
-  // For elderly users we should never assume they granted it — ask every
-  // time until they do.  The OS dialog only shows once; subsequent calls
-  // return the current state silently.
   if (!await notifications.areNotificationsEnabled()) {
     await notifications.requestPermission();
   }
@@ -106,7 +115,6 @@ Future<void> main() async {
   if (launchResponse != null &&
       launchResponse.payload != null &&
       launchResponse.payload!.isNotEmpty) {
-    // Let the UI build first, then process the action.
     Future<void>.delayed(const Duration(milliseconds: 600), () {
       appState.handleNotificationTap(
         actionId: launchResponse.actionId,
@@ -115,5 +123,10 @@ Future<void> main() async {
     });
   }
 
-  runApp(MediReminderApp(appState: appState, settings: settings, sync: sync));
+  runApp(MediReminderApp(
+    appState: appState,
+    settings: settings,
+    sync: sync,
+    auth: auth,
+  ));
 }

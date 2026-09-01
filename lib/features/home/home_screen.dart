@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -178,6 +180,9 @@ class _NextMedicineCard extends StatefulWidget {
 class _NextMedicineCardState extends State<_NextMedicineCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
+  Timer? _countdownTimer;
+  DateTime _now = DateTime.now();
+  bool _hasSpoken = false;
 
   @override
   void initState() {
@@ -186,26 +191,61 @@ class _NextMedicineCardState extends State<_NextMedicineCard>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
+    // Real-time countdown: update every second
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _now = DateTime.now());
+    });
+    // Check if we should auto-speak on first build
+    _checkAutoSpeak();
+  }
+
+  @override
+  void didUpdateWidget(_NextMedicineCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reset spoken flag when dose changes (new card)
+    if (oldWidget.entry.dose.id != widget.entry.dose.id) {
+      _hasSpoken = false;
+    }
+    _checkAutoSpeak();
   }
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
+  }
+
+  /// Checks if the dose is due and speaks if needed (once per dose).
+  void _checkAutoSpeak() {
+    final entry = widget.entry;
+    final scheduled = entry.dose.scheduledAt;
+    final isDueNow = !scheduled.isAfter(_now.add(const Duration(minutes: 10)));
+    if (isDueNow && !_hasSpoken) {
+      final settings = context.read<SettingsController>();
+      if (settings.voiceEnabled) {
+        _hasSpoken = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            final l10n = AppLocalizations.of(context);
+            _speak(context, entry, l10n, settings);
+          }
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final entry = widget.entry;
-    final appState = context.read<AppState>();
-    final settings = context.read<SettingsController>();
+    final appState = context.read<AppState>();    final settings = context.read<SettingsController>();
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final locale = settings.settings.locale;
-    final now = DateTime.now();
+
     final scheduled = entry.dose.scheduledAt;
-    final isDueNow = !scheduled.isAfter(now.add(const Duration(minutes: 10)));
-    final countdown = _countdownText(scheduled, now, l10n);
+    final isDueNow = !scheduled.isAfter(_now.add(const Duration(minutes: 10)));
+    final countdown = _countdownText(scheduled, _now, l10n);
 
     return Card(
       color: isDueNow
@@ -613,15 +653,33 @@ class _EmptyToday extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.symmetric(vertical: 32),
       child: Column(
         children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: theme.colorScheme.primaryContainer,
+            ),
+            child: Icon(
+              hasMedicines
+                  ? Icons.event_available_rounded
+                  : Icons.medication_rounded,
+              size: 48,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 20),
           Text(
             hasMedicines ? l10n.homeEmptySchedule : l10n.homeNoMedicines,
-            style: theme.textTheme.titleMedium,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           if (!hasMedicines)
             BigButton(
               label: l10n.medAdd,

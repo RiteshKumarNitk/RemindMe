@@ -1,10 +1,8 @@
-import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
-import '../../services/export_service.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
 import 'family_sync_screen.dart';
@@ -154,25 +152,35 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             _SectionHeader(l10n.pauseAll),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              minTileHeight: 68,
-              leading: Icon(
-                Icons.pause_circle_filled_rounded,
-                size: 32,
-                color: theme.missedColor,
+            Card(
+              color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                minTileHeight: 68,
+                leading: Icon(
+                  Icons.pause_circle_filled_rounded,
+                  size: 32,
+                  color: theme.missedColor,
+                ),
+                title: Text(
+                  l10n.pauseAll,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                ),
+                subtitle: Text(
+                  l10n.pauseAllConfirm,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.warning_rounded,
+                  size: 28,
+                  color: theme.missedColor,
+                ),
+                onTap: () => _confirmPauseAll(context, appState, l10n),
               ),
-              title: Text(l10n.pauseAll, style: theme.textTheme.titleMedium),
-              subtitle: Text(
-                l10n.pauseAllConfirm,
-                style: theme.textTheme.bodyMedium,
-              ),
-              trailing: Icon(
-                Icons.chevron_right_rounded,
-                size: 30,
-                color: theme.colorScheme.outline,
-              ),
-              onTap: () => _confirmPauseAll(context, appState, l10n),
             ),
             const SizedBox(height: 24),
 
@@ -190,32 +198,6 @@ class SettingsScreen extends StatelessWidget {
                 textStyle: theme.textTheme.titleMedium,
               ),
               onSelectionChanged: (s) => settings.setThemeMode(s.first),
-            ),
-            const SizedBox(height: 24),
-
-            _SectionHeader(l10n.setData),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              minTileHeight: 68,
-              leading: Icon(
-                Icons.download_rounded,
-                size: 32,
-                color: theme.colorScheme.primary,
-              ),
-              title: Text(
-                l10n.setExportJson,
-                style: theme.textTheme.titleMedium,
-              ),
-              subtitle: Text(
-                l10n.setExportJsonDesc,
-                style: theme.textTheme.bodyMedium,
-              ),
-              trailing: Icon(
-                Icons.chevron_right_rounded,
-                size: 30,
-                color: theme.colorScheme.outline,
-              ),
-              onTap: () => _exportData(context, appState, l10n),
             ),
             const SizedBox(height: 24),
 
@@ -238,19 +220,60 @@ class SettingsScreen extends StatelessWidget {
               deniedLabel: l10n.permissionDenied,
               onTap: () => appState.requestExactAlarms(),
             ),
-            _PermissionTile(
-              icon: Icons.battery_5_bar_rounded,
-              title: l10n.setBattery,
-              subtitle: l10n.setBatteryDesc,
-              granted: true, // always shown; deep link to system settings
-              grantedLabel: l10n.permOk,
-              deniedLabel: '',
-              onTap: () => AppSettings.openAppSettings(
-                type: AppSettingsType.batteryOptimization,
+
+            const SizedBox(height: 12),
+            // Diagnostic status + Fix All button
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          appState.notificationsEnabled &&
+                                  appState.exactAlarmsEnabled
+                              ? Icons.check_circle_rounded
+                              : Icons.warning_rounded,
+                          color: appState.notificationsEnabled &&
+                                  appState.exactAlarmsEnabled
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.error,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            appState.notificationsEnabled &&
+                                    appState.exactAlarmsEnabled
+                                ? l10n.notifStatusOk
+                                : l10n.notifStatusNeedsFix,
+                            style: theme.textTheme.bodyLarge,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.tonalIcon(
+                        onPressed: () async {
+                          if (!appState.notificationsEnabled) {
+                            await appState.requestAllPermissions();
+                          }
+                          if (!appState.exactAlarmsEnabled) {
+                            await appState.requestExactAlarms();
+                          }
+                        },
+                        icon: const Icon(Icons.build_rounded),
+                        label: Text(l10n.notifFixAll),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 24),
-
             _SectionHeader(l10n.setAbout),
             Card(
               child: Padding(
@@ -270,43 +293,6 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _exportData(
-    BuildContext context,
-    AppState appState,
-    AppLocalizations l10n,
-  ) async {
-    final export = ExportService(
-      medicineRepository: appState.medicineRepository,
-      doseRepository: appState.doseRepository,
-    );
-    final json = await export.exportToJson();
-    if (!context.mounted) return;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.setExportJson),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 300,
-          child: SingleChildScrollView(
-            child: SelectableText(
-              json,
-              style: Theme.of(
-                ctx,
-              ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l10n.btnClose),
-          ),
-        ],
       ),
     );
   }

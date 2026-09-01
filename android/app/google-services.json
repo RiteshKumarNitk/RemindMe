@@ -1,26 +1,44 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "medireminder-placeholder",
-    "storage_bucket": "medireminder-placeholder.appspot.com"
+    "project_number": "883368917967",
+    "project_id": "remind-me-b7830",
+    "storage_bucket": "remind-me-b7830.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "mobilesdk_app_id": "1:883368917967:android:0e1856fd70755e29d6f0ba",
         "android_client_info": {
           "package_name": "com.family.medireminder"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "883368917967-tsanedci0tqn75rjf293p8db2jaa8bhf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.family.medireminder",
+            "certificate_hash": "b463646e42400c643f8f55e11df758edfe2d1680"
+          }
+        },
+        {
+          "client_id": "883368917967-1lcbvobp9pinb009ijtc4cb75hkeobe3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyPLACEHOLDER000000000000000000000000"
+          "current_key": "AIzaSyBieZ-Jny-uYvj-LyE51RgjNzpy_DRUsSk"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "883368917967-1lcbvobp9pinb009ijtc4cb75hkeobe3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

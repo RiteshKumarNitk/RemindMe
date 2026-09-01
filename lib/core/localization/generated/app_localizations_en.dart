@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Medicine Reminder';
+  String get appTitle => 'DoseWise';
 
   @override
   String get navHome => 'Home';
@@ -449,7 +449,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutBody =>
-      'Medicine Reminder is a reminder and tracking tool only. It does not provide medical advice. Always follow your doctor\'s instructions.';
+      'DoseWise is a reminder and tracking tool only. It does not provide medical advice. Always follow your doctor\'s instructions.';
 
   @override
   String get notifTitle => '💊 Medicine Time';
@@ -494,7 +494,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get obWelcome => 'Welcome!';
 
   @override
-  String get obTitle => 'Medicine Reminder';
+  String get obTitle => 'DoseWise';
 
   @override
   String get obBody =>
@@ -511,6 +511,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get obSkip => 'Skip for now';
+
+  @override
+  String get obBatteryWhy => 'Why is this needed?';
+
+  @override
+  String get obBatteryHow =>
+      'Open your phone\'s Settings, find this app, and turn off \'Battery optimization\' or select \'Unrestricted\'. This keeps reminders working even when the app is closed.';
 
   @override
   String voiceTimeToTake(String name, String dose) {
@@ -669,4 +676,109 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get caregiverThisWeek => 'This Week';
+
+  @override
+  String get notifDiagnostics => 'Notification Diagnostics';
+
+  @override
+  String get notifFixAll => 'Fix All';
+
+  @override
+  String get notifStatusOk => 'All permissions are set correctly';
+
+  @override
+  String get notifStatusNeedsFix =>
+      'Some settings may prevent reminders from working';
+
+  @override
+  String get notifOpenSystemSettings => 'Open System Settings';
+
+  @override
+  String get syncGoogleSignIn => 'Continue with Google';
+
+  @override
+  String get syncSignOut => 'Sign out';
+
+  @override
+  String get syncSignInFailed =>
+      'Sign-in failed. Please check your internet connection and try again.';
+
+  @override
+  String get loginSubtitle =>
+      'Sign in to sync your medicines with family members, or use the app offline.';
+
+  @override
+  String get loginWithGoogle => 'Continue with Google';
+
+  @override
+  String get loginOr => 'or';
+
+  @override
+  String get loginSkip => 'Use Offline';
+
+  @override
+  String get loginOfflineNote => 'You can always sign in later from Settings.';
+
+  @override
+  String get familySyncNotConfigured =>
+      'Firebase is not configured. Family sync requires Firebase setup. The app works fully offline without it.';
+
+  @override
+  String get profileTitle => 'Profile';
+
+  @override
+  String get profilePersonalInfo => 'Personal Information';
+
+  @override
+  String get profileAccount => 'Account';
+
+  @override
+  String get profileAge => 'Age';
+
+  @override
+  String get profileAgeHint => 'e.g. 65';
+
+  @override
+  String get profileEditInfo => 'Edit Information';
+
+  @override
+  String get profileSaved => 'Profile updated';
+
+  @override
+  String get profileSignOut => 'Sign Out';
+
+  @override
+  String get profileSignOutDesc => 'Sign out of your Google account';
+
+  @override
+  String get profileSignOutConfirm =>
+      'Are you sure you want to sign out? Your data stays on this phone.';
+
+  @override
+  String get profileSignedOut => 'Signed out successfully';
+
+  @override
+  String get profileSignInPrompt =>
+      'Sign in with Google to sync your medicines with family members across devices.';
+
+  @override
+  String get profileWelcomeBack => 'Welcome back!';
+
+  @override
+  String get profileSignedIn => 'Signed in with Google';
+
+  @override
+  String get profileOfflineMode => 'Offline Mode';
+
+  @override
+  String get profileGuestUser => 'Guest User';
+
+  @override
+  String get profileNoName => 'No name set';
+
+  @override
+  String get profileNotSet => 'Not set';
+
+  @override
+  String get navProfile => 'Profile';
 }

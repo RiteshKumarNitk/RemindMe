@@ -1,4 +1,4 @@
-# Features — Medicine Reminder (RemindMe)
+# Features — DoseWise
 
 **Maintained file.** Every time a feature is added, changed, or removed, update
 this document (add a line to the [Changelog](#changelog) and adjust the relevant

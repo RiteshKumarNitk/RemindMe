@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'Medicine Reminder'**
+  /// **'DoseWise'**
   String get appTitle;
 
   /// No description provided for @navHome.
@@ -935,7 +935,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutBody.
   ///
   /// In en, this message translates to:
-  /// **'Medicine Reminder is a reminder and tracking tool only. It does not provide medical advice. Always follow your doctor\'s instructions.'**
+  /// **'DoseWise is a reminder and tracking tool only. It does not provide medical advice. Always follow your doctor\'s instructions.'**
   String get aboutBody;
 
   /// No description provided for @notifTitle.
@@ -1013,7 +1013,7 @@ abstract class AppLocalizations {
   /// No description provided for @obTitle.
   ///
   /// In en, this message translates to:
-  /// **'Medicine Reminder'**
+  /// **'DoseWise'**
   String get obTitle;
 
   /// No description provided for @obBody.
@@ -1045,6 +1045,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Skip for now'**
   String get obSkip;
+
+  /// No description provided for @obBatteryWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Why is this needed?'**
+  String get obBatteryWhy;
+
+  /// No description provided for @obBatteryHow.
+  ///
+  /// In en, this message translates to:
+  /// **'Open your phone\'s Settings, find this app, and turn off \'Battery optimization\' or select \'Unrestricted\'. This keeps reminders working even when the app is closed.'**
+  String get obBatteryHow;
 
   /// No description provided for @voiceTimeToTake.
   ///
@@ -1327,6 +1339,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This Week'**
   String get caregiverThisWeek;
+
+  /// No description provided for @notifDiagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification Diagnostics'**
+  String get notifDiagnostics;
+
+  /// No description provided for @notifFixAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Fix All'**
+  String get notifFixAll;
+
+  /// No description provided for @notifStatusOk.
+  ///
+  /// In en, this message translates to:
+  /// **'All permissions are set correctly'**
+  String get notifStatusOk;
+
+  /// No description provided for @notifStatusNeedsFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Some settings may prevent reminders from working'**
+  String get notifStatusNeedsFix;
+
+  /// No description provided for @notifOpenSystemSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open System Settings'**
+  String get notifOpenSystemSettings;
+
+  /// No description provided for @syncGoogleSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get syncGoogleSignIn;
+
+  /// No description provided for @syncSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get syncSignOut;
+
+  /// No description provided for @syncSignInFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in failed. Please check your internet connection and try again.'**
+  String get syncSignInFailed;
+
+  /// No description provided for @loginSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to sync your medicines with family members, or use the app offline.'**
+  String get loginSubtitle;
+
+  /// No description provided for @loginWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get loginWithGoogle;
+
+  /// No description provided for @loginOr.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get loginOr;
+
+  /// No description provided for @loginSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Offline'**
+  String get loginSkip;
+
+  /// No description provided for @loginOfflineNote.
+  ///
+  /// In en, this message translates to:
+  /// **'You can always sign in later from Settings.'**
+  String get loginOfflineNote;
+
+  /// No description provided for @familySyncNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Firebase is not configured. Family sync requires Firebase setup. The app works fully offline without it.'**
+  String get familySyncNotConfigured;
+
+  /// No description provided for @profileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get profileTitle;
+
+  /// No description provided for @profilePersonalInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal Information'**
+  String get profilePersonalInfo;
+
+  /// No description provided for @profileAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get profileAccount;
+
+  /// No description provided for @profileAge.
+  ///
+  /// In en, this message translates to:
+  /// **'Age'**
+  String get profileAge;
+
+  /// No description provided for @profileAgeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 65'**
+  String get profileAgeHint;
+
+  /// No description provided for @profileEditInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Information'**
+  String get profileEditInfo;
+
+  /// No description provided for @profileSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile updated'**
+  String get profileSaved;
+
+  /// No description provided for @profileSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Out'**
+  String get profileSignOut;
+
+  /// No description provided for @profileSignOutDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of your Google account'**
+  String get profileSignOutDesc;
+
+  /// No description provided for @profileSignOutConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to sign out? Your data stays on this phone.'**
+  String get profileSignOutConfirm;
+
+  /// No description provided for @profileSignedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed out successfully'**
+  String get profileSignedOut;
+
+  /// No description provided for @profileSignInPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Google to sync your medicines with family members across devices.'**
+  String get profileSignInPrompt;
+
+  /// No description provided for @profileWelcomeBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back!'**
+  String get profileWelcomeBack;
+
+  /// No description provided for @profileSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in with Google'**
+  String get profileSignedIn;
+
+  /// No description provided for @profileOfflineMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline Mode'**
+  String get profileOfflineMode;
+
+  /// No description provided for @profileGuestUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest User'**
+  String get profileGuestUser;
+
+  /// No description provided for @profileNoName.
+  ///
+  /// In en, this message translates to:
+  /// **'No name set'**
+  String get profileNoName;
+
+  /// No description provided for @profileNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get profileNotSet;
+
+  /// No description provided for @navProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get navProfile;
 }
 
 class _AppLocalizationsDelegate

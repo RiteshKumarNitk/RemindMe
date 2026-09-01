@@ -16,6 +16,7 @@ class SettingsRepository {
   static const _kAdvance = 'advance_minutes';
   static const _kTheme = 'theme_mode';
   static const _kUserName = 'user_name';
+  static const _kUserAge = 'user_age';
   static const _kOnboarding = 'onboarding_done';
   static const _kSyncEnabled = 'sync_enabled';
   static const _kHousehold = 'household_code';
@@ -33,6 +34,7 @@ class SettingsRepository {
       advanceMinutes: _prefs.getInt(_kAdvance) ?? 5,
       themeMode: _prefs.getString(_kTheme) ?? 'system',
       userName: _prefs.getString(_kUserName) ?? '',
+      userAge: _prefs.getInt(_kUserAge),
       onboardingDone: _prefs.getBool(_kOnboarding) ?? false,
       syncEnabled: _prefs.getBool(_kSyncEnabled) ?? false,
       householdCode: _prefs.getString(_kHousehold) ?? '',
@@ -53,6 +55,11 @@ class SettingsRepository {
     await _prefs.setInt(_kAdvance, settings.advanceMinutes);
     await _prefs.setString(_kTheme, settings.themeMode);
     await _prefs.setString(_kUserName, settings.userName);
+    if (settings.userAge == null) {
+      await _prefs.remove(_kUserAge);
+    } else {
+      await _prefs.setInt(_kUserAge, settings.userAge!);
+    }
     await _prefs.setBool(_kOnboarding, settings.onboardingDone);
     await _prefs.setBool(_kSyncEnabled, settings.syncEnabled);
     await _prefs.setString(_kHousehold, settings.householdCode);

@@ -28,6 +28,7 @@ class SettingsController extends ChangeNotifier {
   bool get missedAlertsEnabled => _settings.missedAlertsEnabled;
   DateTime? get lastSyncAt => _settings.lastSyncAt;
   String get userName => _settings.userName;
+  int? get userAge => _settings.userAge;
   bool get onboardingDone => _settings.onboardingDone;
 
   ThemeMode get themeMode {
@@ -69,6 +70,8 @@ class SettingsController extends ChangeNotifier {
       update(_settings.copyWith(themeMode: value));
   Future<void> setUserName(String value) =>
       update(_settings.copyWith(userName: value));
+  Future<void> setUserAge(int? value) =>
+      update(_settings.copyWith(userAge: value));
   Future<void> setOnboardingDone(bool value) =>
       update(_settings.copyWith(onboardingDone: value));
 

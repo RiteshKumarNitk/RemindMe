@@ -1,11 +1,11 @@
 {
-    "name": "medireminder",
-    "short_name": "medireminder",
+    "name": "DoseWise",
+    "short_name": "DoseWise",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#00696D",
+    "theme_color": "#00696D",
+    "description": "DoseWise — Never Miss a Dose. A simple, reliable medicine reminder app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

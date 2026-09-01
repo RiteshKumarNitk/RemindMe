@@ -264,8 +264,36 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
               children: [
                 for (final slot in _timeSlots(l10n))
                   InputChip(
-                    avatar: Icon(slot.icon, size: 22),
-                    label: Text(slot.label, style: theme.textTheme.labelLarge),
+                    avatar: Icon(
+                      slot.icon,
+                      size: 22,
+                      color: _times.any(
+                            (t) =>
+                                t.hour == slot.time.hour &&
+                                t.minute == slot.time.minute,
+                          )
+                          ? slot.color
+                          : null,
+                    ),
+                    label: Text(
+                      slot.label,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: _times.any(
+                              (t) =>
+                                  t.hour == slot.time.hour &&
+                                  t.minute == slot.time.minute,
+                            )
+                            ? slot.color
+                            : null,
+                        fontWeight: _times.any(
+                              (t) =>
+                                  t.hour == slot.time.hour &&
+                                  t.minute == slot.time.minute,
+                            )
+                            ? FontWeight.w700
+                            : null,
+                      ),
+                    ),
                     selected: _times.any(
                       (t) =>
                           t.hour == slot.time.hour &&
@@ -391,8 +419,9 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
     ];
   }
 
-  /// One-tap time slots for common dosing windows.
-  List<({String label, TimeOfDay time, IconData icon})> _timeSlots(
+  /// One-tap time slots for common dosing windows, with color coding
+  /// so elderly users can visually associate each slot with a time of day.
+  List<({String label, TimeOfDay time, IconData icon, Color color})> _timeSlots(
     AppLocalizations l10n,
   ) {
     return [
@@ -400,21 +429,25 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
         label: l10n.medTimeSlotMorning,
         time: const TimeOfDay(hour: 8, minute: 0),
         icon: Icons.wb_sunny_rounded,
+        color: const Color(0xFFFF9800), // Warm orange
       ),
       (
         label: l10n.medTimeSlotAfternoon,
         time: const TimeOfDay(hour: 13, minute: 0),
         icon: Icons.light_mode_rounded,
+        color: const Color(0xFFFFC107), // Bright amber
       ),
       (
         label: l10n.medTimeSlotEvening,
         time: const TimeOfDay(hour: 18, minute: 0),
         icon: Icons.wb_twilight_rounded,
+        color: const Color(0xFFFF5722), // Deep orange
       ),
       (
         label: l10n.medTimeSlotNight,
         time: const TimeOfDay(hour: 21, minute: 0),
         icon: Icons.nights_stay_rounded,
+        color: const Color(0xFF5C6BC0), // Indigo
       ),
     ];
   }

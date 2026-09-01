@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Internet for Firebase Auth/Firestore/Google Sign-In -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Notification permission (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Reschedule reminders after device reboot / app update -->
@@ -14,7 +16,7 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
-        android:label="Medicine Reminder"
+        android:label="DoseWise"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:ui';
 import 'dart:typed_data';
 
@@ -29,8 +30,6 @@ abstract class ReminderScheduler {
   Future<void> cancelAll(List<int> ids);
 
   /// Schedules an advance alarm notification (loops before dose time).
-  /// [doseId] is the base dose id; [offset] differentiates advance
-  /// notifications so they don't collide with the main one.
   Future<bool> scheduleAdvanceAlarm({
     required int doseId,
     required int offset,
@@ -45,13 +44,13 @@ abstract class ReminderScheduler {
 }
 
 /// Wraps flutter_local_notifications. All reminder delivery goes through this
-/// service: exact alarms when permitted, inexact as a graceful fallback.
+/// service.
 ///
-/// Important for elderly users:
-/// - Custom loud vibration pattern (double vibrate)
-/// - LED lights enabled
-/// - Foreground notifications displayed
-/// - Alarm-level importance on all channels
+/// Sound strategy — belt-and-suspenders for elderly users:
+/// 1. Channel: bundled WAV alarm sound via RawResourceAndroidNotificationSound
+/// 2. Notification details: ALSO set WAV sound (some OEMs need both)
+/// 3. Double-buzz vibration pattern (noticeable through clothing)
+/// 4. LED lights + fullScreenIntent (lock-screen alarm)
 class NotificationService implements ReminderScheduler {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -61,15 +60,26 @@ class NotificationService implements ReminderScheduler {
   bool get initialized => _initialized;
 
   /// Custom vibration pattern: two short buzzes, pause, then long buzz.
-  /// Designed to be noticeable for elderly users who may not feel a single
-  /// vibration through clothing or while resting.
   static final Int64List _vibrationPattern = Int64List.fromList(<int>[
     0, 300, 200, // buzz, pause, buzz
     500, // long pause
     400, 200, 400, // buzz, pause, buzz
   ]);
 
+  /// Version suffix for channel IDs. Bump when changing channel settings —
+  /// Android caches channel config after first creation.
+  static const String _v = 'v5';
 
+  // ---- Channel IDs (versioned) --------------------------------------------
+
+  String get _soundChannelId => '${AppConstants.channelId}_$_v';
+  String get _silentChannelId => '${AppConstants.silentChannelId}_$_v';
+  String get _familyChannelId => '${AppConstants.familyChannelId}_$_v';
+
+  /// The bundled alarm WAV file in res/raw/. This is the most reliable sound
+  /// source — it ships with the app and works on every Android device.
+  static const AndroidNotificationSound _alarmSound =
+      RawResourceAndroidNotificationSound('medicine_alarm');
 
   /// Initializes the plugin, creates channels and registers the callback for
   /// notification taps / action buttons.
@@ -79,7 +89,8 @@ class NotificationService implements ReminderScheduler {
   }) async {
     try {
       _soundEnabled = soundEnabled;
-      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidInit =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
       const initSettings = InitializationSettings(android: androidInit);
       await _plugin.initialize(
         settings: initSettings,
@@ -87,17 +98,13 @@ class NotificationService implements ReminderScheduler {
       );
       await _createChannels();
       _initialized = true;
-    } catch (_) {
-      // Unsupported platform (e.g. web): notifications are unavailable but
-      // the app keeps running — scheduling methods no-op via _initialized.
+      developer.log('NotificationService initialized OK', name: 'Notif');
+    } catch (e, st) {
       _initialized = false;
+      developer.log('NotificationService init FAILED: $e\n$st',
+          name: 'Notif', error: e, stackTrace: st);
     }
   }
-
-  /// Version suffix for channel IDs. Bump this whenever you change channel
-  /// sound/vibration settings — Android caches channel config after first
-  /// creation and ignores subsequent createNotificationChannel calls.
-  static const String _channelVersion = 'v2';
 
   Future<void> _createChannels() async {
     final android = _plugin
@@ -106,8 +113,9 @@ class NotificationService implements ReminderScheduler {
         >();
     if (android == null) return;
 
-    // Delete old channels (any version) so Android recreates them fresh
-    // with the correct sound, vibration, and importance settings.
+    // Delete ALL old channels so Android recreates them fresh.
+    // Android ignores channel config changes after first creation — only
+    // delete + recreate forces a fresh config.
     for (final oldId in [
       AppConstants.channelId,
       AppConstants.silentChannelId,
@@ -115,65 +123,115 @@ class NotificationService implements ReminderScheduler {
       '${AppConstants.channelId}_v2',
       '${AppConstants.silentChannelId}_v2',
       '${AppConstants.familyChannelId}_v2',
+      '${AppConstants.channelId}_v3',
+      '${AppConstants.silentChannelId}_v3',
+      '${AppConstants.familyChannelId}_v3',
+      '${AppConstants.channelId}_v4',
+      '${AppConstants.silentChannelId}_v4',
+      '${AppConstants.familyChannelId}_v4',
+      _soundChannelId,
+      _silentChannelId,
+      _familyChannelId,
     ]) {
       try {
         await android.deleteNotificationChannel(channelId: oldId);
       } catch (_) {}
     }
 
+    // Sound channel: ALARM audio stream (louder than notification stream).
+    // audioAttributesUsage.alarm tells Android to play through the alarm
+    // speaker at ALARM volume, not notification volume. This is the single
+    // most important setting for reliable, loud medicine reminders.
     await android.createNotificationChannel(
       AndroidNotificationChannel(
-        '${AppConstants.channelId}_$_channelVersion',
+        _soundChannelId,
         AppConstants.channelName,
         description: AppConstants.channelDescription,
         importance: Importance.max,
         playSound: true,
-        sound: const RawResourceAndroidNotificationSound('medicine_alarm'),
+        sound: _alarmSound,
         enableVibration: true,
+        vibrationPattern: _vibrationPattern,
         enableLights: true,
         ledColor: const Color(0xFF2E7D32),
-        vibrationPattern: _vibrationPattern,
+        bypassDnd: true,
+        audioAttributesUsage: AudioAttributesUsage.alarm,
       ),
     );
+
+    // Silent channel: no sound, vibration only.
     await android.createNotificationChannel(
       AndroidNotificationChannel(
-        '${AppConstants.silentChannelId}_$_channelVersion',
+        _silentChannelId,
         AppConstants.silentChannelName,
         description: AppConstants.channelDescription,
         importance: Importance.max,
         playSound: false,
         enableVibration: true,
+        vibrationPattern: _vibrationPattern,
         enableLights: true,
         ledColor: const Color(0xFF2E7D32),
-        vibrationPattern: _vibrationPattern,
       ),
     );
+
+    // Family alerts channel — also alarm stream + bypass DND.
     await android.createNotificationChannel(
       AndroidNotificationChannel(
-        '${AppConstants.familyChannelId}_$_channelVersion',
+        _familyChannelId,
         AppConstants.familyChannelName,
         description: AppConstants.channelDescription,
         importance: Importance.max,
         playSound: true,
-        sound: const RawResourceAndroidNotificationSound('medicine_alarm'),
+        sound: _alarmSound,
         enableVibration: true,
+        vibrationPattern: _vibrationPattern,
         enableLights: true,
         ledColor: const Color(0xFFE65100),
-        vibrationPattern: _vibrationPattern,
+        bypassDnd: true,
+        audioAttributesUsage: AudioAttributesUsage.alarm,
       ),
     );
+
+    developer.log('Notification channels created (version $_v)',
+        name: 'Notif');
   }
 
-  /// Re-creates channels after a sound setting change. Existing pending
-  /// notifications keep their old channel until rescheduled (call
-  /// [cancelAllPending] + re-sync afterwards).
+  /// Re-creates channels after a sound setting change.
   Future<void> applySoundSetting(bool soundEnabled) async {
     _soundEnabled = soundEnabled;
     await _createChannels();
   }
 
-  /// Shows an immediate (non-scheduled) alert, e.g. a missed-dose notice for
-  /// a family watcher.
+  /// Diagnostic: reports the current notification health state so the test
+  /// button can display actionable information to the user.
+  Future<Map<String, dynamic>> getHealthCheck() async {
+    final result = <String, dynamic>{
+      'initialized': _initialized,
+      'soundEnabled': _soundEnabled,
+      'channelVersion': _v,
+    };
+    try {
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (android != null) {
+        result['notificationsEnabled'] =
+            await android.areNotificationsEnabled() ?? false;
+        result['exactAlarms'] =
+            await android.canScheduleExactNotifications() ?? false;
+      }
+    } catch (e) {
+      result['healthError'] = e.toString();
+    }
+    final pending = await pendingIds();
+    result['pendingCount'] = pending.length;
+    return result;
+  }
+
+  // ---- Immediate alerts ---------------------------------------------------
+
+  /// Shows an immediate notification (missed dose for family watcher).
   Future<void> showMissedAlert({
     required String title,
     required String body,
@@ -186,25 +244,26 @@ class NotificationService implements ReminderScheduler {
         body: body,
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
-            '${AppConstants.familyChannelId}_v2',
+            _familyChannelId,
             AppConstants.familyChannelName,
             channelDescription: AppConstants.channelDescription,
             importance: Importance.max,
             priority: Priority.high,
             category: AndroidNotificationCategory.reminder,
             playSound: true,
-            sound: const RawResourceAndroidNotificationSound(
-              'medicine_alarm',
-            ),
+            sound: _alarmSound,
             enableVibration: true,
             vibrationPattern: _vibrationPattern,
+            audioAttributesUsage: AudioAttributesUsage.alarm,
           ),
         ),
       );
-    } catch (_) {}
+    } catch (e) {
+      developer.log('showMissedAlert FAILED: $e', name: 'Notif', error: e);
+    }
   }
 
-  /// Shows an immediate refill reminder when a medicine is running low.
+  /// Shows an immediate refill reminder.
   Future<void> showRefillAlert({
     required String title,
     required String body,
@@ -217,22 +276,69 @@ class NotificationService implements ReminderScheduler {
         body: body,
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
-            '${AppConstants.familyChannelId}_v2',
+            _familyChannelId,
             AppConstants.familyChannelName,
             channelDescription: AppConstants.channelDescription,
             importance: Importance.max,
             priority: Priority.high,
             category: AndroidNotificationCategory.reminder,
             playSound: true,
-            sound: const RawResourceAndroidNotificationSound(
-              'medicine_alarm',
-            ),
+            sound: _alarmSound,
             enableVibration: true,
             vibrationPattern: _vibrationPattern,
+            audioAttributesUsage: AudioAttributesUsage.alarm,
           ),
         ),
       );
-    } catch (_) {}
+    } catch (e) {
+      developer.log('showRefillAlert FAILED: $e', name: 'Notif', error: e);
+    }
+  }
+
+  /// Shows an immediate test notification so the user can verify sound works.
+  Future<void> showTestNotification({
+    required String title,
+    required String body,
+  }) async {
+    if (!_initialized) {
+      developer.log('showTestNotification: NOT initialized', name: 'Notif');
+      return;
+    }
+    try {
+      await _plugin.show(
+        id: 99999,
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            _soundChannelId,
+            AppConstants.channelName,
+            channelDescription: AppConstants.channelDescription,
+            importance: Importance.max,
+            priority: Priority.high,
+            category: AndroidNotificationCategory.reminder,
+            playSound: true,
+            sound: _alarmSound,
+            enableVibration: true,
+            enableLights: true,
+            ledColor: const Color(0xFF2E7D32),
+            vibrationPattern: _vibrationPattern,
+            audioAttributesUsage: AudioAttributesUsage.alarm,
+            styleInformation: BigTextStyleInformation(
+              body,
+              htmlFormatBigText: false,
+              contentTitle: title,
+              htmlFormatContentTitle: false,
+              summaryText: AppConstants.channelName,
+            ),
+          ),
+        ),
+      );
+      developer.log('Test notification sent OK', name: 'Notif');
+    } catch (e, st) {
+      developer.log('showTestNotification FAILED: $e\n$st',
+          name: 'Notif', error: e, stackTrace: st);
+    }
   }
 
   static int _alertCounter = 100000;
@@ -241,8 +347,6 @@ class NotificationService implements ReminderScheduler {
 
   // ---- Permissions ---------------------------------------------------------
 
-  /// Returns whether notifications are enabled.
-  /// IMPORTANT: This does NOT request permission — it only checks.
   Future<bool> areNotificationsEnabled() async {
     try {
       final android = _plugin
@@ -251,14 +355,13 @@ class NotificationService implements ReminderScheduler {
           >();
       if (android == null) return true;
       return await android.areNotificationsEnabled() ?? true;
-    } catch (_) {
+    } catch (e) {
+      developer.log('areNotificationsEnabled FAILED: $e',
+          name: 'Notif', error: e);
       return true;
     }
   }
 
-  /// Asks the OS for notification permission. Shows the system dialog on
-  /// Android 13+; on older versions this is auto-granted at install.
-  /// Returns true if permission is now granted.
   Future<bool> requestPermission() async {
     try {
       final android = _plugin
@@ -267,13 +370,14 @@ class NotificationService implements ReminderScheduler {
           >();
       if (android == null) return true;
       final granted = await android.requestNotificationsPermission() ?? false;
+      developer.log('requestPermission: granted=$granted', name: 'Notif');
       return granted;
-    } catch (_) {
+    } catch (e) {
+      developer.log('requestPermission FAILED: $e', name: 'Notif', error: e);
       return true;
     }
   }
 
-  /// Opens Android notification settings so the user can toggle them.
   Future<void> openNotificationSettings() async {
     try {
       final android = _plugin
@@ -299,8 +403,6 @@ class NotificationService implements ReminderScheduler {
     }
   }
 
-  /// Opens the system screen to grant exact-alarm access. Returns whether
-  /// permission is available afterwards.
   Future<bool> requestExactAlarmPermission() async {
     try {
       final android = _plugin
@@ -309,13 +411,77 @@ class NotificationService implements ReminderScheduler {
           >();
       if (android == null) return true;
       await android.requestExactAlarmsPermission();
-    } catch (_) {
-      // Fall through; canScheduleExact below reports the real state.
-    }
+    } catch (_) {}
     return canScheduleExact();
   }
 
   // ---- Scheduling ----------------------------------------------------------
+
+  /// Builds the AndroidNotificationDetails for a medicine reminder notification
+  /// with the bundled WAV alarm sound.
+  AndroidNotificationDetails _buildReminderDetails({
+    required String channelId,
+    required String channelName,
+    required String title,
+    required String body,
+    required bool withActions,
+    String? takenLabel,
+    String? snoozeLabel,
+    String? skipLabel,
+  }) {
+    final actions = <AndroidNotificationAction>[];
+    if (withActions && takenLabel != null && snoozeLabel != null && skipLabel != null) {
+      actions.addAll([
+        AndroidNotificationAction(
+          AppConstants.actionTaken,
+          takenLabel,
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
+        AndroidNotificationAction(
+          AppConstants.actionSnooze,
+          snoozeLabel,
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
+        AndroidNotificationAction(
+          AppConstants.actionSkip,
+          skipLabel,
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
+      ]);
+    }
+
+    return AndroidNotificationDetails(
+      channelId,
+      channelName,
+      channelDescription: AppConstants.channelDescription,
+      importance: Importance.max,
+      priority: Priority.high,
+      category: AndroidNotificationCategory.reminder,
+      playSound: true,
+      // Belt-and-suspenders: WAV sound on BOTH channel AND notification details.
+      // Some OEMs (Samsung, Xiaomi, OnePlus) only respect one or the other.
+      sound: _alarmSound,
+      enableVibration: true,
+      enableLights: true,
+      ledColor: const Color(0xFF2E7D32),
+      ledOnMs: 1000,
+      ledOffMs: 500,
+      vibrationPattern: _vibrationPattern,
+      fullScreenIntent: true,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+      styleInformation: BigTextStyleInformation(
+        body,
+        htmlFormatBigText: false,
+        contentTitle: title,
+        htmlFormatContentTitle: false,
+        summaryText: AppConstants.channelName,
+      ),
+      actions: actions,
+    );
+  }
 
   @override
   Future<bool> scheduleDoseReminder({
@@ -332,57 +498,20 @@ class NotificationService implements ReminderScheduler {
     final tzWhen = tz.TZDateTime.from(when, tz.local);
     if (!tzWhen.isAfter(tz.TZDateTime.now(tz.local))) return false;
 
+    final channel = _soundEnabled ? _soundChannelId : _silentChannelId;
+    final chName =
+        _soundEnabled ? AppConstants.channelName : AppConstants.silentChannelName;
+
     final details = NotificationDetails(
-      android: AndroidNotificationDetails(
-        _soundEnabled ? '${AppConstants.channelId}_v2' : '${AppConstants.silentChannelId}_v2',
-        _soundEnabled
-            ? AppConstants.channelName
-            : AppConstants.silentChannelName,
-        channelDescription: AppConstants.channelDescription,
-        importance: Importance.max,
-        priority: Priority.high,
-        category: AndroidNotificationCategory.reminder,
-        playSound: _soundEnabled,
-        sound: _soundEnabled
-            ? const RawResourceAndroidNotificationSound('medicine_alarm')
-            : null,
-        enableVibration: true,
-        enableLights: true,
-        ledColor: const Color(0xFF2E7D32),
-        ledOnMs: 1000,
-        ledOffMs: 500,
-        vibrationPattern: _vibrationPattern,
-        // fullScreenIntent makes the notification behave like an alarm —
-        // it shows a full-screen UI even when the device is locked.
-        // Critical for elderly users who may not notice a status-bar icon.
-        fullScreenIntent: true,
-        styleInformation: BigTextStyleInformation(
-          body,
-          htmlFormatBigText: false,
-          contentTitle: title,
-          htmlFormatContentTitle: false,
-          summaryText: AppConstants.channelName,
-        ),
-        actions: [
-          AndroidNotificationAction(
-            AppConstants.actionTaken,
-            takenLabel,
-            showsUserInterface: false,
-            cancelNotification: true,
-          ),
-          AndroidNotificationAction(
-            AppConstants.actionSnooze,
-            snoozeLabel,
-            showsUserInterface: false,
-            cancelNotification: true,
-          ),
-          AndroidNotificationAction(
-            AppConstants.actionSkip,
-            skipLabel,
-            showsUserInterface: false,
-            cancelNotification: true,
-          ),
-        ],
+      android: _buildReminderDetails(
+        channelId: channel,
+        channelName: chName,
+        title: title,
+        body: body,
+        withActions: true,
+        takenLabel: takenLabel,
+        snoozeLabel: snoozeLabel,
+        skipLabel: skipLabel,
       ),
     );
     final payload = '${AppConstants.payloadPrefix}$doseId';
@@ -399,10 +528,13 @@ class NotificationService implements ReminderScheduler {
             : AndroidScheduleMode.inexactAllowWhileIdle,
         payload: payload,
       );
+      developer.log(
+          'Scheduled dose $doseId at $tzWhen (exact=$exact, sound=$_soundEnabled)',
+          name: 'Notif');
       return true;
-    } on Exception {
-      // Exact alarm permission missing/revoked: fall back to inexact so the
-      // reminder still arrives (just not guaranteed to the minute).
+    } on Exception catch (e) {
+      developer.log('zonedSchedule failed (exact), trying inexact: $e',
+          name: 'Notif', error: e);
       try {
         await _plugin.zonedSchedule(
           id: doseId,
@@ -414,7 +546,9 @@ class NotificationService implements ReminderScheduler {
           payload: payload,
         );
         return true;
-      } on Exception {
+      } on Exception catch (e2) {
+        developer.log('zonedSchedule FAILED (inexact too): $e2',
+            name: 'Notif', error: e2);
         return false;
       }
     }
@@ -451,20 +585,16 @@ class NotificationService implements ReminderScheduler {
     final tzWhen = tz.TZDateTime.from(when, tz.local);
     if (!tzWhen.isAfter(tz.TZDateTime.now(tz.local))) return false;
 
-    // Advance alarms use the alarm sound channel + fullScreenIntent.
-    // No action buttons — this is just the looping alarm.
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        '${AppConstants.channelId}_v2',
+        _soundChannelId,
         AppConstants.channelName,
         channelDescription: AppConstants.channelDescription,
         importance: Importance.max,
         priority: Priority.max,
         category: AndroidNotificationCategory.alarm,
-        playSound: _soundEnabled,
-        sound: _soundEnabled
-            ? const RawResourceAndroidNotificationSound('medicine_alarm')
-            : null,
+        playSound: true,
+        sound: _alarmSound,
         enableVibration: true,
         enableLights: true,
         ledColor: const Color(0xFFFF6D00),
@@ -472,6 +602,7 @@ class NotificationService implements ReminderScheduler {
         ledOffMs: 250,
         vibrationPattern: _vibrationPattern,
         fullScreenIntent: true,
+        audioAttributesUsage: AudioAttributesUsage.alarm,
         styleInformation: BigTextStyleInformation(
           body,
           htmlFormatBigText: false,
@@ -481,8 +612,6 @@ class NotificationService implements ReminderScheduler {
         ),
       ),
     );
-    // Use doseId * 1000 + offset as notification id to avoid collisions
-    // with the main dose notification (which uses doseId directly).
     final notifId = doseId * 1000 + offset;
     final payload = '${AppConstants.payloadPrefix}$doseId';
 
@@ -499,7 +628,9 @@ class NotificationService implements ReminderScheduler {
         payload: payload,
       );
       return true;
-    } on Exception {
+    } on Exception catch (e) {
+      developer.log('scheduleAdvanceAlarm failed (exact): $e',
+          name: 'Notif', error: e);
       try {
         await _plugin.zonedSchedule(
           id: notifId,
@@ -511,7 +642,9 @@ class NotificationService implements ReminderScheduler {
           payload: payload,
         );
         return true;
-      } on Exception {
+      } on Exception catch (e2) {
+        developer.log('scheduleAdvanceAlarm FAILED (inexact too): $e2',
+            name: 'Notif', error: e2);
         return false;
       }
     }
@@ -528,8 +661,7 @@ class NotificationService implements ReminderScheduler {
     }
   }
 
-  /// Dismisses every scheduled (not yet shown) reminder. Shown notifications
-  /// are left alone so the user can still act on them.
+  /// Dismisses every scheduled (not yet shown) reminder.
   Future<void> cancelAllPending() async {
     if (!_initialized) return;
     try {
@@ -540,53 +672,12 @@ class NotificationService implements ReminderScheduler {
     } catch (_) {}
   }
 
-  /// Whether the app was launched by tapping a notification (or its action).
   Future<NotificationAppLaunchDetails?> getLaunchDetails() async {
     try {
       return await _plugin.getNotificationAppLaunchDetails();
     } catch (_) {
       return null;
     }
-  }
-
-  /// Shows an immediate test notification so the user can verify sound.
-  Future<void> showTestNotification({
-    required String title,
-    required String body,
-  }) async {
-    if (!_initialized) return;
-    try {
-      await _plugin.show(
-        id: 99999,
-        title: title,
-        body: body,
-        notificationDetails: NotificationDetails(
-          android: AndroidNotificationDetails(
-            '${AppConstants.channelId}_v2',
-            AppConstants.channelName,
-            channelDescription: AppConstants.channelDescription,
-            importance: Importance.max,
-            priority: Priority.high,
-            category: AndroidNotificationCategory.reminder,
-            playSound: true,
-            sound: const RawResourceAndroidNotificationSound(
-              'medicine_alarm',
-            ),
-            enableVibration: true,
-            enableLights: true,
-            ledColor: const Color(0xFF2E7D32),
-            vibrationPattern: _vibrationPattern,
-            styleInformation: BigTextStyleInformation(
-              body,
-              htmlFormatBigText: false,
-              contentTitle: title,
-              htmlFormatContentTitle: false,
-              summaryText: AppConstants.channelName,
-            ),
-          ),
-        ),
-      );
-    } catch (_) {}
   }
 
   // ---- Time zone -----------------------------------------------------------
@@ -602,8 +693,6 @@ class NotificationService implements ReminderScheduler {
     }
     try {
       tz.setLocalLocation(tz.getLocation(name));
-    } catch (_) {
-      // Keep the default location when the name is unknown.
-    }
+    } catch (_) {}
   }
 }

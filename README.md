@@ -1,4 +1,4 @@
-# Medicine Reminder (medireminder)
+# DoseWise
 
 A simple, reliable medicine reminder app built for an elderly user (Android-first).
 It answers one question on the home screen: **"Which medicine do I need to take now?"**

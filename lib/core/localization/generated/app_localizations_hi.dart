@@ -9,7 +9,7 @@ class AppLocalizationsHi extends AppLocalizations {
   AppLocalizationsHi([String locale = 'hi']) : super(locale);
 
   @override
-  String get appTitle => 'दवा रिमाइंडर';
+  String get appTitle => 'DoseWise';
 
   @override
   String get navHome => 'घर';
@@ -449,7 +449,7 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get aboutBody =>
-      'दवा रिमाइंडर सिर्फ़ याद दिलाने और रिकॉर्ड रखने का साधन है। यह कोई चिकित्सीय सलाह नहीं देता। हमेशा अपने डॉक्टर के निर्देशों का पालन करें।';
+      'DoseWise सिर्फ़ याद दिलाने और रिकॉर्ड रखने का साधन है। यह कोई चिकित्सीय सलाह नहीं देता। हमेशा अपने डॉक्टर के निर्देशों का पालन करें।';
 
   @override
   String get notifTitle => '💊 दवा का समय हो गया है';
@@ -494,7 +494,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get obWelcome => 'स्वागत है!';
 
   @override
-  String get obTitle => 'दवा रिमाइंडर';
+  String get obTitle => 'DoseWise';
 
   @override
   String get obBody =>
@@ -511,6 +511,13 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get obSkip => 'अभी छोड़ें';
+
+  @override
+  String get obBatteryWhy => 'यह क्यों ज़रूरी है?';
+
+  @override
+  String get obBatteryHow =>
+      'अपने फ़ोन की Settings में जाएँ, इस app को ढूंढें, और \'Battery optimization\' बंद करें या \'Unrestricted\' चुनें। इससे रिमाइंडर बंद app में भी काम करते रहेंगे।';
 
   @override
   String voiceTimeToTake(String name, String dose) {
@@ -668,4 +675,110 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get caregiverThisWeek => 'इस हफ़्ते';
+
+  @override
+  String get notifDiagnostics => 'सूचना जाँच';
+
+  @override
+  String get notifFixAll => 'सभी ठीक करें';
+
+  @override
+  String get notifStatusOk => 'सभी अनुमतियाँ सही हैं';
+
+  @override
+  String get notifStatusNeedsFix =>
+      'कुछ सेटिंग्स रिमाइंडर को प्रभावित कर सकती हैं';
+
+  @override
+  String get notifOpenSystemSettings => 'सिस्टम सेटिंग्स खोलें';
+
+  @override
+  String get syncGoogleSignIn => 'Google से जारी रखें';
+
+  @override
+  String get syncSignOut => 'साइन आउट';
+
+  @override
+  String get syncSignInFailed =>
+      'साइन-इन असफल। कृपया अपना इंटरनेट कनेक्शन जाँचें और फिर से कोशिश करें।';
+
+  @override
+  String get loginSubtitle =>
+      'परिवार के साथ दवाएँ सिंक करने के लिए साइन इन करें, या ऑफलाइन ऐप इस्तेमाल करें।';
+
+  @override
+  String get loginWithGoogle => 'Google से जारी रखें';
+
+  @override
+  String get loginOr => 'या';
+
+  @override
+  String get loginSkip => 'ऑफलाइन इस्तेमाल करें';
+
+  @override
+  String get loginOfflineNote =>
+      'आप बाद में Settings से कभी भी साइन इन कर सकते हैं।';
+
+  @override
+  String get familySyncNotConfigured =>
+      'Firebase कॉन्फ़िगर नहीं है। फ़ैमिली सिंक के लिए Firebase सेटअप ज़रूरी है। ऐप बिना Firebase के भी पूरी तरह ऑफलाइन काम करता है।';
+
+  @override
+  String get profileTitle => 'प्रोफ़ाइल';
+
+  @override
+  String get profilePersonalInfo => 'व्यक्तिगत जानकारी';
+
+  @override
+  String get profileAccount => 'खाता';
+
+  @override
+  String get profileAge => 'उम्र';
+
+  @override
+  String get profileAgeHint => 'जैसे: 65';
+
+  @override
+  String get profileEditInfo => 'जानकारी बदलें';
+
+  @override
+  String get profileSaved => 'प्रोफ़ाइल अपडेट हो गई';
+
+  @override
+  String get profileSignOut => 'साइन आउट';
+
+  @override
+  String get profileSignOutDesc => 'अपने Google खाते से साइन आउट करें';
+
+  @override
+  String get profileSignOutConfirm =>
+      'क्या आप साइन आउट करना चाहते हैं? आपका डेटा इसी फ़ोन पर रहेगा।';
+
+  @override
+  String get profileSignedOut => 'सफलतापूर्वक साइन आउट हो गया';
+
+  @override
+  String get profileSignInPrompt =>
+      'अपनी दवाओं को विभिन्न डिवाइसों पर परिवार के साथ सिंक करने के लिए Google से साइन इन करें।';
+
+  @override
+  String get profileWelcomeBack => 'वापसी पर स्वागत!';
+
+  @override
+  String get profileSignedIn => 'Google से साइन इन हैं';
+
+  @override
+  String get profileOfflineMode => 'ऑफ़लाइन मोड';
+
+  @override
+  String get profileGuestUser => 'अतिथि उपयोगकर्ता';
+
+  @override
+  String get profileNoName => 'नाम सेट नहीं';
+
+  @override
+  String get profileNotSet => 'सेट नहीं';
+
+  @override
+  String get navProfile => 'प्रोफ़ाइल';
 }

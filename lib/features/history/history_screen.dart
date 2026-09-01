@@ -138,12 +138,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           l10n: l10n,
                         ),
                       const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () => _exportCsv(entries, l10n),
-                          icon: const Icon(Icons.download_rounded, size: 20),
-                          label: Text(l10n.histExport),
+                      Card(
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.download_rounded,
+                            color: theme.colorScheme.primary,
+                          ),
+                          title: Text(
+                            l10n.histExport,
+                            style: theme.textTheme.titleMedium,
+                          ),
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            color: theme.colorScheme.outline,
+                          ),
+                          onTap: () => _exportCsv(entries, l10n),
                         ),
                       ),
                       const SizedBox(height: 8),

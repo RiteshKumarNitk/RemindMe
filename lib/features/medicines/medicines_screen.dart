@@ -208,43 +208,43 @@ class _MedicineCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              alignment: WrapAlignment.end,
               children: [
-                IconButton(
-                  tooltip: medicine.active ? l10n.medPause : l10n.medResume,
-                  iconSize: 30,
-                  icon: Icon(
-                    medicine.active
-                        ? Icons.pause_circle_outline_rounded
-                        : Icons.play_circle_outline_rounded,
-                  ),
+                _ActionChip(
+                  icon: medicine.active
+                      ? Icons.pause_rounded
+                      : Icons.play_arrow_rounded,
+                  label: medicine.active ? l10n.medPause : l10n.medResume,
+                  color: theme.pendingColor,
                   onPressed: () => appState.setMedicineActive(
                     medicine.id!,
                     !medicine.active,
                   ),
                 ),
-                IconButton(
-                  tooltip: l10n.medEdit,
-                  iconSize: 30,
-                  icon: const Icon(Icons.edit_rounded),
+                _ActionChip(
+                  icon: Icons.edit_rounded,
+                  label: l10n.medEdit,
+                  color: theme.colorScheme.primary,
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => MedicineFormScreen(medicine: medicine),
                     ),
                   ),
                 ),
-                IconButton(
-                  tooltip: l10n.medDuplicate,
-                  iconSize: 30,
-                  icon: const Icon(Icons.content_copy_rounded),
+                _ActionChip(
+                  icon: Icons.content_copy_rounded,
+                  label: l10n.medDuplicate,
+                  color: theme.colorScheme.outline,
                   onPressed: () =>
                       _duplicate(context, appState, medicine, l10n),
                 ),
-                IconButton(
-                  tooltip: l10n.medDelete,
-                  iconSize: 30,
-                  icon: Icon(Icons.delete_rounded, color: theme.missedColor),
+                _ActionChip(
+                  icon: Icons.delete_rounded,
+                  label: l10n.medDelete,
+                  color: theme.missedColor,
                   onPressed: () => _confirmDelete(context, appState),
                 ),
               ],
@@ -387,6 +387,35 @@ class _StatusDot extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Labeled action chip for medicine card actions — visible text + icon
+/// so elderly users can tell what each button does.
+class _ActionChip extends StatelessWidget {
+  const _ActionChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ActionChip(
+      avatar: Icon(icon, size: 20, color: color),
+      label: Text(
+        label,
+        style: theme.textTheme.labelLarge?.copyWith(color: color),
+      ),
+      onPressed: onPressed,
     );
   }
 }
