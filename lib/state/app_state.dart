@@ -76,9 +76,25 @@ class AppState extends ChangeNotifier {
   /// changed (e.g. after a notification action).
   int get revision => _revision;
 
-  Future<void> init() async {
+  /// [deferScheduleSync] (used by `main()`) shows the UI from local data
+  /// immediately and runs the full refresh — which reconciles every OS
+  /// notification, dozens of slow platform calls — in the background, so it
+  /// can never hang the splash screen. Left false everywhere else (and in
+  /// tests) so callers can await a fully-settled state.
+  Future<void> init({bool deferScheduleSync = false}) async {
     await refreshPermissionStatus();
-    await refresh();
+    if (!deferScheduleSync) {
+      await refresh();
+      return;
+    }
+    final now = DateTime.now();
+    final grace = settings.graceDuration;
+    await doseRepository.sweepMissed(grace, now);
+    await _reloadTodayData(now, grace);
+    _loading = false;
+    _revision++;
+    notifyListeners();
+    unawaited(refresh());
   }
 
   /// Refreshes permission flags without showing any system dialog.
@@ -89,8 +105,23 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Reloads everything: sweeps missed doses, reconciles notifications and
-  /// rebuilds today's data. Cheap enough to call on every resume.
+  Future<void> _reloadTodayData(DateTime now, Duration grace) async {
+    final start = AppDateUtils.startOfDay(now);
+    final end = start.add(const Duration(days: 1));
+    _todayDoses = await doseRepository.getEntriesBetween(start, end);
+    _todayStats = await doseRepository.statsBetween(
+      start,
+      end,
+      grace: grace,
+      now: now,
+    );
+    _medicines = await medicineRepository.getAll();
+    _nextDose = _computeNext(_todayDoses, grace, now);
+  }
+
+  /// Reloads missed sweeps + today's data, then reconciles every OS
+  /// notification. Callers that block the UI on this (resume, after a save)
+  /// accept the latency; `init()` does not — it runs this in the background.
   Future<void> refresh() async {
     final now = DateTime.now();
     final grace = settings.graceDuration;
@@ -106,21 +137,8 @@ class AppState extends ChangeNotifier {
       ),
       advanceMinutes: settings.advanceMinutes,
     );
-
-    final start = AppDateUtils.startOfDay(now);
-    final end = start.add(const Duration(days: 1));
-    _todayDoses = await doseRepository.getEntriesBetween(start, end);
-    _todayStats = await doseRepository.statsBetween(
-      start,
-      end,
-      grace: grace,
-      now: now,
-    );
-    _medicines = await medicineRepository.getAll();
-    _nextDose = _computeNext(_todayDoses, grace, now);
-    // Check for low-stock medicines and show refill reminder.
+    await _reloadTodayData(now, grace);
     _checkRefillReminders();
-    // Update home screen widget with next dose info.
     HomeWidgetService.update(
       todayDoses: _todayDoses,
       now: now,

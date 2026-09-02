@@ -98,7 +98,8 @@ Future<void> main() async {
   );
 
   await sync.init();
-  await appState.init();
+  // Defer the (slow) notification reconcile so the splash never blocks on it.
+  await appState.init(deferScheduleSync: true);
 
   // Auto-request notification permission on every launch.
   if (!await notifications.areNotificationsEnabled()) {

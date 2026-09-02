@@ -78,9 +78,10 @@ kotlin {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
-    // Firebase BoM — manages all Firebase SDK versions centrally
+    // Firebase BoM — manages all Firebase SDK versions centrally.
+    // Analytics is intentionally omitted: the app collects no analytics, which
+    // keeps the Play "Data safety" declaration minimal.
     implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
-    implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-messaging")

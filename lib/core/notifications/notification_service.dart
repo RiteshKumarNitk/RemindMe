@@ -58,6 +58,11 @@ class NotificationService implements ReminderScheduler {
   bool _initialized = false;
   bool _soundEnabled = true;
 
+  /// Set to false the first time `exactAllowWhileIdle` scheduling is rejected,
+  /// so we don't pay 2 extra failed platform round-trips for every remaining
+  /// dose in the same reconcile (this was the cause of the splash-screen hang).
+  bool _exactModeUsable = true;
+
   bool get initialized => _initialized;
 
   /// ~6 seconds of insistent buzzing so an elderly user notices even with the
@@ -98,6 +103,7 @@ class NotificationService implements ReminderScheduler {
   }) async {
     try {
       _soundEnabled = soundEnabled;
+      _exactModeUsable = true; // re-test exact scheduling each app run
       const androidInit =
           AndroidInitializationSettings('@mipmap/ic_launcher');
       const initSettings = InitializationSettings(android: androidInit);
@@ -553,7 +559,9 @@ class NotificationService implements ReminderScheduler {
       }
     }
 
-    if (canExact && await attempt(AndroidScheduleMode.exactAllowWhileIdle)) {
+    if (canExact &&
+        _exactModeUsable &&
+        await attempt(AndroidScheduleMode.exactAllowWhileIdle)) {
       return (scheduled: true, exact: true);
     }
     // alarmClock delivery is always exact and Doze-exempt, and needs no
@@ -703,9 +711,11 @@ class NotificationService implements ReminderScheduler {
           androidScheduleMode: mode,
           payload: payload,
         );
-        developer.log('Scheduled dose $doseId at $tzWhen ($mode)', name: 'Notif');
         return true;
       } on Exception catch (e) {
+        if (mode == AndroidScheduleMode.exactAllowWhileIdle) {
+          _exactModeUsable = false; // stop retrying it for the rest of this pass
+        }
         developer.log('zonedSchedule ($mode) failed for dose $doseId: $e',
             name: 'Notif', error: e);
         return false;
@@ -714,7 +724,9 @@ class NotificationService implements ReminderScheduler {
 
     // exact → alarmClock (always exact, Doze-exempt, no permission needed)
     // → inexact.  Whichever lands, the reminder is queued.
-    if (exact && await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
+    if (exact &&
+        _exactModeUsable &&
+        await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
       return true;
     }
     if (await tryMode(AndroidScheduleMode.alarmClock)) return true;
@@ -784,22 +796,7 @@ class NotificationService implements ReminderScheduler {
     final notifId = doseId * 1000 + offset;
     final payload = '${AppConstants.payloadPrefix}$doseId';
 
-    try {
-      await _plugin.zonedSchedule(
-        id: notifId,
-        title: title,
-        body: body,
-        scheduledDate: tzWhen,
-        notificationDetails: details,
-        androidScheduleMode: exact
-            ? AndroidScheduleMode.exactAllowWhileIdle
-            : AndroidScheduleMode.inexactAllowWhileIdle,
-        payload: payload,
-      );
-      return true;
-    } on Exception catch (e) {
-      developer.log('scheduleAdvanceAlarm failed (exact): $e',
-          name: 'Notif', error: e);
+    Future<bool> tryMode(AndroidScheduleMode mode) async {
       try {
         await _plugin.zonedSchedule(
           id: notifId,
@@ -807,16 +804,27 @@ class NotificationService implements ReminderScheduler {
           body: body,
           scheduledDate: tzWhen,
           notificationDetails: details,
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          androidScheduleMode: mode,
           payload: payload,
         );
         return true;
-      } on Exception catch (e2) {
-        developer.log('scheduleAdvanceAlarm FAILED (inexact too): $e2',
-            name: 'Notif', error: e2);
+      } on Exception catch (e) {
+        if (mode == AndroidScheduleMode.exactAllowWhileIdle) {
+          _exactModeUsable = false;
+        }
+        developer.log('scheduleAdvanceAlarm ($mode) failed: $e',
+            name: 'Notif', error: e);
         return false;
       }
     }
+
+    if (exact &&
+        _exactModeUsable &&
+        await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
+      return true;
+    }
+    if (await tryMode(AndroidScheduleMode.alarmClock)) return true;
+    return tryMode(AndroidScheduleMode.inexactAllowWhileIdle);
   }
 
   @override
