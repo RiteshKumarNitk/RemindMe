@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -325,8 +326,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
 
-            // Firebase Diagnostic (only when not signed in)
-            if (!auth.isSignedIn) ...[
+            // Firebase diagnostics — debug builds only, never in production.
+            if (kDebugMode && !auth.isSignedIn) ...[
               const SizedBox(height: 16),
               _DiagnosticCard(auth: auth),
             ],

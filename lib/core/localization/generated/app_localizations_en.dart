@@ -656,6 +656,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Family can see whether medicines were taken and get an alert when a dose is missed. Everything stays private to your family.';
 
   @override
+  String get syncSetupHint =>
+      'Create a code so family can help with your medicines — and enter a family member\'s code to help with theirs. You can do both.';
+
+  @override
+  String get syncCreateCode => 'Create my family code';
+
+  @override
+  String get syncHaveCode => 'I have a family code';
+
+  @override
+  String get syncJoinAnother => 'Join another family code';
+
+  @override
   String get syncRolePrimary => 'I take medicines here';
 
   @override
@@ -707,6 +720,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncFailed => 'Sync failed';
+
+  @override
+  String get syncErrorPermission =>
+      'The cloud database rejected the request. This Firebase project\'s Firestore security rules haven\'t been set up — deploy firestore.rules or paste them into Firebase Console → Firestore → Rules.';
+
+  @override
+  String get syncErrorNetwork =>
+      'Couldn\'t reach the server. Check your internet connection and try again.';
+
+  @override
+  String get syncErrorAuth =>
+      'Sign-in was rejected. In the Firebase console, enable Anonymous and Google sign-in, and register this app\'s SHA-1.';
+
+  @override
+  String get syncErrorDetail => 'Details';
 
   @override
   String get syncDisable => 'Turn off sync';

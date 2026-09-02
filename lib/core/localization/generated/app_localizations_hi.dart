@@ -656,6 +656,19 @@ class AppLocalizationsHi extends AppLocalizations {
       'परिवार देख सकता है कि दवा ली गई या नहीं और दवा छूटने पर सूचना मिलती है। सब कुछ आपके परिवार तक ही सीमित रहता है।';
 
   @override
+  String get syncSetupHint =>
+      'एक कोड बनाएँ ताकि परिवार आपकी दवाओं में मदद कर सके — और परिवार के सदस्य का कोड डालकर उनकी दवाओं में मदद करें। आप दोनों कर सकते हैं।';
+
+  @override
+  String get syncCreateCode => 'मेरा फ़ैमिली कोड बनाएँ';
+
+  @override
+  String get syncHaveCode => 'मेरे पास फ़ैमिली कोड है';
+
+  @override
+  String get syncJoinAnother => 'दूसरा फ़ैमिली कोड जोड़ें';
+
+  @override
   String get syncRolePrimary => 'मैं यहाँ दवा लेती/लेता हूँ';
 
   @override
@@ -706,6 +719,21 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get syncFailed => 'सिंक विफल';
+
+  @override
+  String get syncErrorPermission =>
+      'क्लाउड डेटाबेस ने अनुरोध अस्वीकार कर दिया। इस Firebase प्रोजेक्ट के Firestore सुरक्षा नियम सेट नहीं हैं — firestore.rules डिप्लॉय करें या Firebase Console → Firestore → Rules में डालें।';
+
+  @override
+  String get syncErrorNetwork =>
+      'सर्वर से संपर्क नहीं हो सका। अपना इंटरनेट कनेक्शन जाँचें और फिर से कोशिश करें।';
+
+  @override
+  String get syncErrorAuth =>
+      'साइन-इन अस्वीकार हुआ। Firebase console में Anonymous और Google साइन-इन चालू करें, और इस ऐप का SHA-1 दर्ज करें।';
+
+  @override
+  String get syncErrorDetail => 'विवरण';
 
   @override
   String get syncDisable => 'सिंक बंद करें';

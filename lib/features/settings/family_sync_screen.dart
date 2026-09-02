@@ -288,36 +288,44 @@ class _FamilySyncScreenState extends State<FamilySyncScreen> {
           if (sync.enabled) ...[
             _StatusCard(sync: sync, l10n: l10n),
             const SizedBox(height: 20),
+            // The shareable code — anyone can hand this to family.
             _CodeCard(sync: sync, l10n: l10n),
             const SizedBox(height: 16),
-            if (sync.role == 'watcher') ...[
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.missedAlerts),
-                subtitle: Text(l10n.missedAlertsDesc),
-                value: context.read<SettingsController>().missedAlertsEnabled,
-                onChanged: (v) => context
-                    .read<SettingsController>()
-                    .setMissedAlertsEnabled(v),
-              ),
-              const SizedBox(height: 12),
-              _RoleCard(
-                icon: Icons.insights_rounded,
-                title: l10n.caregiverTitle,
-                subtitle: l10n.caregiverDesc,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const CaregiverDashboardScreen(),
-                  ),
+            // Everyone can also help watch a family member: alerts + dashboard.
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.missedAlerts),
+              subtitle: Text(l10n.missedAlertsDesc),
+              value: context.read<SettingsController>().missedAlertsEnabled,
+              onChanged: (v) => context
+                  .read<SettingsController>()
+                  .setMissedAlertsEnabled(v),
+            ),
+            const SizedBox(height: 12),
+            _RoleCard(
+              icon: Icons.insights_rounded,
+              title: l10n.caregiverTitle,
+              subtitle: l10n.caregiverDesc,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const CaregiverDashboardScreen(),
                 ),
               ),
-            ],
+            ),
+            const SizedBox(height: 12),
+            BigButton(
+              label: l10n.syncJoinAnother,
+              icon: Icons.group_add_rounded,
+              outlined: true,
+              height: 56,
+              onPressed: _busy ? null : _askCode,
+            ),
             const SizedBox(height: 8),
             BigButton(
               label: sync.syncing ? l10n.syncStatusSyncing : l10n.syncNow,
               icon: Icons.sync_rounded,
               outlined: true,
-              height: 60,
+              height: 56,
               onPressed: sync.syncing ? null : () => sync.syncNow(),
             ),
             const SizedBox(height: 12),
@@ -328,18 +336,21 @@ class _FamilySyncScreenState extends State<FamilySyncScreen> {
               onPressed: _confirmDisable,
             ),
           ] else ...[
-            _RoleCard(
-              icon: Icons.favorite_rounded,
-              title: l10n.syncRolePrimary,
-              subtitle: l10n.syncRolePrimaryDesc,
-              onTap: _busy ? null : () => _enable('primary'),
+            Text(l10n.syncSetupHint, style: theme.textTheme.bodyLarge),
+            const SizedBox(height: 18),
+            BigButton(
+              label: l10n.syncCreateCode,
+              icon: Icons.qr_code_2_rounded,
+              height: 60,
+              onPressed: _busy ? null : () => _enable('primary'),
             ),
             const SizedBox(height: 12),
-            _RoleCard(
-              icon: Icons.volunteer_activism_rounded,
-              title: l10n.syncRoleWatcher,
-              subtitle: l10n.syncRoleWatcherDesc,
-              onTap: _busy ? null : _askCode,
+            BigButton(
+              label: l10n.syncHaveCode,
+              icon: Icons.login_rounded,
+              outlined: true,
+              height: 56,
+              onPressed: _busy ? null : _askCode,
             ),
           ],
           if (_busy)
@@ -349,33 +360,7 @@ class _FamilySyncScreenState extends State<FamilySyncScreen> {
             ),
           if (sync.lastError != null) ...[
             const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.error_outline_rounded,
-                    color: theme.colorScheme.onErrorContainer,
-                    size: 30,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      sync.lastError!.toLowerCase().contains('not configured')
-                          ? l10n.syncNotConfigured
-                          : l10n.syncFailed,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onErrorContainer,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _SyncErrorCard(raw: sync.lastError!, l10n: l10n),
           ],
         ],
       ),
@@ -505,6 +490,94 @@ class _CodeCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Turns a raw backend exception string into an actionable message, with the
+/// original text tucked behind an expandable "Details".
+class _SyncErrorCard extends StatelessWidget {
+  const _SyncErrorCard({required this.raw, required this.l10n});
+
+  final String raw;
+  final AppLocalizations l10n;
+
+  String get _friendly {
+    final e = raw.toLowerCase();
+    if (e.contains('not configured')) return l10n.syncNotConfigured;
+    if (e.contains('permission-denied') ||
+        e.contains('permission_denied') ||
+        e.contains('insufficient permissions')) {
+      return l10n.syncErrorPermission;
+    }
+    if (e.contains('unavailable') ||
+        e.contains('network') ||
+        e.contains('timeout') ||
+        e.contains('could not reach') ||
+        e.contains('deadline')) {
+      return l10n.syncErrorNetwork;
+    }
+    if (e.contains('operation-not-allowed') ||
+        e.contains('admin-restricted-operation') ||
+        e.contains('sign_in') ||
+        e.contains('sign-in') ||
+        e.contains('api-key-not-valid') ||
+        e.contains('auth')) {
+      return l10n.syncErrorAuth;
+    }
+    return l10n.syncFailed;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final onErr = theme.colorScheme.onErrorContainer;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.error_outline_rounded, color: onErr, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _friendly,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: onErr),
+                ),
+              ),
+            ],
+          ),
+          Theme(
+            data: theme.copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              title: Text(
+                l10n.syncErrorDetail,
+                style: theme.textTheme.labelLarge?.copyWith(color: onErr),
+              ),
+              iconColor: onErr,
+              collapsedIconColor: onErr,
+              children: [
+                SelectableText(
+                  raw,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: onErr,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

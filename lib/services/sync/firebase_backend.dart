@@ -107,7 +107,12 @@ class FirebaseBackend implements RemoteBackend {
       final code = _householdCode;
       final uid = _authRef.currentUser?.uid;
       if (code == null || uid == null) return;
-      final token = await FirebaseMessaging.instance.getToken();
+      // getToken() can block for a very long time on emulators / devices
+      // without Play Services — cap it so it never stalls sync setup.
+      final token = await FirebaseMessaging.instance.getToken().timeout(
+        const Duration(seconds: 12),
+        onTimeout: () => null,
+      );
       if (token == null) return;
       await _fs.collection('households').doc(code).update({
         'members.$uid.fcmToken': token,

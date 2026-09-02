@@ -12,10 +12,45 @@ Future<void> _openBatterySettings() => app_settings.AppSettings.openAppSettings(
   type: app_settings.AppSettingsType.batteryOptimization,
 );
 
+Future<void> _openExactAlarmSettings() =>
+    app_settings.AppSettings.openAppSettings(
+      type: app_settings.AppSettingsType.alarm,
+    );
+
 /// Simple settings: language, sound, voice, snooze/grace, appearance,
 /// permissions and about.
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // The exact-alarm / notification / battery flags can be stale — re-check
+    // them whenever this screen is shown or the app returns from OS settings.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => context.read<AppState>().refreshPermissionStatus(),
+    );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<AppState>().refreshPermissionStatus();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -182,6 +217,9 @@ class SettingsScreen extends StatelessWidget {
                   title: '🔔 ${l10n.notifTitle}',
                   body: l10n.setTestScheduledSent,
                 );
+                // Sync the on-screen permission badges to what scheduling
+                // actually found (the cached flags can be stale/optimistic).
+                await appState.refreshPermissionStatus();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -288,7 +326,15 @@ class SettingsScreen extends StatelessWidget {
               granted: appState.exactAlarmsEnabled,
               grantedLabel: l10n.permissionGranted,
               deniedLabel: l10n.permissionDenied,
-              onTap: () => appState.requestExactAlarms(),
+              onTap: () async {
+                await appState.requestExactAlarms();
+                if (!appState.exactAlarmsEnabled) {
+                  // The plugin's in-app prompt didn't land — open the system
+                  // "Alarms & reminders" screen directly.
+                  await _openExactAlarmSettings();
+                }
+                await appState.refreshPermissionStatus();
+              },
             ),
             _PermissionTile(
               icon: Icons.battery_saver_rounded,

@@ -1286,6 +1286,30 @@ abstract class AppLocalizations {
   /// **'Family can see whether medicines were taken and get an alert when a dose is missed. Everything stays private to your family.'**
   String get familySyncIntro;
 
+  /// No description provided for @syncSetupHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a code so family can help with your medicines — and enter a family member\'s code to help with theirs. You can do both.'**
+  String get syncSetupHint;
+
+  /// No description provided for @syncCreateCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Create my family code'**
+  String get syncCreateCode;
+
+  /// No description provided for @syncHaveCode.
+  ///
+  /// In en, this message translates to:
+  /// **'I have a family code'**
+  String get syncHaveCode;
+
+  /// No description provided for @syncJoinAnother.
+  ///
+  /// In en, this message translates to:
+  /// **'Join another family code'**
+  String get syncJoinAnother;
+
   /// No description provided for @syncRolePrimary.
   ///
   /// In en, this message translates to:
@@ -1381,6 +1405,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sync failed'**
   String get syncFailed;
+
+  /// No description provided for @syncErrorPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'The cloud database rejected the request. This Firebase project\'s Firestore security rules haven\'t been set up — deploy firestore.rules or paste them into Firebase Console → Firestore → Rules.'**
+  String get syncErrorPermission;
+
+  /// No description provided for @syncErrorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the server. Check your internet connection and try again.'**
+  String get syncErrorNetwork;
+
+  /// No description provided for @syncErrorAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in was rejected. In the Firebase console, enable Anonymous and Google sign-in, and register this app\'s SHA-1.'**
+  String get syncErrorAuth;
+
+  /// No description provided for @syncErrorDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get syncErrorDetail;
 
   /// No description provided for @syncDisable.
   ///

@@ -114,15 +114,22 @@ class SyncService extends ChangeNotifier {
   /// Throws when the backend is not configured or the code is invalid.
   Future<void> enableSync({required String role, String? joinCode}) async {
     try {
-      await backend.initialize();
-      await backend.signIn();
-      String code;
-      if (joinCode != null && joinCode.trim().isNotEmpty) {
-        code = await backend.joinHousehold(joinCode);
-      } else {
-        code = await backend.createHousehold();
-      }
-      await backend.attachPushToken();
+      // Fail fast instead of hanging on a stuck emulator / offline network.
+      final code = await () async {
+        await backend.initialize();
+        await backend.signIn();
+        if (joinCode != null && joinCode.trim().isNotEmpty) {
+          return backend.joinHousehold(joinCode);
+        }
+        return backend.createHousehold();
+      }().timeout(
+        const Duration(seconds: 25),
+        onTimeout: () => throw TimeoutException(
+          'Could not reach the server. Check your internet connection and '
+          'try again.',
+        ),
+      );
+
       await settings.setSyncSettings(
         syncEnabled: true,
         householdCode: code,
@@ -131,10 +138,14 @@ class SyncService extends ChangeNotifier {
       );
       _lastSyncAt = null;
       _lastError = null;
+      // Push-token registration talks to FCM which can block for a long time
+      // on an emulator — never let it hold up the setup flow.
+      unawaited(backend.attachPushToken());
       // Queue the whole database: everything must reach the household at
       // least once (upserts keep this cheap on repeat runs).
       await _reconcileOutbox();
       await _startPeriodic();
+      notifyListeners(); // surface the code immediately
       await syncNow();
       notifyListeners();
     } catch (e) {
@@ -310,7 +321,9 @@ class SyncService extends ChangeNotifier {
 
   void _checkMissed(List<RemoteDose> doses) {
     final s = settings.settings;
-    if (s.syncRole != 'watcher' || !s.missedAlertsEnabled) return;
+    // Any household member with missed-dose alerts on gets notified — the app
+    // no longer forces a single "watcher" role.
+    if (!s.missedAlertsEnabled) return;
     final cutoff = DateTime.now().subtract(const Duration(hours: 24));
     for (final rd in doses) {
       if (rd.deleted || rd.dose.status != DoseStatus.missed) continue;

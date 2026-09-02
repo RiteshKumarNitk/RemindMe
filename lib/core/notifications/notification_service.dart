@@ -556,6 +556,11 @@ class NotificationService implements ReminderScheduler {
     if (canExact && await attempt(AndroidScheduleMode.exactAllowWhileIdle)) {
       return (scheduled: true, exact: true);
     }
+    // alarmClock delivery is always exact and Doze-exempt, and needs no
+    // SCHEDULE_EXACT_ALARM grant — the right fallback for a medicine alarm.
+    if (await attempt(AndroidScheduleMode.alarmClock)) {
+      return (scheduled: true, exact: true);
+    }
     if (await attempt(AndroidScheduleMode.inexactAllowWhileIdle)) {
       return (scheduled: true, exact: false);
     }
@@ -687,25 +692,7 @@ class NotificationService implements ReminderScheduler {
     );
     final payload = '${AppConstants.payloadPrefix}$doseId';
 
-    try {
-      await _plugin.zonedSchedule(
-        id: doseId,
-        title: title,
-        body: body,
-        scheduledDate: tzWhen,
-        notificationDetails: details,
-        androidScheduleMode: exact
-            ? AndroidScheduleMode.exactAllowWhileIdle
-            : AndroidScheduleMode.inexactAllowWhileIdle,
-        payload: payload,
-      );
-      developer.log(
-          'Scheduled dose $doseId at $tzWhen (exact=$exact, sound=$_soundEnabled)',
-          name: 'Notif');
-      return true;
-    } on Exception catch (e) {
-      developer.log('zonedSchedule failed (exact), trying inexact: $e',
-          name: 'Notif', error: e);
+    Future<bool> tryMode(AndroidScheduleMode mode) async {
       try {
         await _plugin.zonedSchedule(
           id: doseId,
@@ -713,16 +700,26 @@ class NotificationService implements ReminderScheduler {
           body: body,
           scheduledDate: tzWhen,
           notificationDetails: details,
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          androidScheduleMode: mode,
           payload: payload,
         );
+        developer.log('Scheduled dose $doseId at $tzWhen ($mode)', name: 'Notif');
         return true;
-      } on Exception catch (e2) {
-        developer.log('zonedSchedule FAILED (inexact too): $e2',
-            name: 'Notif', error: e2);
+      } on Exception catch (e) {
+        developer.log('zonedSchedule ($mode) failed for dose $doseId: $e',
+            name: 'Notif', error: e);
         return false;
       }
     }
+
+    // exact → alarmClock (always exact, Doze-exempt, no permission needed)
+    // → inexact.  Whichever lands, the reminder is queued.
+    if (exact && await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
+      return true;
+    }
+    if (await tryMode(AndroidScheduleMode.alarmClock)) return true;
+    if (await tryMode(AndroidScheduleMode.inexactAllowWhileIdle)) return true;
+    return false;
   }
 
   @override
