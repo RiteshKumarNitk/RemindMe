@@ -7,14 +7,14 @@ import 'package:flutter/material.dart';
 class AppTheme {
   AppTheme._();
 
-  static const Color _seed = Color(0xFF00696D);
-  static const Color _seedDark = Color(0xFF6FD8DD);
+  static const Color _seed = Color(0xFF4F46E5);
+  static const Color _seedDark = Color(0xFFB4B0F5);
 
   static ThemeData light() => _base(
     ColorScheme.fromSeed(
       seedColor: _seed,
       brightness: Brightness.light,
-      surface: const Color(0xFFFFFBF8),
+      surface: const Color(0xFFF5F6FA),
       error: const Color(0xFFBA1A1A),
     ),
   );
@@ -181,6 +181,29 @@ class AppTheme {
 
 /// Semantic colors that are not part of ColorScheme.
 extension AppThemeX on ThemeData {
+  /// Coral accent used for the active dose, selected time filter and the
+  /// adherence ring (matches the product design mockups).
+  Color get accentColor => brightness == Brightness.dark
+      ? const Color(0xFFFF8A8A)
+      : const Color(0xFFF26D6D);
+
+  /// Soft coral background for accented surfaces.
+  Color get accentContainer => brightness == Brightness.dark
+      ? const Color(0xFF4E2626)
+      : const Color(0xFFFCE3E3);
+
+  /// Indigo gradient used by the "Upcoming Dose" hero card.
+  List<Color> get doseGradient => const [
+    Color(0xFF4F46E5),
+    Color(0xFF6366F1),
+  ];
+
+  /// Red/coral gradient for a dose that is due now.
+  List<Color> get doseDueGradient => const [
+    Color(0xFFE5484D),
+    Color(0xFFF2777A),
+  ];
+
   /// Green used for "taken".
   Color get successColor => brightness == Brightness.dark
       ? const Color(0xFF81C784)

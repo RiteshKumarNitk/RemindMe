@@ -45,6 +45,27 @@ class AppLocalizationsHi extends AppLocalizations {
   String get homeTodayMedicines => 'आज की दवाएँ';
 
   @override
+  String get homeWellnessSubtitle => 'यह रहा आज का आपका सेहत प्लान।';
+
+  @override
+  String get homeUpcomingDose => 'आगामी खुराक';
+
+  @override
+  String get homeMarkAsTaken => 'ली — चिह्नित करें';
+
+  @override
+  String get homeScheduleTitle => 'आज का शेड्यूल';
+
+  @override
+  String get homeLogNow => 'अभी दर्ज करें';
+
+  @override
+  String get homeDailyProgress => 'आज की प्रगति';
+
+  @override
+  String get navMeds => 'दवाएँ';
+
+  @override
   String get homeNoMedicines => 'अभी कोई दवा नहीं जोड़ी गई';
 
   @override
@@ -321,6 +342,27 @@ class AppLocalizationsHi extends AppLocalizations {
   String get histAll => 'सब';
 
   @override
+  String get histScheduled => 'निर्धारित';
+
+  @override
+  String get histActual => 'वास्तविक';
+
+  @override
+  String histShowing(String label, int count) {
+    return 'दिखा रहे हैं: $label ($count)';
+  }
+
+  @override
+  String medActiveCount(int active, int total) {
+    return '$total में से $active चालू';
+  }
+
+  @override
+  String medStockLeft(int count) {
+    return '$count बची';
+  }
+
+  @override
   String get histAdherence => 'अनुपालन';
 
   @override
@@ -446,6 +488,37 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get setBatteryDesc => 'बैकग्राउंड में रिमाइंडर काम करते रहें';
+
+  @override
+  String get setBatteryRestricted => 'प्रतिबंधित';
+
+  @override
+  String get setBatteryWarning =>
+      'वैकल्पिक: कुछ फ़ोन में बैटरी सेवर रिमाइंडर में देरी कर सकता है। DoseWise को \"Unrestricted\" सेट करने के लिए दबाएँ।';
+
+  @override
+  String get testNotifFailed =>
+      'टेस्ट सूचना नहीं भेज सके। Android सेटिंग्स खोलें और DoseWise के लिए सूचनाएँ चालू करें।';
+
+  @override
+  String get setTestScheduled => 'शेड्यूल किया रिमाइंडर टेस्ट करें (1 मिनट)';
+
+  @override
+  String get setTestScheduledSent =>
+      'लगभग 1 मिनट बाद के लिए रिमाइंडर सेट है। ऐप बंद करें और फ़ोन लॉक करें — यह बजना और वाइब्रेट होना चाहिए।';
+
+  @override
+  String get setTestScheduledInexact =>
+      'लगभग 1 मिनट के लिए सेट है, पर सटीक अलार्म बंद हैं इसलिए देर हो सकती है। समय पर रिमाइंडर के लिए सटीक अलार्म चालू करें।';
+
+  @override
+  String get setTestScheduledFailed =>
+      'टेस्ट शेड्यूल नहीं कर सके। जाँचें कि सूचनाएँ चालू हैं।';
+
+  @override
+  String setScheduledCount(int count) {
+    return 'इस फ़ोन पर शेड्यूल रिमाइंडर: $count';
+  }
 
   @override
   String get aboutBody =>
@@ -600,6 +673,10 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get syncCodeHint => '6 अक्षर का कोड दर्ज करें';
+
+  @override
+  String get syncPrimaryHint =>
+      'मरीज़ के फ़ोन पर Family Sync खोलें और \"I take medicines here\" दबाकर यह कोड पाएँ।';
 
   @override
   String get syncJoin => 'परिवार से जुड़ें';
@@ -778,6 +855,13 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get profileNotSet => 'सेट नहीं';
+
+  @override
+  String get profileEmail => 'ईमेल';
+
+  @override
+  String get profileNoInfoYet =>
+      'अभी कोई व्यक्तिगत जानकारी नहीं। अपना नाम और उम्र जोड़ने के लिए \"जानकारी बदलें\" दबाएँ।';
 
   @override
   String get navProfile => 'प्रोफ़ाइल';

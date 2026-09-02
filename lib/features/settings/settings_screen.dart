@@ -1,3 +1,4 @@
+import 'package:app_settings/app_settings.dart' as app_settings;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +7,10 @@ import '../../core/theme/app_theme.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
 import 'family_sync_screen.dart';
+
+Future<void> _openBatterySettings() => app_settings.AppSettings.openAppSettings(
+  type: app_settings.AppSettingsType.batteryOptimization,
+);
 
 /// Simple settings: language, sound, voice, snooze/grace, appearance,
 /// permissions and about.
@@ -136,18 +141,74 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: () async {
-                await appState.notifications.showTestNotification(
-                  title: '🔔 ${l10n.setNotificationSound}',
-                  body: l10n.setNotifDesc,
-                );
+                final notifs = appState.notifications;
+                // Make sure permission is granted first, otherwise the OS
+                // silently drops the notification and the user sees nothing.
+                if (!await notifs.areNotificationsEnabled()) {
+                  await notifs.requestPermission();
+                }
+                final granted = await notifs.areNotificationsEnabled();
+                final shown = granted &&
+                    await notifs.showTestNotification(
+                      title: '🔔 ${l10n.setNotificationSound}',
+                      body: l10n.setNotifDesc,
+                    );
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.testNotifSent)),
+                    SnackBar(
+                      content: Text(
+                        shown
+                            ? l10n.testNotifSent
+                            : !granted
+                            ? l10n.permNotifBody
+                            : l10n.testNotifFailed,
+                      ),
+                    ),
                   );
                 }
               },
               icon: const Icon(Icons.volume_up_rounded),
               label: Text(l10n.testNotification),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final notifs = appState.notifications;
+                if (!await notifs.areNotificationsEnabled()) {
+                  await notifs.requestPermission();
+                }
+                final r = await notifs.scheduleSelfTest(
+                  seconds: 60,
+                  title: '🔔 ${l10n.notifTitle}',
+                  body: l10n.setTestScheduledSent,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      duration: const Duration(seconds: 6),
+                      content: Text(
+                        !r.scheduled
+                            ? l10n.setTestScheduledFailed
+                            : r.exact
+                            ? l10n.setTestScheduledSent
+                            : l10n.setTestScheduledInexact,
+                      ),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.timer_outlined),
+              label: Text(l10n.setTestScheduled),
+            ),
+            const SizedBox(height: 8),
+            FutureBuilder<Set<int>>(
+              future: appState.notifications.pendingIds(),
+              builder: (context, snap) => Text(
+                l10n.setScheduledCount(snap.data?.length ?? 0),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
             ),
             const SizedBox(height: 24),
 
@@ -202,6 +263,15 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             _SectionHeader(l10n.setPermissions),
+
+            if (!appState.batteryUnrestricted) ...[
+              _WarningCard(
+                text: l10n.setBatteryWarning,
+                onTap: _openBatterySettings,
+              ),
+              const SizedBox(height: 8),
+            ],
+
             _PermissionTile(
               icon: Icons.notifications_active_rounded,
               title: l10n.setNotifyPermission,
@@ -220,10 +290,24 @@ class SettingsScreen extends StatelessWidget {
               deniedLabel: l10n.permissionDenied,
               onTap: () => appState.requestExactAlarms(),
             ),
+            _PermissionTile(
+              icon: Icons.battery_saver_rounded,
+              title: l10n.setBattery,
+              subtitle: l10n.setBatteryDesc,
+              granted: appState.batteryUnrestricted,
+              grantedLabel: l10n.permissionGranted,
+              deniedLabel: l10n.setBatteryRestricted,
+              onTap: _openBatterySettings,
+            ),
 
             const SizedBox(height: 12),
             // Diagnostic status + Fix All button
-            Card(
+            Builder(
+              builder: (context) {
+                final allOk = appState.notificationsEnabled &&
+                    appState.exactAlarmsEnabled &&
+                    appState.batteryUnrestricted;
+                return Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -232,12 +316,10 @@ class SettingsScreen extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          appState.notificationsEnabled &&
-                                  appState.exactAlarmsEnabled
+                          allOk
                               ? Icons.check_circle_rounded
                               : Icons.warning_rounded,
-                          color: appState.notificationsEnabled &&
-                                  appState.exactAlarmsEnabled
+                          color: allOk
                               ? theme.colorScheme.primary
                               : theme.colorScheme.error,
                           size: 24,
@@ -245,8 +327,7 @@ class SettingsScreen extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            appState.notificationsEnabled &&
-                                    appState.exactAlarmsEnabled
+                            allOk
                                 ? l10n.notifStatusOk
                                 : l10n.notifStatusNeedsFix,
                             style: theme.textTheme.bodyLarge,
@@ -265,6 +346,9 @@ class SettingsScreen extends StatelessWidget {
                           if (!appState.exactAlarmsEnabled) {
                             await appState.requestExactAlarms();
                           }
+                          if (!appState.batteryUnrestricted) {
+                            await _openBatterySettings();
+                          }
                         },
                         icon: const Icon(Icons.build_rounded),
                         label: Text(l10n.notifFixAll),
@@ -273,6 +357,8 @@ class SettingsScreen extends StatelessWidget {
                   ],
                 ),
               ),
+                );
+              },
             ),
             _SectionHeader(l10n.setAbout),
             Card(
@@ -386,6 +472,52 @@ class _ChipSelector<T> extends StatelessWidget {
   }
 }
 
+/// Prominent, tappable warning shown when the OS is battery-restricting the app.
+class _WarningCard extends StatelessWidget {
+  const _WarningCard({required this.text, required this.onTap});
+
+  final String text;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.errorContainer,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Icon(
+                Icons.battery_alert_rounded,
+                color: theme.colorScheme.onErrorContainer,
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  text,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: theme.colorScheme.onErrorContainer,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PermissionTile extends StatelessWidget {
   const _PermissionTile({
     required this.icon,
@@ -416,6 +548,7 @@ class _PermissionTile extends StatelessWidget {
       title: Text(title, style: theme.textTheme.titleMedium),
       subtitle: Text(subtitle, style: theme.textTheme.bodyMedium),
       trailing: Container(
+        constraints: const BoxConstraints(maxWidth: 132),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.15),
@@ -423,6 +556,9 @@ class _PermissionTile extends StatelessWidget {
         ),
         child: Text(
           granted ? grantedLabel : deniedLabel,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: theme.textTheme.labelLarge?.copyWith(
             color: color,
             fontWeight: FontWeight.w700,

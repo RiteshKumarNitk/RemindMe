@@ -45,6 +45,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTodayMedicines => 'Today\'s Medicines';
 
   @override
+  String get homeWellnessSubtitle => 'Here is your wellness plan for today.';
+
+  @override
+  String get homeUpcomingDose => 'Upcoming Dose';
+
+  @override
+  String get homeMarkAsTaken => 'Mark as Taken';
+
+  @override
+  String get homeScheduleTitle => 'Today\'s Schedule';
+
+  @override
+  String get homeLogNow => 'Log Now';
+
+  @override
+  String get homeDailyProgress => 'Daily Progress';
+
+  @override
+  String get navMeds => 'Meds';
+
+  @override
   String get homeNoMedicines => 'No medicines added yet';
 
   @override
@@ -321,6 +342,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get histAll => 'All';
 
   @override
+  String get histScheduled => 'Scheduled';
+
+  @override
+  String get histActual => 'Actual';
+
+  @override
+  String histShowing(String label, int count) {
+    return 'Showing: $label ($count)';
+  }
+
+  @override
+  String medActiveCount(int active, int total) {
+    return '$active of $total active';
+  }
+
+  @override
+  String medStockLeft(int count) {
+    return '$count left';
+  }
+
+  @override
   String get histAdherence => 'Adherence';
 
   @override
@@ -446,6 +488,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setBatteryDesc => 'Keep reminders working in the background';
+
+  @override
+  String get setBatteryRestricted => 'Restricted';
+
+  @override
+  String get setBatteryWarning =>
+      'Optional: on some phones the battery saver can delay reminders. Tap to set DoseWise to \"Unrestricted\".';
+
+  @override
+  String get testNotifFailed =>
+      'Couldn\'t send a test notification. Open Android settings and allow notifications for DoseWise.';
+
+  @override
+  String get setTestScheduled => 'Test a scheduled reminder (1 min)';
+
+  @override
+  String get setTestScheduledSent =>
+      'A reminder is set for ~1 minute from now. Close the app and lock your phone — it should ring and vibrate.';
+
+  @override
+  String get setTestScheduledInexact =>
+      'Set for ~1 minute, but exact alarms are off, so it may be late. Turn on exact alarms for on-time reminders.';
+
+  @override
+  String get setTestScheduledFailed =>
+      'Couldn\'t schedule the test. Check that notifications are allowed.';
+
+  @override
+  String setScheduledCount(int count) {
+    return 'Reminders scheduled on this phone: $count';
+  }
 
   @override
   String get aboutBody =>
@@ -601,6 +674,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncCodeHint => 'Enter the 6-letter code';
+
+  @override
+  String get syncPrimaryHint =>
+      'On the patient\'s phone, open Family Sync and tap \"I take medicines here\" to get this code.';
 
   @override
   String get syncJoin => 'Join family';
@@ -778,6 +855,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileNotSet => 'Not set';
+
+  @override
+  String get profileEmail => 'Email';
+
+  @override
+  String get profileNoInfoYet =>
+      'No personal information yet. Tap \"Edit Information\" to add your name and age.';
 
   @override
   String get navProfile => 'Profile';

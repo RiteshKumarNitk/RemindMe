@@ -52,16 +52,26 @@ class _FamilySyncScreenState extends State<FamilySyncScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.syncCodeLabel),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.characters,
-          style: Theme.of(dialogContext).textTheme.headlineSmall?.copyWith(
-            letterSpacing: 4,
-            fontWeight: FontWeight.w800,
-          ),
-          textAlign: TextAlign.center,
-          decoration: InputDecoration(hintText: l10n.syncCodeHint),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              l10n.syncPrimaryHint,
+              style: Theme.of(dialogContext).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              style: Theme.of(dialogContext).textTheme.headlineSmall?.copyWith(
+                letterSpacing: 4,
+                fontWeight: FontWeight.w800,
+              ),
+              textAlign: TextAlign.center,
+              decoration: InputDecoration(hintText: l10n.syncCodeHint),
+            ),
+          ],
         ),
         actions: [
           TextButton(

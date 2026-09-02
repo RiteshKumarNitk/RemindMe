@@ -106,6 +106,8 @@ Future<void> main() async {
   }
   // Also ensure exact alarms are available (Android 12+).
   await notifications.requestExactAlarmPermission();
+  // Android 14+: needed for the lock-screen full-screen dose alarm.
+  await notifications.requestFullScreenIntentPermission();
   // Re-check after the request so the UI can show the correct banner.
   await appState.refreshPermissionStatus();
 

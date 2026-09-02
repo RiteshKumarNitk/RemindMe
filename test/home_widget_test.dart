@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:medireminder/core/localization/generated/app_localizations.dart';
 import 'package:medireminder/data/models/medicine_schedule.dart';
 import 'package:medireminder/features/home/home_screen.dart';
+import 'package:medireminder/services/auth_service.dart';
 import 'package:provider/provider.dart';
 
 import 'test_helpers.dart';
@@ -12,6 +13,7 @@ Widget _app(TestEnv env) {
     providers: [
       ChangeNotifierProvider.value(value: env.settings),
       ChangeNotifierProvider.value(value: env.appState),
+      ChangeNotifierProvider<AuthService>(create: (_) => AuthService()),
     ],
     child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -69,6 +71,6 @@ void main() {
     await tester.pump();
 
     expect(find.text('BP Tablet'), findsWidgets);
-    expect(find.text('TAKE MEDICINE'), findsOneWidget);
+    expect(find.text('Mark as Taken'), findsOneWidget);
   });
 }

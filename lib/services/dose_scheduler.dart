@@ -77,22 +77,27 @@ class DoseScheduler {
 
     final pending = await scheduler.pendingIds();
     for (final entry in desired.entries) {
-      if (pending.contains(entry.key)) continue;
       final med = entry.value.medicine;
-      await scheduler.scheduleDoseReminder(
-        doseId: entry.key,
-        title: text.title,
-        body: text.body(med.name, med.doseLabel),
-        when: entry.value.when,
-        exact: exact,
-        takenLabel: text.takenLabel,
-        snoozeLabel: text.snoozeLabel,
-        skipLabel: text.skipLabel,
-      );
-
-      // Schedule advance alarm notifications that fire 1..advanceMinutes
-      // minutes before the dose time, creating a looping alarm effect.
       final doseWhen = entry.value.when;
+
+      // Main reminder — only (re)schedule if it isn't already queued.
+      if (!pending.contains(entry.key)) {
+        await scheduler.scheduleDoseReminder(
+          doseId: entry.key,
+          title: text.title,
+          body: text.body(med.name, med.doseLabel),
+          when: doseWhen,
+          exact: exact,
+          takenLabel: text.takenLabel,
+          snoozeLabel: text.snoozeLabel,
+          skipLabel: text.skipLabel,
+        );
+      }
+
+      // Advance alarms fire 1..advanceMinutes minutes before the dose time,
+      // creating a looping alarm effect. Evaluated independently of the main
+      // reminder so raising the "advance alarm" setting takes effect even for
+      // doses whose main notification is already scheduled.
       for (int offset = 1; offset <= advanceMinutes; offset++) {
         final advanceTime = doseWhen.subtract(Duration(minutes: offset));
         if (!advanceTime.isAfter(now)) continue;

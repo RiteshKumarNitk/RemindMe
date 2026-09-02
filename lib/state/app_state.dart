@@ -51,6 +51,7 @@ class AppState extends ChangeNotifier {
   AdherenceStats _todayStats = const AdherenceStats();
   bool _notificationsEnabled = true;
   bool _exactAlarmsEnabled = true;
+  bool _batteryUnrestricted = true;
   int _revision = 0;
 
   // Undo support: stores the last dose action so it can be reversed.
@@ -67,6 +68,10 @@ class AppState extends ChangeNotifier {
   bool get notificationsEnabled => _notificationsEnabled;
   bool get exactAlarmsEnabled => _exactAlarmsEnabled;
 
+  /// False when the OS is battery-restricting the app — Doze can then delay or
+  /// drop scheduled dose alarms. Surfaced as a warning in Settings.
+  bool get batteryUnrestricted => _batteryUnrestricted;
+
   /// Incremented on every data refresh; lets screens detect that the data
   /// changed (e.g. after a notification action).
   int get revision => _revision;
@@ -80,6 +85,7 @@ class AppState extends ChangeNotifier {
   Future<void> refreshPermissionStatus() async {
     _notificationsEnabled = await notifications.areNotificationsEnabled();
     _exactAlarmsEnabled = await notifications.canScheduleExact();
+    _batteryUnrestricted = await notifications.isIgnoringBatteryOptimizations();
     notifyListeners();
   }
 

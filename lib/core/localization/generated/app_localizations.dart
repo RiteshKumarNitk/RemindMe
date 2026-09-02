@@ -170,6 +170,48 @@ abstract class AppLocalizations {
   /// **'Today\'s Medicines'**
   String get homeTodayMedicines;
 
+  /// No description provided for @homeWellnessSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Here is your wellness plan for today.'**
+  String get homeWellnessSubtitle;
+
+  /// No description provided for @homeUpcomingDose.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming Dose'**
+  String get homeUpcomingDose;
+
+  /// No description provided for @homeMarkAsTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as Taken'**
+  String get homeMarkAsTaken;
+
+  /// No description provided for @homeScheduleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s Schedule'**
+  String get homeScheduleTitle;
+
+  /// No description provided for @homeLogNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Log Now'**
+  String get homeLogNow;
+
+  /// No description provided for @homeDailyProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Progress'**
+  String get homeDailyProgress;
+
+  /// No description provided for @navMeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Meds'**
+  String get navMeds;
+
   /// No description provided for @homeNoMedicines.
   ///
   /// In en, this message translates to:
@@ -686,6 +728,36 @@ abstract class AppLocalizations {
   /// **'All'**
   String get histAll;
 
+  /// No description provided for @histScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled'**
+  String get histScheduled;
+
+  /// No description provided for @histActual.
+  ///
+  /// In en, this message translates to:
+  /// **'Actual'**
+  String get histActual;
+
+  /// No description provided for @histShowing.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing: {label} ({count})'**
+  String histShowing(String label, int count);
+
+  /// No description provided for @medActiveCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{active} of {total} active'**
+  String medActiveCount(int active, int total);
+
+  /// No description provided for @medStockLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} left'**
+  String medStockLeft(int count);
+
   /// No description provided for @histAdherence.
   ///
   /// In en, this message translates to:
@@ -931,6 +1003,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep reminders working in the background'**
   String get setBatteryDesc;
+
+  /// No description provided for @setBatteryRestricted.
+  ///
+  /// In en, this message translates to:
+  /// **'Restricted'**
+  String get setBatteryRestricted;
+
+  /// No description provided for @setBatteryWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional: on some phones the battery saver can delay reminders. Tap to set DoseWise to \"Unrestricted\".'**
+  String get setBatteryWarning;
+
+  /// No description provided for @testNotifFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send a test notification. Open Android settings and allow notifications for DoseWise.'**
+  String get testNotifFailed;
+
+  /// No description provided for @setTestScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Test a scheduled reminder (1 min)'**
+  String get setTestScheduled;
+
+  /// No description provided for @setTestScheduledSent.
+  ///
+  /// In en, this message translates to:
+  /// **'A reminder is set for ~1 minute from now. Close the app and lock your phone — it should ring and vibrate.'**
+  String get setTestScheduledSent;
+
+  /// No description provided for @setTestScheduledInexact.
+  ///
+  /// In en, this message translates to:
+  /// **'Set for ~1 minute, but exact alarms are off, so it may be late. Turn on exact alarms for on-time reminders.'**
+  String get setTestScheduledInexact;
+
+  /// No description provided for @setTestScheduledFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t schedule the test. Check that notifications are allowed.'**
+  String get setTestScheduledFailed;
+
+  /// No description provided for @setScheduledCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders scheduled on this phone: {count}'**
+  String setScheduledCount(int count);
 
   /// No description provided for @aboutBody.
   ///
@@ -1201,6 +1321,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter the 6-letter code'**
   String get syncCodeHint;
+
+  /// No description provided for @syncPrimaryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'On the patient\'s phone, open Family Sync and tap \"I take medicines here\" to get this code.'**
+  String get syncPrimaryHint;
 
   /// No description provided for @syncJoin.
   ///
@@ -1531,6 +1657,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not set'**
   String get profileNotSet;
+
+  /// No description provided for @profileEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get profileEmail;
+
+  /// No description provided for @profileNoInfoYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No personal information yet. Tap \"Edit Information\" to add your name and age.'**
+  String get profileNoInfoYet;
 
   /// No description provided for @navProfile.
   ///

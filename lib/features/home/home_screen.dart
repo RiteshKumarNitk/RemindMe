@@ -9,22 +9,46 @@ import '../../core/utilities/date_utils.dart';
 import '../../data/models/adherence_stats.dart';
 import '../../data/models/dose_entry.dart';
 import '../../data/models/dose_status.dart';
+import '../../data/models/food_instruction.dart';
+import '../../services/auth_service.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
+import '../settings/settings_screen.dart';
 import '../widgets/big_button.dart';
 import '../widgets/permission_banner.dart';
-import '../widgets/status_view.dart';
 
-/// The dashboard. Answers "which medicine do I need to take now?" at a glance.
-class HomeScreen extends StatelessWidget {
+/// The dashboard. Answers "which medicine do I need to take now?" at a glance,
+/// styled to the product design mockups (indigo hero card, coral accents,
+/// time-of-day schedule filter and a daily-progress summary).
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.onAddMedicine});
 
   final VoidCallback onAddMedicine;
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+enum _TimeSlot { morning, afternoon, evening }
+
+_TimeSlot _slotFor(DateTime t) {
+  if (t.hour < 12) return _TimeSlot.morning;
+  if (t.hour < 17) return _TimeSlot.afternoon;
+  return _TimeSlot.evening;
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // Time-of-day filter for "Today's Schedule". Defaults to the current period.
+  _TimeSlot _slot = _slotFor(DateTime.now());
+
+  // Status filter behind the "All" dropdown.
+  DoseStatus? _statusFilter;
+
+  @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final settings = context.watch<SettingsController>();
+    final auth = context.watch<AuthService>();
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final now = DateTime.now();
@@ -35,48 +59,75 @@ class HomeScreen extends StatelessWidget {
       < 17 => l10n.greetingAfternoon,
       _ => l10n.greetingEvening,
     };
-    final name = settings.userName.trim();
+    // Prefer the name the user typed in onboarding; fall back to their
+    // Google account name; then the first part of their email.
+    final name = settings.userName.trim().isNotEmpty
+        ? settings.userName.trim()
+        : auth.displayName.trim().isNotEmpty
+        ? auth.displayName.trim()
+        : (auth.email.contains('@') ? auth.email.split('@').first : '');
+
+    final stats = appState.todayStats;
+    final allDone = stats.taken > 0 && stats.missed == 0 && stats.pending == 0;
+
+    final scheduled = _filteredDoses(appState.todayDoses, settings, now);
+    final hasPendingInView = scheduled.any(
+      (e) => e.effectiveStatus(settings.graceDuration, now) == DoseStatus.pending,
+    );
 
     return SafeArea(
+      bottom: false,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          // Clear the floating pill nav bar + FAB at the bottom.
+          MediaQuery.paddingOf(context).bottom + 108,
+        ),
         children: [
-          Text(
-            name.isEmpty ? '$greeting ❤️' : '$greeting, $name ❤️',
-            style: theme.textTheme.headlineMedium,
-          ),
-          if (appState.todayStats.taken > 0 &&
-              appState.todayStats.missed == 0 &&
-              appState.todayStats.pending == 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.successColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    const Text('🔥', style: TextStyle(fontSize: 22)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        l10n.homeAllDoneToday,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.successColor,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          _Header(
+            name: name,
+            photoUrl: auth.photoUrl,
+            alert: !appState.notificationsEnabled || !appState.exactAlarmsEnabled,
+            onProfile: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
             ),
-          const SizedBox(height: 16),
+            onBell: () {
+              if (!appState.notificationsEnabled ||
+                  !appState.exactAlarmsEnabled) {
+                appState.requestAllPermissions();
+                appState.requestExactAlarms();
+              } else {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const SettingsScreen(),
+                  ),
+                );
+              }
+            },
+          ),
+          const SizedBox(height: 20),
+          Text(
+            name.isEmpty ? greeting : '$greeting, $name',
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.homeWellnessSubtitle,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+
+          if (allDone) ...[
+            const SizedBox(height: 16),
+            _StreakBanner(text: l10n.homeAllDoneToday),
+          ],
+
+          const SizedBox(height: 12),
           PermissionBanner(
             show: !appState.notificationsEnabled,
             title: l10n.setNotifyPermission,
@@ -84,7 +135,7 @@ class HomeScreen extends StatelessWidget {
             buttonLabel: l10n.permOk,
             onPressed: () => appState.requestAllPermissions(),
           ),
-          const SizedBox(height: 10),
+          if (!appState.notificationsEnabled) const SizedBox(height: 10),
           PermissionBanner(
             show: !appState.exactAlarmsEnabled,
             title: l10n.setExactAlarm,
@@ -93,68 +144,121 @@ class HomeScreen extends StatelessWidget {
             icon: Icons.alarm_add_rounded,
             onPressed: () => appState.requestExactAlarms(),
           ),
-          const SizedBox(height: 12),
+
           if (appState.loading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 80),
               child: Center(child: CircularProgressIndicator()),
             )
           else ...[
-            if (appState.nextDose != null)
-              _NextMedicineCard(entry: appState.nextDose!)
-            else
-              _AllDoneCard(l10n: l10n),
-            const SizedBox(height: 20),
-            _StatsRow(stats: appState.todayStats, l10n: l10n),
-            const SizedBox(height: 20),
-            _DailyProgressBar(stats: appState.todayStats, l10n: l10n),
             const SizedBox(height: 24),
-            Text(l10n.homeTodayMedicines, style: theme.textTheme.titleLarge),
-            const SizedBox(height: 6),
+            _SectionLabel(l10n.homeUpcomingDose),
+            const SizedBox(height: 10),
+            if (appState.nextDose != null)
+              _UpcomingDoseCard(entry: appState.nextDose!)
+            else
+              _AllDoneCard(text: l10n.homeNoMoreToday),
+
+            const SizedBox(height: 24),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: _SectionLabel(l10n.homeScheduleTitle)),
+                _StatusDropdown(
+                  value: _statusFilter,
+                  onChanged: (v) => setState(() => _statusFilter = v),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _SlotChips(
+              selected: _slot,
+              onSelected: (s) => setState(() => _slot = s),
+            ),
+            const SizedBox(height: 14),
+
             if (appState.todayDoses.isEmpty)
               _EmptyToday(
                 l10n: l10n,
                 hasMedicines: appState.medicines.isNotEmpty,
-                onAddMedicine: onAddMedicine,
+                onAddMedicine: widget.onAddMedicine,
               )
+            else if (scheduled.isEmpty)
+              _EmptySlot(text: l10n.homeEmptySchedule)
             else ...[
-              for (final entry in appState.todayDoses)
-                _TodayDoseTile(
+              for (final entry in scheduled)
+                _ScheduleTile(
                   entry: entry,
                   locale: locale,
                   grace: settings.graceDuration,
+                  isNext: appState.nextDose?.dose.id == entry.dose.id,
+                  onLog: () => _markTakenWithUndo(context, appState, entry, l10n),
                 ),
-              if (appState.todayDoses.any(
-                (e) =>
-                    e.effectiveStatus(settings.graceDuration, now) ==
-                    DoseStatus.pending,
-              )) ...[
-                const SizedBox(height: 8),
+              if (hasPendingInView) ...[
+                const SizedBox(height: 4),
                 BigTextButton(
                   label: l10n.homeBatchMarkAll,
-                  onPressed: () => _batchMarkAll(context, appState, l10n),
+                  onPressed: () =>
+                      _batchMarkAll(context, appState, scheduled, l10n),
                 ),
               ],
             ],
+
+            const SizedBox(height: 24),
+            _SectionLabel(l10n.homeDailyProgress),
+            const SizedBox(height: 12),
+            _ProgressSummary(stats: stats, l10n: l10n),
           ],
         ],
       ),
     );
   }
 
-  void _batchMarkAll(
+  List<DoseEntry> _filteredDoses(
+    List<DoseEntry> doses,
+    SettingsController settings,
+    DateTime now,
+  ) {
+    return doses.where((e) {
+      if (_slotFor(e.dose.scheduledAt) != _slot) return false;
+      if (_statusFilter != null) {
+        return e.effectiveStatus(settings.graceDuration, now) == _statusFilter;
+      }
+      return true;
+    }).toList()..sort((a, b) => a.dose.scheduledAt.compareTo(b.dose.scheduledAt));
+  }
+
+  Future<void> _markTakenWithUndo(
     BuildContext context,
     AppState appState,
+    DoseEntry entry,
     AppLocalizations l10n,
   ) async {
-    final pending = appState.todayDoses
+    await appState.markTaken(entry);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.undoTaken),
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: l10n.undo,
+          onPressed: () => appState.undoLastAction(),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _batchMarkAll(
+    BuildContext context,
+    AppState appState,
+    List<DoseEntry> inView,
+    AppLocalizations l10n,
+  ) async {
+    final grace = appState.settings.graceDuration;
+    final pending = inView
         .where(
-          (e) =>
-              e.effectiveStatus(
-                appState.settings.graceDuration,
-                DateTime.now(),
-              ) ==
-              DoseStatus.pending,
+          (e) => e.effectiveStatus(grace, DateTime.now()) == DoseStatus.pending,
         )
         .toList();
     for (final entry in pending) {
@@ -168,16 +272,192 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _NextMedicineCard extends StatefulWidget {
-  const _NextMedicineCard({required this.entry});
+// ---------------------------------------------------------------------------
+// Header
+// ---------------------------------------------------------------------------
+
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.name,
+    required this.photoUrl,
+    required this.alert,
+    required this.onBell,
+    required this.onProfile,
+  });
+
+  final String name;
+  final String photoUrl;
+  final bool alert;
+  final VoidCallback onBell;
+  final VoidCallback onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final avatar = CircleAvatar(
+      radius: 22,
+      backgroundColor: theme.colorScheme.primaryContainer,
+      foregroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+      child: name.isNotEmpty
+          ? Text(
+              name.characters.first.toUpperCase(),
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w700,
+              ),
+            )
+          : Icon(
+              Icons.person_rounded,
+              color: theme.colorScheme.onPrimaryContainer,
+            ),
+    );
+    return Row(
+      children: [
+        InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onProfile,
+          child: avatar,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            onTap: onProfile,
+            behavior: HitTestBehavior.opaque,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'DoseWise',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  name.isEmpty ? 'DoseWise' : name,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Material(
+              color: theme.colorScheme.surfaceContainerHighest,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: onBell,
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Icon(
+                    Icons.notifications_none_rounded,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ),
+            if (alert)
+              Positioned(
+                right: 2,
+                top: 2,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.error,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: theme.colorScheme.surface, width: 2),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+class _StreakBanner extends StatelessWidget {
+  const _StreakBanner({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.successColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Text('🔥', style: TextStyle(fontSize: 22)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: theme.successColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Upcoming dose hero card
+// ---------------------------------------------------------------------------
+
+String _foodLabel(AppLocalizations l10n, FoodInstruction f) => switch (f) {
+  FoodInstruction.before => l10n.foodBefore,
+  FoodInstruction.after => l10n.foodAfter,
+  FoodInstruction.withFood => l10n.foodWith,
+  FoodInstruction.none => '',
+};
+
+String _doseSummary(AppLocalizations l10n, DoseEntry entry) {
+  final parts = <String>[
+    if (entry.medicine.doseLabel.isNotEmpty) entry.medicine.doseLabel,
+    if (_foodLabel(l10n, entry.medicine.foodInstruction).isNotEmpty)
+      _foodLabel(l10n, entry.medicine.foodInstruction),
+  ];
+  return parts.join(' • ');
+}
+
+class _UpcomingDoseCard extends StatefulWidget {
+  const _UpcomingDoseCard({required this.entry});
 
   final DoseEntry entry;
 
   @override
-  State<_NextMedicineCard> createState() => _NextMedicineCardState();
+  State<_UpcomingDoseCard> createState() => _UpcomingDoseCardState();
 }
 
-class _NextMedicineCardState extends State<_NextMedicineCard>
+class _UpcomingDoseCardState extends State<_UpcomingDoseCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   Timer? _countdownTimer;
@@ -191,21 +471,16 @@ class _NextMedicineCardState extends State<_NextMedicineCard>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
-    // Real-time countdown: update every second
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _now = DateTime.now());
     });
-    // Check if we should auto-speak on first build
     _checkAutoSpeak();
   }
 
   @override
-  void didUpdateWidget(_NextMedicineCard oldWidget) {
+  void didUpdateWidget(_UpcomingDoseCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Reset spoken flag when dose changes (new card)
-    if (oldWidget.entry.dose.id != widget.entry.dose.id) {
-      _hasSpoken = false;
-    }
+    if (oldWidget.entry.dose.id != widget.entry.dose.id) _hasSpoken = false;
     _checkAutoSpeak();
   }
 
@@ -216,10 +491,8 @@ class _NextMedicineCardState extends State<_NextMedicineCard>
     super.dispose();
   }
 
-  /// Checks if the dose is due and speaks if needed (once per dose).
   void _checkAutoSpeak() {
-    final entry = widget.entry;
-    final scheduled = entry.dose.scheduledAt;
+    final scheduled = widget.entry.dose.scheduledAt;
     final isDueNow = !scheduled.isAfter(_now.add(const Duration(minutes: 10)));
     if (isDueNow && !_hasSpoken) {
       final settings = context.read<SettingsController>();
@@ -227,8 +500,7 @@ class _NextMedicineCardState extends State<_NextMedicineCard>
         _hasSpoken = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            final l10n = AppLocalizations.of(context);
-            _speak(context, entry, l10n, settings);
+            _speak(context, widget.entry, AppLocalizations.of(context), settings);
           }
         });
       }
@@ -238,157 +510,156 @@ class _NextMedicineCardState extends State<_NextMedicineCard>
   @override
   Widget build(BuildContext context) {
     final entry = widget.entry;
-    final appState = context.read<AppState>();    final settings = context.read<SettingsController>();
+    final appState = context.read<AppState>();
+    final settings = context.read<SettingsController>();
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final locale = settings.settings.locale;
 
     final scheduled = entry.dose.scheduledAt;
     final isDueNow = !scheduled.isAfter(_now.add(const Duration(minutes: 10)));
-    final countdown = _countdownText(scheduled, _now, l10n);
+    final countdown = _countdown(scheduled, _now, l10n);
+    final summary = _doseSummary(l10n, entry);
 
-    return Card(
-      color: isDueNow
-          ? theme.colorScheme.errorContainer
-          : theme.colorScheme.primaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  l10n.homeNextMedicine.toUpperCase(),
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: isDueNow
-                        ? theme.colorScheme.onErrorContainer
-                        : theme.colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1,
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDueNow ? theme.doseDueGradient : theme.doseGradient,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: (isDueNow ? theme.doseDueGradient : theme.doseGradient)
+                .first
+                .withValues(alpha: 0.32),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ScaleTransition(
+                scale: isDueNow
+                    ? CurvedAnimation(
+                        parent: _pulseController,
+                        curve: Curves.easeInOut,
+                      )
+                    : const AlwaysStoppedAnimation(1.0),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
                   ),
-                ),
-                const Spacer(),
-                if (countdown != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDueNow
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      countdown,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                ScaleTransition(
-                  scale: isDueNow
-                      ? CurvedAnimation(
-                          parent: _pulseController,
-                          curve: Curves.easeInOut,
-                        )
-                      : const AlwaysStoppedAnimation(1.0),
                   child: Icon(
                     isDueNow
                         ? Icons.notifications_active_rounded
                         : Icons.medication_rounded,
-                    size: 46,
-                    color: isDueNow
-                        ? theme.colorScheme.onErrorContainer
-                        : theme.colorScheme.onPrimaryContainer,
+                    color: Colors.white,
+                    size: 26,
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    entry.medicine.name,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      color: isDueNow
-                          ? theme.colorScheme.onErrorContainer
-                          : theme.colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: l10n.speakReminder,
-                  iconSize: 34,
-                  onPressed: () => _speak(context, entry, l10n, settings),
-                  icon: Icon(
-                    Icons.volume_up_rounded,
-                    color: isDueNow
-                        ? theme.colorScheme.onErrorContainer
-                        : theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              ],
-            ),
-            if (entry.medicine.doseLabel.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                entry.medicine.doseLabel,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: isDueNow
-                      ? theme.colorScheme.onErrorContainer
-                      : theme.colorScheme.onPrimaryContainer,
                 ),
               ),
-            ],
-            const SizedBox(height: 4),
-            Text(
-              AppDateUtils.timeLabel(entry.dose.scheduledAt, locale),
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: isDueNow
-                    ? theme.colorScheme.onErrorContainer
-                    : theme.colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 16),
-            BigButton(
-              label: l10n.homeTakeMedicine,
-              icon: Icons.check_rounded,
-              onPressed: () async {
-                await appState.markTaken(entry);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(l10n.undoTaken),
-                      duration: const Duration(seconds: 5),
-                      action: SnackBarAction(
-                        label: l10n.undo,
-                        onPressed: () => appState.undoLastAction(),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      entry.medicine.name,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                  );
-                }
-              },
-            ),
-            const SizedBox(height: 4),
-            BigTextButton(
-              label: l10n.homeSkip,
+                    if (summary.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          summary,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: l10n.speakReminder,
+                onPressed: () => _speak(context, entry, l10n, settings),
+                icon: const Icon(Icons.volume_up_rounded, color: Colors.white),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              _GlassChip(
+                icon: Icons.schedule_rounded,
+                label: AppDateUtils.timeLabel(scheduled, locale),
+              ),
+              const SizedBox(width: 8),
+              _GlassChip(
+                icon: countdown.overdue
+                    ? Icons.error_outline_rounded
+                    : Icons.timelapse_rounded,
+                label: countdown.text,
+                mono: countdown.mono,
+                strong: countdown.overdue,
+              ),
+              const Spacer(),
+              _MarkTakenButton(
+                label: l10n.homeMarkAsTaken,
+                foreground: (isDueNow
+                        ? theme.doseDueGradient
+                        : theme.doseGradient)
+                    .first,
+                onPressed: () async {
+                  await appState.markTaken(entry);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(l10n.undoTaken),
+                        duration: const Duration(seconds: 5),
+                        action: SnackBarAction(
+                          label: l10n.undo,
+                          onPressed: () => appState.undoLastAction(),
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
               onPressed: () => _confirmSkip(context, appState, entry, l10n),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white.withValues(alpha: 0.9),
+                padding: const EdgeInsets.symmetric(vertical: 6),
+              ),
+              child: Text(l10n.homeSkip),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  void _confirmSkip(
+  Future<void> _confirmSkip(
     BuildContext context,
     AppState appState,
     DoseEntry entry,
@@ -429,20 +700,32 @@ class _NextMedicineCardState extends State<_NextMedicineCard>
     }
   }
 
-  String? _countdownText(
+  /// Live countdown for the dose. Within 24h it ticks every second as
+  /// `H:MM:SS` (or `-H:MM:SS` once overdue); further out it falls back to a
+  /// coarse "in N days" label.
+  ({String text, bool mono, bool overdue}) _countdown(
     DateTime scheduled,
     DateTime now,
     AppLocalizations l10n,
   ) {
     final diff = scheduled.difference(now);
-    if (diff.isNegative) {
-      final over = now.difference(scheduled);
-      if (over.inMinutes < 60) return l10n.homeOverdueMin(over.inMinutes);
-      return l10n.homeOverdueHours(over.inHours);
+    if (diff.inHours >= 24) {
+      return (text: l10n.homeInDays(diff.inDays), mono: false, overdue: false);
     }
-    if (diff.inMinutes < 60) return l10n.homeInMin(diff.inMinutes);
-    if (diff.inHours < 24) return l10n.homeInHours(diff.inHours);
-    return l10n.homeInDays(diff.inDays);
+    if (diff.inDays <= -1) {
+      return (
+        text: l10n.homeOverdueHours(now.difference(scheduled).inHours),
+        mono: false,
+        overdue: true,
+      );
+    }
+    final overdue = diff.isNegative;
+    final d = diff.abs();
+    String two(int n) => n.toString().padLeft(2, '0');
+    final core = d.inHours > 0
+        ? '${d.inHours}:${two(d.inMinutes % 60)}:${two(d.inSeconds % 60)}'
+        : '${d.inMinutes % 60}:${two(d.inSeconds % 60)}';
+    return (text: overdue ? '-$core' : core, mono: true, overdue: overdue);
   }
 
   void _speak(
@@ -460,32 +743,163 @@ class _NextMedicineCardState extends State<_NextMedicineCard>
   }
 }
 
-class _AllDoneCard extends StatelessWidget {
-  const _AllDoneCard({required this.l10n});
+class _GlassChip extends StatelessWidget {
+  const _GlassChip({
+    this.icon,
+    required this.label,
+    this.mono = false,
+    this.strong = false,
+  });
 
-  final AppLocalizations l10n;
+  final IconData? icon;
+  final String label;
+
+  /// Tabular figures so a ticking countdown doesn't jitter.
+  final bool mono;
+
+  /// Higher-contrast fill (used when the dose is overdue).
+  final bool strong;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(icon == null ? 12 : 10, 6, 12, 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: strong ? 0.30 : 0.18),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 16, color: Colors.white),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontFeatures: mono
+                  ? const [FontFeature.tabularFigures()]
+                  : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MarkTakenButton extends StatelessWidget {
+  const _MarkTakenButton({
+    required this.label,
+    required this.foreground,
+    required this.onPressed,
+  });
+
+  final String label;
+  final Color foreground;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: foreground,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      child: Text(label),
+    );
+  }
+}
+
+class _AllDoneCard extends StatelessWidget {
+  const _AllDoneCard({required this.text});
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      color: theme.colorScheme.surfaceContainerHigh,
-      child: Padding(
-        padding: const EdgeInsets.all(24),
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.celebration_rounded, size: 40, color: theme.successColor),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(text, style: theme.textTheme.titleMedium),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Schedule filter controls
+// ---------------------------------------------------------------------------
+
+class _StatusDropdown extends StatelessWidget {
+  const _StatusDropdown({required this.value, required this.onChanged});
+
+  final DoseStatus? value;
+  final ValueChanged<DoseStatus?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final label = switch (value) {
+      DoseStatus.taken => l10n.statusTaken,
+      DoseStatus.pending => l10n.statusPending,
+      DoseStatus.missed => l10n.statusMissed,
+      DoseStatus.skipped => l10n.statusSkipped,
+      null => l10n.histAll,
+    };
+    return PopupMenuButton<DoseStatus?>(
+      initialValue: value,
+      onSelected: onChanged,
+      position: PopupMenuPosition.under,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      itemBuilder: (context) => [
+        PopupMenuItem(value: null, child: Text(l10n.histAll)),
+        PopupMenuItem(
+          value: DoseStatus.pending,
+          child: Text(l10n.statusPending),
+        ),
+        PopupMenuItem(value: DoseStatus.taken, child: Text(l10n.statusTaken)),
+        PopupMenuItem(value: DoseStatus.missed, child: Text(l10n.statusMissed)),
+      ],
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+        ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.celebration_rounded,
-              size: 44,
-              color: theme.successColor,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                l10n.homeNoMoreToday,
-                style: theme.textTheme.titleLarge,
+            Text(
+              label,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
             ),
+            const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
           ],
         ),
       ),
@@ -493,78 +907,68 @@ class _AllDoneCard extends StatelessWidget {
   }
 }
 
-class _StatsRow extends StatelessWidget {
-  const _StatsRow({required this.stats, required this.l10n});
+class _SlotChips extends StatelessWidget {
+  const _SlotChips({required this.selected, required this.onSelected});
 
-  final AdherenceStats stats;
-  final AppLocalizations l10n;
+  final _TimeSlot selected;
+  final ValueChanged<_TimeSlot> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final labels = {
+      _TimeSlot.morning: l10n.medTimeSlotMorning,
+      _TimeSlot.afternoon: l10n.medTimeSlotAfternoon,
+      _TimeSlot.evening: l10n.medTimeSlotEvening,
+    };
     return Row(
       children: [
-        _StatCard(
-          icon: Icons.check_circle_rounded,
-          color: theme.successColor,
-          value: stats.taken,
-          label: l10n.homeTaken,
-        ),
-        const SizedBox(width: 10),
-        _StatCard(
-          icon: Icons.alarm_rounded,
-          color: theme.pendingColor,
-          value: stats.pending,
-          label: l10n.homeRemaining,
-        ),
-        const SizedBox(width: 10),
-        _StatCard(
-          icon: Icons.cancel_rounded,
-          color: theme.missedColor,
-          value: stats.missed,
-          label: l10n.homeMissed,
-        ),
+        for (final slot in _TimeSlot.values) ...[
+          _SlotChip(
+            label: labels[slot]!,
+            selected: slot == selected,
+            onTap: () => onSelected(slot),
+          ),
+          if (slot != _TimeSlot.values.last) const SizedBox(width: 10),
+        ],
       ],
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.color,
-    required this.value,
+class _SlotChip extends StatelessWidget {
+  const _SlotChip({
     required this.label,
+    required this.selected,
+    required this.onTap,
   });
 
-  final IconData icon;
-  final Color color;
-  final int value;
   final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Column(
-            children: [
-              Icon(icon, size: 30, color: color),
-              const SizedBox(height: 6),
-              Text(
-                '$value',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+      child: Material(
+        color: selected
+            ? theme.accentColor
+            : theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(22),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : theme.colorScheme.onSurface,
               ),
-              Text(
-                label,
-                style: theme.textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -572,67 +976,196 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-/// A linear progress bar showing daily dose completion at a glance.
-class _DailyProgressBar extends StatelessWidget {
-  const _DailyProgressBar({required this.stats, required this.l10n});
+// ---------------------------------------------------------------------------
+// Schedule list tile
+// ---------------------------------------------------------------------------
 
-  final AdherenceStats stats;
-  final AppLocalizations l10n;
+class _ScheduleTile extends StatelessWidget {
+  const _ScheduleTile({
+    required this.entry,
+    required this.locale,
+    required this.grace,
+    required this.isNext,
+    required this.onLog,
+  });
+
+  final DoseEntry entry;
+  final String locale;
+  final Duration grace;
+  final bool isNext;
+  final VoidCallback onLog;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final total = stats.total;
-    if (total == 0) return const SizedBox.shrink();
-    final done = stats.taken + stats.skipped;
-    final progress = done / total;
-    final label = '$done / $total ${l10n.homeDosesDone}';
+    final status = entry.effectiveStatus(grace, DateTime.now());
+    final done = status == DoseStatus.taken || status == DoseStatus.skipped;
+    final summary = _doseSummary(l10n, entry);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final (Color tint, IconData icon) = switch (status) {
+      DoseStatus.taken => (theme.successColor, Icons.check_rounded),
+      DoseStatus.skipped => (theme.colorScheme.outline, Icons.remove_rounded),
+      DoseStatus.missed => (theme.missedColor, Icons.priority_high_rounded),
+      DoseStatus.pending => (theme.colorScheme.primary, Icons.medication_rounded),
+    };
+    final accent = isNext && !done;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: status == DoseStatus.missed
+              ? theme.missedColor.withValues(alpha: 0.4)
+              : theme.colorScheme.outlineVariant,
+        ),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.stacked_bar_chart_rounded,
-                  size: 24,
-                  color: theme.colorScheme.primary,
+            Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: accent ? theme.accentColor : Colors.transparent,
+                borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(20),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Text(
-                  '${(progress * 100).round()}%',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 12,
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                color: progress >= 1.0
-                    ? theme.successColor
-                    : theme.colorScheme.primary,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: tint.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, size: 22, color: tint),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (summary.isNotEmpty)
+                            Text(
+                              summary,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          Text(
+                            entry.medicine.name,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              decoration: done
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                              color: done
+                                  ? theme.colorScheme.onSurfaceVariant
+                                  : theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.schedule_rounded,
+                                size: 14,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                AppDateUtils.timeLabel(
+                                  entry.dose.scheduledAt,
+                                  locale,
+                                ),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    if (done)
+                      Icon(
+                        status == DoseStatus.taken
+                            ? Icons.check_circle_rounded
+                            : Icons.do_not_disturb_on_rounded,
+                        color: tint,
+                      )
+                    else
+                      TextButton(
+                        onPressed: onLog,
+                        style: TextButton.styleFrom(
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          foregroundColor: theme.colorScheme.onSurface,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          textStyle: theme.textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        child: Text(l10n.homeLogNow),
+                      ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _EmptySlot extends StatelessWidget {
+  const _EmptySlot({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.event_available_rounded,
+            color: theme.colorScheme.primary,
+            size: 32,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -653,12 +1186,12 @@ class _EmptyToday extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32),
+      padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         children: [
           Container(
-            width: 100,
-            height: 100,
+            width: 96,
+            height: 96,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: theme.colorScheme.primaryContainer,
@@ -667,11 +1200,11 @@ class _EmptyToday extends StatelessWidget {
               hasMedicines
                   ? Icons.event_available_rounded
                   : Icons.medication_rounded,
-              size: 48,
+              size: 46,
               color: theme.colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           Text(
             hasMedicines ? l10n.homeEmptySchedule : l10n.homeNoMedicines,
             style: theme.textTheme.titleMedium?.copyWith(
@@ -679,7 +1212,7 @@ class _EmptyToday extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           if (!hasMedicines)
             BigButton(
               label: l10n.medAdd,
@@ -692,68 +1225,146 @@ class _EmptyToday extends StatelessWidget {
   }
 }
 
-class _TodayDoseTile extends StatelessWidget {
-  const _TodayDoseTile({
-    required this.entry,
-    required this.locale,
-    required this.grace,
-  });
+// ---------------------------------------------------------------------------
+// Daily progress summary
+// ---------------------------------------------------------------------------
 
-  final DoseEntry entry;
-  final String locale;
-  final Duration grace;
+class _ProgressSummary extends StatelessWidget {
+  const _ProgressSummary({required this.stats, required this.l10n});
+
+  final AdherenceStats stats;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final now = DateTime.now();
-    final status = entry.effectiveStatus(grace, now);
-    final (icon, color) = statusVisual(theme, status);
+    final pct = stats.adherencePercent;
+    final ringColor = pct >= 80 ? theme.successColor : theme.accentColor;
 
-    final statusLabel = switch (status) {
-      DoseStatus.taken => l10n.statusTaken,
-      DoseStatus.skipped => l10n.statusSkipped,
-      DoseStatus.missed => l10n.statusMissed,
-      DoseStatus.pending => l10n.statusPending,
-    };
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 88,
-              child: Text(
-                AppDateUtils.timeLabel(entry.dose.scheduledAt, locale),
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            Icon(icon, size: 30, color: color),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(entry.medicine.name, style: theme.textTheme.titleMedium),
-                  if (entry.medicine.doseLabel.isNotEmpty)
-                    Text(
-                      entry.medicine.doseLabel,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            StatusChip(status: status, label: statusLabel),
-          ],
-        ),
+    Widget card({required Widget child}) => Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
+      child: child,
+    );
+
+    return IntrinsicHeight(
+      child: Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: card(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _CountRow(
+                  value: stats.taken,
+                  label: l10n.homeTaken,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(height: 12),
+                _CountRow(
+                  value: stats.pending,
+                  label: l10n.homeRemaining,
+                  color: theme.colorScheme.onSurface,
+                ),
+                if (stats.missed > 0) ...[
+                  const SizedBox(height: 12),
+                  _CountRow(
+                    value: stats.missed,
+                    label: l10n.homeMissed,
+                    color: theme.missedColor,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: card(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 92,
+                  height: 92,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox.expand(
+                        child: CircularProgressIndicator(
+                          value: (pct / 100).clamp(0.0, 1.0),
+                          strokeWidth: 9,
+                          strokeCap: StrokeCap.round,
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          valueColor: AlwaysStoppedAnimation(ringColor),
+                        ),
+                      ),
+                      Text(
+                        '$pct%',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  l10n.histAdherence,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+      ),
+    );
+  }
+}
+
+class _CountRow extends StatelessWidget {
+  const _CountRow({
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  final int value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Text(
+          '$value',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -156,7 +156,6 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   }
 
   void _openAddMedicine() {
-    setState(() => _index = 1);
     Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => const MedicineFormScreen()));
@@ -165,7 +164,15 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final items = <_NavSpec>[
+      _NavSpec(Icons.home_rounded, l10n.navHome),
+      _NavSpec(Icons.medication_rounded, l10n.navMeds),
+      _NavSpec(Icons.history_rounded, l10n.histTitle),
+      _NavSpec(Icons.person_rounded, l10n.navProfile),
+    ];
+
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(
         index: _index,
         children: [
@@ -175,27 +182,145 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           const ProfileScreen(),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
+      floatingActionButton: _index == 0
+          ? FloatingActionButton(
+              onPressed: _openAddMedicine,
+              child: const Icon(Icons.add_rounded, size: 30),
+            )
+          : null,
+      bottomNavigationBar: _PillNavBar(
+        items: items,
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.home_rounded),
-            label: l10n.navHome,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.medication_rounded),
-            label: l10n.medTitle,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.history_rounded),
-            label: l10n.histTitle,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.person_rounded),
-            label: l10n.navProfile,
-          ),
-        ],
+        onSelected: (i) => setState(() => _index = i),
+      ),
+    );
+  }
+}
+
+class _NavSpec {
+  const _NavSpec(this.icon, this.label);
+  final IconData icon;
+  final String label;
+}
+
+/// Bottom navigation styled to the product mockups: a floating white bar with
+/// a filled "pill" behind the selected destination.
+class _PillNavBar extends StatelessWidget {
+  const _PillNavBar({
+    required this.items,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final List<_NavSpec> items;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.10),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            for (var i = 0; i < items.length; i++)
+              if (i == selectedIndex)
+                _PillNavItem(
+                  spec: items[i],
+                  selected: true,
+                  onTap: () => onSelected(i),
+                )
+              else
+                Expanded(
+                  child: _PillNavItem(
+                    spec: items[i],
+                    selected: false,
+                    onTap: () => onSelected(i),
+                  ),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PillNavItem extends StatelessWidget {
+  const _PillNavItem({
+    required this.spec,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _NavSpec spec;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.symmetric(
+          horizontal: selected ? 18 : 6,
+          vertical: 12,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? theme.colorScheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: selected
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(spec.icon, size: 22, color: theme.colorScheme.onPrimary),
+                  const SizedBox(width: 8),
+                  Text(
+                    spec.label,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.onPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    spec.icon,
+                    size: 22,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    spec.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

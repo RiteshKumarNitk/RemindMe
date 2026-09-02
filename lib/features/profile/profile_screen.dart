@@ -195,30 +195,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ] else ...[
-              // Display mode
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      _InfoRow(
-                        icon: Icons.person_rounded,
-                        label: l10n.obName,
-                        value: settings.userName.isNotEmpty
-                            ? settings.userName
-                            : l10n.profileNotSet,
+              // Display mode — only render fields we actually have.
+              Builder(
+                builder: (context) {
+                  final rows = <Widget>[];
+                  void add(IconData icon, String label, String? value) {
+                    if (value == null || value.trim().isEmpty) return;
+                    if (rows.isNotEmpty) rows.add(const Divider());
+                    rows.add(_InfoRow(icon: icon, label: label, value: value));
+                  }
+
+                  final name = settings.userName.isNotEmpty
+                      ? settings.userName
+                      : (auth.displayName.isNotEmpty ? auth.displayName : null);
+                  add(Icons.person_rounded, l10n.obName, name);
+                  add(
+                    Icons.cake_rounded,
+                    l10n.profileAge,
+                    settings.settings.userAge?.toString(),
+                  );
+                  if (auth.isSignedIn) {
+                    add(Icons.email_rounded, l10n.profileEmail, auth.email);
+                  }
+
+                  if (rows.isEmpty) {
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: theme.colorScheme.outlineVariant),
                       ),
-                      const Divider(),
-                      _InfoRow(
-                        icon: Icons.cake_rounded,
-                        label: l10n.profileAge,
-                        value: settings.settings.userAge != null
-                            ? '${settings.settings.userAge}'
-                            : l10n.profileNotSet,
+                      child: Text(
+                        l10n.profileNoInfoYet,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ],
-                  ),
-                ),
+                    );
+                  }
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(children: rows),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 12),
               SizedBox(

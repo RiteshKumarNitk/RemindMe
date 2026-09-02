@@ -1,9 +1,10 @@
 import 'dart:developer' as developer;
-import 'dart:ui';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import 'notification_background.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -59,16 +60,24 @@ class NotificationService implements ReminderScheduler {
 
   bool get initialized => _initialized;
 
-  /// Custom vibration pattern: two short buzzes, pause, then long buzz.
+  /// ~6 seconds of insistent buzzing so an elderly user notices even with the
+  /// phone in a pocket. Format: [wait, vibrate, wait, vibrate, ...] in ms.
   static final Int64List _vibrationPattern = Int64List.fromList(<int>[
-    0, 300, 200, // buzz, pause, buzz
-    500, // long pause
-    400, 200, 400, // buzz, pause, buzz
+    0, 600, 300, 600, 300, 600, // three strong buzzes
+    500, // pause
+    400, 250, 400, 250, 400, 250, 400, // rapid burst
+    500,
+    800, 300, 800, // two long buzzes
   ]);
+
+  /// Android notification flag FLAG_INSISTENT (0x00000004): loops the
+  /// notification sound until the notification is dismissed or actioned.
+  /// Makes a dose reminder behave like an alarm instead of a 3-second chime.
+  static final Int32List _insistentFlag = Int32List.fromList(<int>[4]);
 
   /// Version suffix for channel IDs. Bump when changing channel settings —
   /// Android caches channel config after first creation.
-  static const String _v = 'v5';
+  static const String _v = 'v6';
 
   // ---- Channel IDs (versioned) --------------------------------------------
 
@@ -95,6 +104,9 @@ class NotificationService implements ReminderScheduler {
       await _plugin.initialize(
         settings: initSettings,
         onDidReceiveNotificationResponse: onResponse,
+        // Handles TAKEN / SNOOZE / SKIP action buttons when the app is in the
+        // background or terminated (runs in its own isolate).
+        onDidReceiveBackgroundNotificationResponse: notificationBackgroundHandler,
       );
       await _createChannels();
       _initialized = true;
@@ -103,6 +115,23 @@ class NotificationService implements ReminderScheduler {
       _initialized = false;
       developer.log('NotificationService init FAILED: $e\n$st',
           name: 'Notif', error: e, stackTrace: st);
+    }
+  }
+
+  /// Lightweight init for the background isolate: brings the plugin up so
+  /// scheduling / cancelling works, but skips channel (re)creation — the
+  /// channels were already created by the foreground app and persist.
+  Future<void> initMinimal({required bool soundEnabled}) async {
+    try {
+      _soundEnabled = soundEnabled;
+      const androidInit =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const initSettings = InitializationSettings(android: androidInit);
+      await _plugin.initialize(settings: initSettings);
+      _initialized = true;
+    } catch (e) {
+      _initialized = false;
+      developer.log('initMinimal FAILED: $e', name: 'Notif', error: e);
     }
   }
 
@@ -296,13 +325,14 @@ class NotificationService implements ReminderScheduler {
   }
 
   /// Shows an immediate test notification so the user can verify sound works.
-  Future<void> showTestNotification({
+  /// Returns true when the notification was handed to the OS.
+  Future<bool> showTestNotification({
     required String title,
     required String body,
   }) async {
     if (!_initialized) {
       developer.log('showTestNotification: NOT initialized', name: 'Notif');
-      return;
+      return false;
     }
     try {
       await _plugin.show(
@@ -324,6 +354,10 @@ class NotificationService implements ReminderScheduler {
             ledColor: const Color(0xFF2E7D32),
             vibrationPattern: _vibrationPattern,
             audioAttributesUsage: AudioAttributesUsage.alarm,
+            // Loop the sound like a real reminder, but auto-clear after 8s so
+            // the test doesn't ring forever.
+            additionalFlags: _insistentFlag,
+            timeoutAfter: 8000,
             styleInformation: BigTextStyleInformation(
               body,
               htmlFormatBigText: false,
@@ -335,9 +369,34 @@ class NotificationService implements ReminderScheduler {
         ),
       );
       developer.log('Test notification sent OK', name: 'Notif');
+      return true;
     } catch (e, st) {
-      developer.log('showTestNotification FAILED: $e\n$st',
+      developer.log('showTestNotification (rich) failed, trying plain: $e\n$st',
           name: 'Notif', error: e, stackTrace: st);
+      // Fallback: a minimal notification with no custom sound/style. Isolates
+      // whether the alarm sound or big-text style is what the OEM rejects.
+      try {
+        await _plugin.show(
+          id: 99999,
+          title: title,
+          body: body,
+          notificationDetails: NotificationDetails(
+            android: AndroidNotificationDetails(
+              _soundChannelId,
+              AppConstants.channelName,
+              channelDescription: AppConstants.channelDescription,
+              importance: Importance.max,
+              priority: Priority.high,
+            ),
+          ),
+        );
+        developer.log('Test notification sent OK (plain)', name: 'Notif');
+        return true;
+      } catch (e2, st2) {
+        developer.log('showTestNotification FAILED (plain too): $e2\n$st2',
+            name: 'Notif', error: e2, stackTrace: st2);
+        return false;
+      }
     }
   }
 
@@ -415,7 +474,116 @@ class NotificationService implements ReminderScheduler {
     return canScheduleExact();
   }
 
+  /// Android 14+ (API 34) no longer auto-grants USE_FULL_SCREEN_INTENT to
+  /// non-call apps. Without it the dose alarm can't take over the lock screen
+  /// (it degrades to a normal heads-up). Safe no-op on older versions.
+  Future<void> requestFullScreenIntentPermission() async {
+    try {
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      await android?.requestFullScreenIntentPermission();
+    } catch (_) {}
+  }
+
+  static const MethodChannel _powerChannel = MethodChannel(
+    'com.family.medireminder/power',
+  );
+
+  /// True when the app is exempt from battery optimization ("Unrestricted").
+  /// When false, Android Doze can delay or drop scheduled dose alarms.
+  /// Returns true on non-Android platforms / when the check is unavailable.
+  Future<bool> isIgnoringBatteryOptimizations() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return true;
+    try {
+      final ok = await _powerChannel.invokeMethod<bool>(
+        'isIgnoringBatteryOptimizations',
+      );
+      return ok ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
   // ---- Scheduling ----------------------------------------------------------
+
+  /// Schedules a one-off reminder [seconds] from now that looks, sounds and
+  /// vibrates exactly like a real dose reminder. Powers the Settings
+  /// "test reminder in 1 minute" button so the user can lock the phone and
+  /// confirm scheduled reminders actually arrive when the app is closed.
+  /// Returns `(scheduled, wasExact)`.
+  Future<({bool scheduled, bool exact})> scheduleSelfTest({
+    required int seconds,
+    required String title,
+    required String body,
+  }) async {
+    if (!_initialized) return (scheduled: false, exact: false);
+    final tzWhen = tz.TZDateTime.now(
+      tz.local,
+    ).add(Duration(seconds: seconds));
+    final canExact = await canScheduleExact();
+    final details = NotificationDetails(
+      android: _buildReminderDetails(
+        channelId: _soundEnabled ? _soundChannelId : _silentChannelId,
+        channelName: _soundEnabled
+            ? AppConstants.channelName
+            : AppConstants.silentChannelName,
+        title: title,
+        body: body,
+        withActions: false,
+      ),
+    );
+
+    Future<bool> attempt(AndroidScheduleMode mode) async {
+      try {
+        await _plugin.zonedSchedule(
+          id: 99998,
+          title: title,
+          body: body,
+          scheduledDate: tzWhen,
+          notificationDetails: details,
+          androidScheduleMode: mode,
+        );
+        return true;
+      } catch (e, st) {
+        developer.log('scheduleSelfTest attempt ($mode) failed: $e\n$st',
+            name: 'Notif', error: e, stackTrace: st);
+        return false;
+      }
+    }
+
+    if (canExact && await attempt(AndroidScheduleMode.exactAllowWhileIdle)) {
+      return (scheduled: true, exact: true);
+    }
+    if (await attempt(AndroidScheduleMode.inexactAllowWhileIdle)) {
+      return (scheduled: true, exact: false);
+    }
+    // Last resort: a bare notification with no alarm sound / full-screen intent.
+    try {
+      await _plugin.zonedSchedule(
+        id: 99998,
+        title: title,
+        body: body,
+        scheduledDate: tzWhen,
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            _soundChannelId,
+            AppConstants.channelName,
+            channelDescription: AppConstants.channelDescription,
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+      return (scheduled: true, exact: false);
+    } catch (e, st) {
+      developer.log('scheduleSelfTest FAILED (all modes): $e\n$st',
+          name: 'Notif', error: e, stackTrace: st);
+      return (scheduled: false, exact: canExact);
+    }
+  }
 
   /// Builds the AndroidNotificationDetails for a medicine reminder notification
   /// with the bundled WAV alarm sound.
@@ -472,6 +640,9 @@ class NotificationService implements ReminderScheduler {
       vibrationPattern: _vibrationPattern,
       fullScreenIntent: true,
       audioAttributesUsage: AudioAttributesUsage.alarm,
+      // Loop the alarm sound until the user taps TAKEN / SNOOZE / SKIP or
+      // dismisses the notification.
+      additionalFlags: _insistentFlag,
       styleInformation: BigTextStyleInformation(
         body,
         htmlFormatBigText: false,
@@ -603,6 +774,7 @@ class NotificationService implements ReminderScheduler {
         vibrationPattern: _vibrationPattern,
         fullScreenIntent: true,
         audioAttributesUsage: AudioAttributesUsage.alarm,
+        additionalFlags: _insistentFlag,
         styleInformation: BigTextStyleInformation(
           body,
           htmlFormatBigText: false,
