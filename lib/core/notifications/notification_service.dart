@@ -82,8 +82,11 @@ class NotificationService implements ReminderScheduler {
 
   /// Version suffix for channel IDs. Bump when changing channel settings —
   /// Android caches channel config after first creation, so a new sound /
-  /// importance only takes effect on a channel ID it has never seen.
-  static const String _v = 'v7';
+  /// importance / audio stream only takes effect on a channel ID it has
+  /// never seen. v8: dropped the ALARM audio stream (was silent whenever the
+  /// user's alarm volume was down) so the sound plays on the ring/notification
+  /// stream, which people keep audible.
+  static const String _v = 'v8';
 
   // ---- Channel IDs (versioned) --------------------------------------------
 
@@ -171,6 +174,9 @@ class NotificationService implements ReminderScheduler {
       '${AppConstants.channelId}_v6',
       '${AppConstants.silentChannelId}_v6',
       '${AppConstants.familyChannelId}_v6',
+      '${AppConstants.channelId}_v7',
+      '${AppConstants.silentChannelId}_v7',
+      '${AppConstants.familyChannelId}_v7',
       _soundChannelId,
       _silentChannelId,
       _familyChannelId,
@@ -180,10 +186,11 @@ class NotificationService implements ReminderScheduler {
       } catch (_) {}
     }
 
-    // Sound channel: ALARM audio stream (louder than notification stream).
-    // audioAttributesUsage.alarm tells Android to play through the alarm
-    // speaker at ALARM volume, not notification volume. This is the single
-    // most important setting for reliable, loud medicine reminders.
+    // Sound channel: MAX importance + bundled WAV on the default (ring /
+    // notification) audio stream. We deliberately do NOT use the ALARM stream
+    // any more — it went silent whenever the user's alarm volume was down,
+    // which is the common case. FLAG_INSISTENT (set per-notification) still
+    // loops the tone so it behaves like an alarm.
     await android.createNotificationChannel(
       AndroidNotificationChannel(
         _soundChannelId,
@@ -197,7 +204,6 @@ class NotificationService implements ReminderScheduler {
         enableLights: true,
         ledColor: const Color(0xFF2E7D32),
         bypassDnd: true,
-        audioAttributesUsage: AudioAttributesUsage.alarm,
       ),
     );
 
@@ -216,7 +222,7 @@ class NotificationService implements ReminderScheduler {
       ),
     );
 
-    // Family alerts channel — also alarm stream + bypass DND.
+    // Family alerts channel — same delivery, orange LED, bypass DND.
     await android.createNotificationChannel(
       AndroidNotificationChannel(
         _familyChannelId,
@@ -230,7 +236,6 @@ class NotificationService implements ReminderScheduler {
         enableLights: true,
         ledColor: const Color(0xFFE65100),
         bypassDnd: true,
-        audioAttributesUsage: AudioAttributesUsage.alarm,
       ),
     );
 
@@ -296,7 +301,6 @@ class NotificationService implements ReminderScheduler {
             sound: _alarmSound,
             enableVibration: true,
             vibrationPattern: _vibrationPattern,
-            audioAttributesUsage: AudioAttributesUsage.alarm,
           ),
         ),
       );
@@ -328,7 +332,6 @@ class NotificationService implements ReminderScheduler {
             sound: _alarmSound,
             enableVibration: true,
             vibrationPattern: _vibrationPattern,
-            audioAttributesUsage: AudioAttributesUsage.alarm,
           ),
         ),
       );
@@ -366,7 +369,6 @@ class NotificationService implements ReminderScheduler {
             enableLights: true,
             ledColor: const Color(0xFF2E7D32),
             vibrationPattern: _vibrationPattern,
-            audioAttributesUsage: AudioAttributesUsage.alarm,
             // Loop the sound like a real reminder, but auto-clear after 8s so
             // the test doesn't ring forever.
             additionalFlags: _insistentFlag,
@@ -662,7 +664,6 @@ class NotificationService implements ReminderScheduler {
       ledOffMs: 500,
       vibrationPattern: _vibrationPattern,
       fullScreenIntent: true,
-      audioAttributesUsage: AudioAttributesUsage.alarm,
       // Loop the alarm sound until the user taps TAKEN / SNOOZE / SKIP or
       // dismisses the notification.
       additionalFlags: _insistentFlag,
@@ -793,7 +794,6 @@ class NotificationService implements ReminderScheduler {
         ledOffMs: 250,
         vibrationPattern: _vibrationPattern,
         fullScreenIntent: true,
-        audioAttributesUsage: AudioAttributesUsage.alarm,
         additionalFlags: _insistentFlag,
         styleInformation: BigTextStyleInformation(
           body,
