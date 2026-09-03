@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Lets the reminder channel bypass Do Not Disturb so a dose alarm is
+         still heard. Without this, setBypassDnd() is silently ignored. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <!-- Exact alarm delivery (Android 12+). USE_EXACT_ALARM is auto-granted for
          alarm apps; SCHEDULE_EXACT_ALARM covers Android 12 and is requested at
          runtime via the system settings flow. -->

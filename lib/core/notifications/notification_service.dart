@@ -81,8 +81,9 @@ class NotificationService implements ReminderScheduler {
   static final Int32List _insistentFlag = Int32List.fromList(<int>[4]);
 
   /// Version suffix for channel IDs. Bump when changing channel settings —
-  /// Android caches channel config after first creation.
-  static const String _v = 'v6';
+  /// Android caches channel config after first creation, so a new sound /
+  /// importance only takes effect on a channel ID it has never seen.
+  static const String _v = 'v7';
 
   // ---- Channel IDs (versioned) --------------------------------------------
 
@@ -164,6 +165,12 @@ class NotificationService implements ReminderScheduler {
       '${AppConstants.channelId}_v4',
       '${AppConstants.silentChannelId}_v4',
       '${AppConstants.familyChannelId}_v4',
+      '${AppConstants.channelId}_v5',
+      '${AppConstants.silentChannelId}_v5',
+      '${AppConstants.familyChannelId}_v5',
+      '${AppConstants.channelId}_v6',
+      '${AppConstants.silentChannelId}_v6',
+      '${AppConstants.familyChannelId}_v6',
       _soundChannelId,
       _silentChannelId,
       _familyChannelId,
@@ -529,12 +536,11 @@ class NotificationService implements ReminderScheduler {
       tz.local,
     ).add(Duration(seconds: seconds));
     final canExact = await canScheduleExact();
+    // Always use the SOUND channel — this button exists to verify sound works.
     final details = NotificationDetails(
       android: _buildReminderDetails(
-        channelId: _soundEnabled ? _soundChannelId : _silentChannelId,
-        channelName: _soundEnabled
-            ? AppConstants.channelName
-            : AppConstants.silentChannelName,
+        channelId: _soundChannelId,
+        channelName: AppConstants.channelName,
         title: title,
         body: body,
         withActions: false,
@@ -559,14 +565,14 @@ class NotificationService implements ReminderScheduler {
       }
     }
 
+    // alarmClock delivery is always exact and Doze-exempt, and needs no
+    // SCHEDULE_EXACT_ALARM grant — the most reliable option, so try it first.
+    if (await attempt(AndroidScheduleMode.alarmClock)) {
+      return (scheduled: true, exact: true);
+    }
     if (canExact &&
         _exactModeUsable &&
         await attempt(AndroidScheduleMode.exactAllowWhileIdle)) {
-      return (scheduled: true, exact: true);
-    }
-    // alarmClock delivery is always exact and Doze-exempt, and needs no
-    // SCHEDULE_EXACT_ALARM grant — the right fallback for a medicine alarm.
-    if (await attempt(AndroidScheduleMode.alarmClock)) {
       return (scheduled: true, exact: true);
     }
     if (await attempt(AndroidScheduleMode.inexactAllowWhileIdle)) {
@@ -722,14 +728,15 @@ class NotificationService implements ReminderScheduler {
       }
     }
 
-    // exact → alarmClock (always exact, Doze-exempt, no permission needed)
-    // → inexact.  Whichever lands, the reminder is queued.
+    // alarmClock first: AlarmManager.setAlarmClock() is exact, fires in Doze,
+    // and needs no SCHEDULE_EXACT_ALARM grant — the most reliable option for a
+    // medicine alarm. Then exactAllowWhileIdle, then inexact as a last resort.
+    if (await tryMode(AndroidScheduleMode.alarmClock)) return true;
     if (exact &&
         _exactModeUsable &&
         await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
       return true;
     }
-    if (await tryMode(AndroidScheduleMode.alarmClock)) return true;
     if (await tryMode(AndroidScheduleMode.inexactAllowWhileIdle)) return true;
     return false;
   }
@@ -818,12 +825,12 @@ class NotificationService implements ReminderScheduler {
       }
     }
 
+    if (await tryMode(AndroidScheduleMode.alarmClock)) return true;
     if (exact &&
         _exactModeUsable &&
         await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
       return true;
     }
-    if (await tryMode(AndroidScheduleMode.alarmClock)) return true;
     return tryMode(AndroidScheduleMode.inexactAllowWhileIdle);
   }
 

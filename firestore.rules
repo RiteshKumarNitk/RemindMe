@@ -2,32 +2,43 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // A household document holds `members`: a map { uid: { role, joinedAt, fcmToken } }.
+    // True when the signed-in user is already listed in the household's
+    // `members` map: { uid: { role, joinedAt, fcmToken } }.
+    function isMember(code) {
+      return request.auth != null &&
+        request.auth.uid in
+          get(/databases/$(database)/documents/households/$(code)).data.members.keys();
+    }
+
     match /households/{code} {
-      // Only existing members can read.
-      allow read: if request.auth != null &&
-        request.auth.uid in resource.data.members.keys();
+      // Any signed-in user may READ a household document. The 6-letter code is
+      // the shared secret — you need it to reach this path at all — and the
+      // household doc holds only membership bookkeeping. All real medical data
+      // (medicines, doses) lives in the subcollections below and stays
+      // members-only. Without this, a new person could never *join*, because
+      // the app reads the household to confirm the code before adding itself.
+      allow read: if request.auth != null;
 
       // Anyone signed in can create a brand-new household.
       allow create: if request.auth != null;
 
-      // Existing members can update; a new user may also update *to join*,
-      // i.e. when they add their own uid to `members`.
+      // An existing member can update freely. A non-member may update ONLY to
+      // add themselves (join): they must appear in the new members map and
+      // must not drop any existing member.
       allow update: if request.auth != null && (
         request.auth.uid in resource.data.members.keys() ||
-        request.auth.uid in request.resource.data.members.keys()
+        (
+          request.auth.uid in request.resource.data.members.keys() &&
+          request.resource.data.members.keys().hasAll(resource.data.members.keys())
+        )
       );
 
       match /medicines/{medicineId} {
-        allow read, write: if request.auth != null &&
-          request.auth.uid in
-            get(/databases/$(database)/documents/households/$(code)).data.members.keys();
+        allow read, write: if isMember(code);
       }
 
       match /doses/{doseId} {
-        allow read, write: if request.auth != null &&
-          request.auth.uid in
-            get(/databases/$(database)/documents/households/$(code)).data.members.keys();
+        allow read, write: if isMember(code);
       }
     }
   }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -22,25 +24,26 @@ import 'services/sync/sync_service.dart';
 import 'services/voice_service.dart';
 import 'state/app_state.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.initTimeZone();
+void main() {
+  // Guard the whole boot so a failure in any single step can't leave the user
+  // staring at a blank window — `runApp` still runs from `_bootstrap`.
+  runZonedGuarded(_bootstrap, (e, st) {
+    debugPrint('Uncaught zone error: $e\n$st');
+  });
+}
 
-  // Initialize Firebase BEFORE anything touches FirebaseAuth/Firestore.
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    // Firebase not configured (missing google-services.json) — app works
-    // fully offline. AuthService and SyncService handle this gracefully.
-  }
+Future<void> _bootstrap() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await _guard('timezone', () => NotificationService.initTimeZone());
+  await _guard('firebase', () => Firebase.initializeApp());
 
   final prefs = await SharedPreferences.getInstance();
   final settings = SettingsController(SettingsRepository(prefs));
   await settings.load();
   Intl.defaultLocale = settings.settings.locale;
-  // Load date-formatting data for every supported locale up front.
-  await initializeDateFormatting('en');
-  await initializeDateFormatting('hi');
+  await _guard('intl-en', () => initializeDateFormatting('en'));
+  await _guard('intl-hi', () => initializeDateFormatting('hi'));
 
   final db = AppDatabase();
   final syncRepository = SyncRepository(db);
@@ -48,7 +51,6 @@ Future<void> main() async {
   final doseRepository = DoseRepository(db, sync: syncRepository);
   final notifications = NotificationService();
   final voice = VoiceService();
-  await voice.init();
 
   final doseScheduler = DoseScheduler(
     medicineRepository: medicineRepository,
@@ -62,9 +64,7 @@ Future<void> main() async {
     settings: settings,
     voice: voice,
   );
-
   final auth = AuthService();
-
   final sync = SyncService(
     backend: FirebaseBackend(),
     medicineRepository: medicineRepository,
@@ -87,44 +87,22 @@ Future<void> main() async {
   );
   sync.onDataChanged = () => appState.refresh();
 
-  await notifications.init(
-    soundEnabled: settings.soundEnabled,
-    onResponse: (NotificationResponse response) {
-      appState.handleNotificationTap(
-        actionId: response.actionId,
-        payload: response.payload,
-      );
-    },
+  await _guard(
+    'notifications.init',
+    () => notifications.init(
+      soundEnabled: settings.soundEnabled,
+      onResponse: (NotificationResponse response) {
+        appState.handleNotificationTap(
+          actionId: response.actionId,
+          payload: response.payload,
+        );
+      },
+    ),
   );
 
-  await sync.init();
-  // Defer the (slow) notification reconcile so the splash never blocks on it.
-  await appState.init(deferScheduleSync: true);
-
-  // Auto-request notification permission on every launch.
-  if (!await notifications.areNotificationsEnabled()) {
-    await notifications.requestPermission();
-  }
-  // Also ensure exact alarms are available (Android 12+).
-  await notifications.requestExactAlarmPermission();
-  // Android 14+: needed for the lock-screen full-screen dose alarm.
-  await notifications.requestFullScreenIntentPermission();
-  // Re-check after the request so the UI can show the correct banner.
-  await appState.refreshPermissionStatus();
-
-  // Cold start from a notification tap / action button.
-  final launch = await notifications.getLaunchDetails();
-  final launchResponse = launch?.notificationResponse;
-  if (launchResponse != null &&
-      launchResponse.payload != null &&
-      launchResponse.payload!.isNotEmpty) {
-    Future<void>.delayed(const Duration(milliseconds: 600), () {
-      appState.handleNotificationTap(
-        actionId: launchResponse.actionId,
-        payload: launchResponse.payload,
-      );
-    });
-  }
+  // Fast: local DB read + a few platform reads. Schedule reconcile is deferred
+  // to the background so it can never block first paint.
+  await _guard('appState.init', () => appState.init(deferScheduleSync: true));
 
   runApp(MediReminderApp(
     appState: appState,
@@ -132,4 +110,53 @@ Future<void> main() async {
     sync: sync,
     auth: auth,
   ));
+
+  // Everything below happens AFTER the UI is on screen. Nothing here may block
+  // launch — permission prompts open system Activities, TTS/cloud init can be
+  // slow, and none of it is needed for the first frame.
+  unawaited(_postLaunch(notifications, appState, sync, voice));
+}
+
+Future<void> _postLaunch(
+  NotificationService notifications,
+  AppState appState,
+  SyncService sync,
+  VoiceService voice,
+) async {
+  await _guard('voice.init', () => voice.init());
+  await _guard('sync.init', () => sync.init());
+
+  await _guard('notif.permission', () async {
+    if (!await notifications.areNotificationsEnabled()) {
+      await notifications.requestPermission();
+    }
+  });
+  await _guard(
+    'exact-alarm.permission',
+    () => notifications.requestExactAlarmPermission(),
+  );
+  await _guard(
+    'fullscreen.permission',
+    () => notifications.requestFullScreenIntentPermission(),
+  );
+  await _guard('refreshPerms', () => appState.refreshPermissionStatus());
+
+  await _guard('cold-start-notif', () async {
+    final launch = await notifications.getLaunchDetails();
+    final r = launch?.notificationResponse;
+    if (r != null && r.payload != null && r.payload!.isNotEmpty) {
+      await appState.handleNotificationTap(
+        actionId: r.actionId,
+        payload: r.payload,
+      );
+    }
+  });
+}
+
+Future<void> _guard(String label, Future<void> Function() body) async {
+  try {
+    await body().timeout(const Duration(seconds: 20));
+  } catch (e, st) {
+    debugPrint('boot step "$label" failed (continuing): $e\n$st');
+  }
 }
