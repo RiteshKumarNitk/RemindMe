@@ -223,7 +223,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      duration: const Duration(seconds: 6),
+                      duration: const Duration(seconds: 8),
                       content: Text(
                         !r.scheduled
                             ? l10n.setTestScheduledFailed
@@ -231,6 +231,12 @@ class _SettingsScreenState extends State<SettingsScreen>
                             ? l10n.setTestScheduledSent
                             : l10n.setTestScheduledInexact,
                       ),
+                      action: (r.scheduled && !r.exact)
+                          ? SnackBarAction(
+                              label: l10n.setPermissions,
+                              onPressed: _openExactAlarmSettings,
+                            )
+                          : null,
                     ),
                   );
                 }
@@ -327,12 +333,10 @@ class _SettingsScreenState extends State<SettingsScreen>
               grantedLabel: l10n.permissionGranted,
               deniedLabel: l10n.permissionDenied,
               onTap: () async {
-                await appState.requestExactAlarms();
-                if (!appState.exactAlarmsEnabled) {
-                  // The plugin's in-app prompt didn't land — open the system
-                  // "Alarms & reminders" screen directly.
-                  await _openExactAlarmSettings();
-                }
+                // Go straight to the system "Alarms & reminders" screen — the
+                // plugin's in-app request is unreliable across OEMs. The user
+                // toggles DoseWise on there; we re-check on resume.
+                await _openExactAlarmSettings();
                 await appState.refreshPermissionStatus();
               },
             ),

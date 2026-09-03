@@ -468,10 +468,14 @@ class NotificationService implements ReminderScheduler {
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
           >();
-      if (android == null) return true;
-      return await android.canScheduleExactNotifications() ?? true;
-    } catch (_) {
-      return true;
+      if (android == null) return true; // non-Android: not applicable
+      // Pessimistic on null/error: better to show "not granted" and prompt the
+      // user than to claim it's granted while scheduling silently degrades to
+      // inexact (which only fires when the phone next wakes).
+      return await android.canScheduleExactNotifications() ?? false;
+    } catch (e) {
+      developer.log('canScheduleExact FAILED: $e', name: 'Notif', error: e);
+      return false;
     }
   }
 
