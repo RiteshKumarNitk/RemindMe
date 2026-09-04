@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DoseWise — Delete Your Account &amp; Data</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 760px; margin: 0 auto; padding: 32px 20px 80px;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color: #e7e7e7; background: #121212; } a { color: #8ab4ff; } }
+  h1 { font-size: 1.9rem; margin-bottom: 0; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; }
+  .meta { color: #666; margin-top: 4px; }
+  code { background: rgba(127,127,127,.15); padding: 1px 5px; border-radius: 4px; }
+  ul, ol { padding-left: 1.3rem; }
+  .note { border-left: 3px solid #888; padding: 8px 14px; background: rgba(127,127,127,.08); }
+  table { border-collapse: collapse; margin-top: 8px; width: 100%; }
+  th, td { border: 1px solid rgba(127,127,127,.35); padding: 8px 10px; text-align: left; vertical-align: top; }
+</style>
+</head>
+<body>
+
+<h1>Delete your DoseWise account and data</h1>
+<p class="meta">Last updated: 4 September 2026</p>
+
+<p class="note"><strong>Placeholders to fill in before publishing:</strong>
+replace <code>[PUBLISHER]</code> with your name or company (must match the developer name
+shown on the Google Play listing), and <code>[CONTACT EMAIL]</code> with a real support
+email. Confirm the retention periods below match your practice, then delete this note.</p>
+
+<p>DoseWise is a medicine‑reminder app published by <code>[PUBLISHER]</code>. This page
+explains how to have your account and the data associated with it deleted.</p>
+
+<p>An account only exists if you signed in with Google or joined a family with
+<strong>Family Sync</strong>. If you have never signed in and never enabled Family Sync,
+DoseWise has no account or cloud data for you — all your information is on your device only
+and is removed when you uninstall the app or clear its data.</p>
+
+<h2>Option A — delete it yourself in the app</h2>
+<ol>
+  <li>Open DoseWise and go to the <strong>Profile</strong> tab.</li>
+  <li>Turn <strong>Family Sync off</strong>. This removes your device from the household and
+      deletes your push‑notification token.</li>
+  <li>Delete each medicine from the <strong>My Medicines</strong> screen. Deleting a medicine
+      also deletes its cloud copy and all of its dose history.</li>
+  <li>Tap <strong>Sign out</strong> on the Profile screen.</li>
+  <li>To also remove the on‑device database, uninstall the app or clear its data in
+      Android Settings &rarr; Apps &rarr; DoseWise &rarr; Storage.</li>
+</ol>
+<p>This clears your data from the cloud, but your Google Sign‑In (Firebase Authentication)
+record is removed only by the request below.</p>
+
+<h2>Option B — request full account deletion by email</h2>
+<ol>
+  <li>Send an email to <a href="mailto:[CONTACT EMAIL]?subject=Delete%20my%20DoseWise%20account">[CONTACT EMAIL]</a>
+      from the email address you used to sign in to DoseWise.</li>
+  <li>Use the subject line <strong>“Delete my DoseWise account”</strong>.</li>
+  <li>If you used Family Sync, include your six‑letter family code if you know it, so we can
+      identify the household.</li>
+</ol>
+<p>We verify the request against the signed‑in email address and complete deletion within
+<strong>30 days</strong>. We will email you to confirm when it is done.</p>
+
+<h2>What is deleted</h2>
+<table>
+  <tr><th>Data</th><th>What happens</th></tr>
+  <tr><td>Google account details (name, email, profile photo URL, Google account ID)</td><td>Deleted</td></tr>
+  <tr><td>Firebase Authentication account (including any anonymous sign‑in ID)</td><td>Deleted</td></tr>
+  <tr><td>Medicines, dosages, schedules and notes stored in the cloud</td><td>Deleted</td></tr>
+  <tr><td>Dose history (taken / skipped / missed / snoozed and times)</td><td>Deleted</td></tr>
+  <tr><td>Household membership and role</td><td>Deleted</td></tr>
+  <tr><td>Push‑notification (FCM) token</td><td>Deleted</td></tr>
+  <tr><td>Data stored only on your device</td><td>Not accessible to us; removed when you clear app data or uninstall</td></tr>
+</table>
+
+<h2>What is kept, and for how long</h2>
+<ul>
+  <li><strong>Encrypted system backups</strong> of the cloud database may retain deleted
+      records for up to <strong>90 days</strong> after deletion, after which they are
+      overwritten. These backups are not used for any other purpose.</li>
+  <li><strong>Records we must keep by law</strong> (for example a minimal log that a deletion
+      request was made and fulfilled) are retained only as long as legally required.</li>
+  <li>We keep <strong>no</strong> copy of your medicines, schedules or dose history after the
+      backup window above.</li>
+</ul>
+
+<h2>Contact</h2>
+<p><code>[PUBLISHER]</code> — <a href="mailto:[CONTACT EMAIL]">[CONTACT EMAIL]</a></p>
+
+</body>
+</html>

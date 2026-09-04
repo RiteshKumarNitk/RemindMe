@@ -47,9 +47,9 @@ Play requires a public **Privacy Policy URL**. Files are in `docs/`:
 Fill in the `[PUBLISHER]`, `[CONTACT EMAIL]`, `[COUNTRY/STATE]` placeholders in all three,
 then host them. Easiest: **GitHub Pages**
 (repo → Settings → Pages → Source: `main` / `/docs`). Your URLs become:
-
-- Privacy: `https://<user>.github.io/<repo>/privacy-policy.html`
-- Terms:   `https://<user>.github.io/<repo>/terms-of-service.html`
+https://riteshkumarnitk.github.io/RemindMe/
+- Privacy: `https://riteshkumarnitk.github.io/RemindMe/privacy-policy.html`
+- Terms:   `https://riteshkumarnitk.github.io/RemindMe/terms-of-service.html`
 
 ---
 
@@ -180,7 +180,7 @@ Declare the following. (Analytics was removed from the build, so there is none.)
 - Privacy policy URL → your hosted `privacy-policy.html`
 - Ads → **No**
 - App access → all functionality available without special access; if a reviewer needs a
-  test account, provide a Google test account or note that sign-in is optional
+  test account, provide a Google test account or note thatContent Sharing sign-in is optional
 - Content rating → completed (step 5)
 - Target audience → 13+ (or 18+ if you prefer for a medical app); not designed for children
 - News app → No
