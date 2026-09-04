@@ -40,6 +40,9 @@
       "days": {"type": "int"}
     }
   },
+  "homeDueNow": "अभी लें!",
+  "homeTakeNowBanner": "अभी लें!",
+  "homeTakeNowSubtitle": "एक खुराक बाकी है",
   "homeOverdueMin": "{minutes} मिनट देर",
   "@homeOverdueMin": {
     "placeholders": {

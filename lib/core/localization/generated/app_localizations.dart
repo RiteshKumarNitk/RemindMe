@@ -248,6 +248,24 @@ abstract class AppLocalizations {
   /// **'in {days}d'**
   String homeInDays(int days);
 
+  /// No description provided for @homeDueNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Due now!'**
+  String get homeDueNow;
+
+  /// No description provided for @homeTakeNowBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Take now!'**
+  String get homeTakeNowBanner;
+
+  /// No description provided for @homeTakeNowSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A dose is due'**
+  String get homeTakeNowSubtitle;
+
   /// No description provided for @homeOverdueMin.
   ///
   /// In en, this message translates to:

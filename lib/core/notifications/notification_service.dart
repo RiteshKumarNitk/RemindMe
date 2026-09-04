@@ -83,10 +83,12 @@ class NotificationService implements ReminderScheduler {
   /// Version suffix for channel IDs. Bump when changing channel settings —
   /// Android caches channel config after first creation, so a new sound /
   /// importance / audio stream only takes effect on a channel ID it has
-  /// never seen. v8: dropped the ALARM audio stream (was silent whenever the
-  /// user's alarm volume was down) so the sound plays on the ring/notification
-  /// stream, which people keep audible.
-  static const String _v = 'v8';
+  /// never seen. v9: re-add ALARM audio attributes on the channel so the
+  /// bundled WAV plays on the alarm stream (louder, bypasses Doze, and
+  /// works even when notification volume is down). The belt-and-suspenders
+  /// approach — sound on BOTH channel AND notification details — ensures
+  /// maximum device compatibility.
+  static const String _v = 'v9';
 
   // ---- Channel IDs (versioned) --------------------------------------------
 
@@ -177,6 +179,9 @@ class NotificationService implements ReminderScheduler {
       '${AppConstants.channelId}_v7',
       '${AppConstants.silentChannelId}_v7',
       '${AppConstants.familyChannelId}_v7',
+      '${AppConstants.channelId}_v8',
+      '${AppConstants.silentChannelId}_v8',
+      '${AppConstants.familyChannelId}_v8',
       _soundChannelId,
       _silentChannelId,
       _familyChannelId,
@@ -186,11 +191,10 @@ class NotificationService implements ReminderScheduler {
       } catch (_) {}
     }
 
-    // Sound channel: MAX importance + bundled WAV on the default (ring /
-    // notification) audio stream. We deliberately do NOT use the ALARM stream
-    // any more — it went silent whenever the user's alarm volume was down,
-    // which is the common case. FLAG_INSISTENT (set per-notification) still
-    // loops the tone so it behaves like an alarm.
+    // Sound channel: MAX importance + bundled WAV on the ALARM audio
+    // stream. This ensures the sound plays even when the notification
+    // volume is down or the phone is in Doze. FLAG_INSISTENT (set
+    // per-notification) still loops the tone so it behaves like an alarm.
     await android.createNotificationChannel(
       AndroidNotificationChannel(
         _soundChannelId,

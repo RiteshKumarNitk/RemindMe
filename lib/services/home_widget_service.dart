@@ -72,7 +72,11 @@ class HomeWidgetService {
         String status;
         if (diff.isNegative) {
           final overdue = now.difference(scheduled);
-          if (overdue.inMinutes < 60) {
+          if (overdue.inMinutes <= 30) {
+            // Within grace period — show "Due now!" so the user knows to
+            // take the medicine immediately.
+            status = '🔴 Due now!';
+          } else if (overdue.inMinutes < 60) {
             status = '⏰ ${overdue.inMinutes} min late';
           } else {
             status = '⏰ ${overdue.inHours}h late';

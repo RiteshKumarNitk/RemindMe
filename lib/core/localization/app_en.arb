@@ -40,6 +40,9 @@
       "days": {"type": "int"}
     }
   },
+  "homeDueNow": "Due now!",
+  "homeTakeNowBanner": "Take now!",
+  "homeTakeNowSubtitle": "A dose is due",
   "homeOverdueMin": "{minutes} min late",
   "@homeOverdueMin": {
     "placeholders": {

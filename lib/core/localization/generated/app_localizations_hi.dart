@@ -90,6 +90,15 @@ class AppLocalizationsHi extends AppLocalizations {
   }
 
   @override
+  String get homeDueNow => 'अभी लें!';
+
+  @override
+  String get homeTakeNowBanner => 'अभी लें!';
+
+  @override
+  String get homeTakeNowSubtitle => 'एक खुराक बाकी है';
+
+  @override
   String homeOverdueMin(int minutes) {
     return '$minutes मिनट देर';
   }
