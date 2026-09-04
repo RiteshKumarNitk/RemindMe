@@ -551,8 +551,13 @@ class AppLocalizationsHi extends AppLocalizations {
   String get notifTitle => '💊 दवा का समय हो गया है';
 
   @override
-  String notifBody(String name, String dose) {
-    return 'लें: $name — $dose';
+  String notifTitleFor(String name) {
+    return '💊 $name लेने का समय';
+  }
+
+  @override
+  String notifBody(String name, String info) {
+    return 'लें: $name — $info';
   }
 
   @override
@@ -625,6 +630,14 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get voiceSkipped => 'दवा छोड़ दी गई।';
+
+  @override
+  String get voiceSnoozed => 'रिमाइंडर स्नूज़ किया गया।';
+
+  @override
+  String homeSnoozedUntil(String time) {
+    return '$time तक स्नूज़';
+  }
 
   @override
   String get undo => 'वापस करें';

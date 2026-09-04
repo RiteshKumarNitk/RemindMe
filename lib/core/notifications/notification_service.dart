@@ -532,19 +532,39 @@ class NotificationService implements ReminderScheduler {
   // ---- Scheduling ----------------------------------------------------------
 
   /// Schedules a one-off reminder [seconds] from now that looks, sounds and
-  /// vibrates exactly like a real dose reminder. Powers the Settings
-  /// "test reminder in 1 minute" button so the user can lock the phone and
-  /// confirm scheduled reminders actually arrive when the app is closed.
-  /// Returns `(scheduled, wasExact)`.
-  Future<({bool scheduled, bool exact})> scheduleSelfTest({
+  /// vibrates exactly like a real dose reminder, and reports back exactly what
+  /// happened so the Settings diagnostic can show the user (and us) the truth:
+  ///  - [scheduled]  the plugin accepted it
+  ///  - [exact]      it went out via an exact mode (fires in Doze), not inexact
+  ///  - [mode]       which AndroidScheduleMode landed
+  ///  - [verified]   id 99998 is actually in the OS pending list afterwards
+  ///  - [fireAt]     absolute local time it should fire
+  ///  - [tzName]     the resolved local timezone (a wrong one = wrong fire time)
+  Future<
+      ({
+        bool scheduled,
+        bool exact,
+        String mode,
+        bool verified,
+        DateTime fireAt,
+        String tzName,
+      })> scheduleSelfTest({
     required int seconds,
     required String title,
     required String body,
   }) async {
-    if (!_initialized) return (scheduled: false, exact: false);
-    final tzWhen = tz.TZDateTime.now(
-      tz.local,
-    ).add(Duration(seconds: seconds));
+    final tzWhen = tz.TZDateTime.now(tz.local).add(Duration(seconds: seconds));
+    final result = (fireAt: tzWhen.toLocal(), tzName: tz.local.name);
+    if (!_initialized) {
+      return (
+        scheduled: false,
+        exact: false,
+        mode: 'not-initialised',
+        verified: false,
+        fireAt: result.fireAt,
+        tzName: result.tzName,
+      );
+    }
     final canExact = await canScheduleExact();
     // Always use the SOUND channel — this button exists to verify sound works.
     final details = NotificationDetails(
@@ -575,43 +595,36 @@ class NotificationService implements ReminderScheduler {
       }
     }
 
-    // alarmClock delivery is always exact and Doze-exempt, and needs no
-    // SCHEDULE_EXACT_ALARM grant — the most reliable option, so try it first.
+    String landedMode = 'none';
+    bool exact = false;
     if (await attempt(AndroidScheduleMode.alarmClock)) {
-      return (scheduled: true, exact: true);
-    }
-    if (canExact &&
+      landedMode = 'alarmClock';
+      exact = true;
+    } else if (canExact &&
         _exactModeUsable &&
         await attempt(AndroidScheduleMode.exactAllowWhileIdle)) {
-      return (scheduled: true, exact: true);
+      landedMode = 'exactAllowWhileIdle';
+      exact = true;
+    } else if (await attempt(AndroidScheduleMode.inexactAllowWhileIdle)) {
+      landedMode = 'inexactAllowWhileIdle';
+      exact = false;
     }
-    if (await attempt(AndroidScheduleMode.inexactAllowWhileIdle)) {
-      return (scheduled: true, exact: false);
-    }
-    // Last resort: a bare notification with no alarm sound / full-screen intent.
-    try {
-      await _plugin.zonedSchedule(
-        id: 99998,
-        title: title,
-        body: body,
-        scheduledDate: tzWhen,
-        notificationDetails: NotificationDetails(
-          android: AndroidNotificationDetails(
-            _soundChannelId,
-            AppConstants.channelName,
-            channelDescription: AppConstants.channelDescription,
-            importance: Importance.max,
-            priority: Priority.high,
-          ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      );
-      return (scheduled: true, exact: false);
-    } catch (e, st) {
-      developer.log('scheduleSelfTest FAILED (all modes): $e\n$st',
-          name: 'Notif', error: e, stackTrace: st);
-      return (scheduled: false, exact: canExact);
-    }
+
+    final scheduled = landedMode != 'none';
+    final verified = scheduled && (await pendingIds()).contains(99998);
+    developer.log(
+      'scheduleSelfTest -> mode=$landedMode exact=$exact verified=$verified '
+      'fireAt=${result.fireAt} tz=${result.tzName}',
+      name: 'Notif',
+    );
+    return (
+      scheduled: scheduled,
+      exact: exact,
+      mode: landedMode,
+      verified: verified,
+      fireAt: result.fireAt,
+      tzName: result.tzName,
+    );
   }
 
   /// Builds the AndroidNotificationDetails for a medicine reminder notification

@@ -293,6 +293,38 @@ class AppState extends ChangeNotifier {
     unawaited(sync.syncNow());
   }
 
+  /// Pushes this dose's reminder out by the configured snooze duration and
+  /// (re)schedules the OS notification for the new time immediately.
+  Future<void> markSnoozed(DoseEntry entry) async {
+    final until = DateTime.now().add(settings.snoozeDuration);
+    await doseRepository.setSnoozedUntil(entry.dose.id!, until);
+    await notifications.cancel(entry.dose.id!);
+    final med = entry.medicine;
+    final text = ReminderText.from(
+      settings.settings.locale,
+      snoozeMinutes: settings.snoozeMinutes,
+    );
+    await notifications.scheduleDoseReminder(
+      doseId: entry.dose.id!,
+      title: text.title(med.name),
+      body: text.body(
+        med.name,
+        text.info(med.doseLabel, med.foodInstruction, until),
+      ),
+      when: until,
+      exact: _exactAlarmsEnabled,
+      takenLabel: text.takenLabel,
+      snoozeLabel: text.snoozeLabel,
+      skipLabel: text.skipLabel,
+    );
+    if (settings.voiceEnabled) {
+      final l10n = l10nFor(settings.settings.locale);
+      await voice.speak(l10n.voiceSnoozed, settings.settings.locale);
+    }
+    await refresh();
+    unawaited(sync.syncNow());
+  }
+
   /// Entry point for notification taps / action buttons, both from the live
   /// callback and from a cold start.
   Future<void> handleNotificationTap({

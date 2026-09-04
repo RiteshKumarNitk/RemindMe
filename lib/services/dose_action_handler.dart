@@ -60,8 +60,11 @@ class DoseActionHandler {
         );
         await scheduler.scheduleDoseReminder(
           doseId: doseId,
-          title: text.title,
-          body: text.body(medicine.name, medicine.doseLabel),
+          title: text.title(medicine.name),
+          body: text.body(
+            medicine.name,
+            text.info(medicine.doseLabel, medicine.foodInstruction, until),
+          ),
           when: until,
           exact: true, // falls back to inexact inside the service if needed
           takenLabel: text.takenLabel,

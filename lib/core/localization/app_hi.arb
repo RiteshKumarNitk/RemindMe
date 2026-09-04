@@ -229,11 +229,17 @@
   "@setScheduledCount": { "placeholders": { "count": { "type": "int" } } },
   "aboutBody": "DoseWise सिर्फ़ याद दिलाने और रिकॉर्ड रखने का साधन है। यह कोई चिकित्सीय सलाह नहीं देता। हमेशा अपने डॉक्टर के निर्देशों का पालन करें।",
   "notifTitle": "💊 दवा का समय हो गया है",
-  "notifBody": "लें: {name} — {dose}",
+  "notifTitleFor": "💊 {name} लेने का समय",
+  "@notifTitleFor": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "notifBody": "लें: {name} — {info}",
   "@notifBody": {
     "placeholders": {
       "name": {"type": "String"},
-      "dose": {"type": "String"}
+      "info": {"type": "String"}
     }
   },
   "notifActionTaken": "लिया",
@@ -268,6 +274,13 @@
   },
   "voiceTaken": "शाबाश! दवा ले ली गई।",
   "voiceSkipped": "दवा छोड़ दी गई।",
+  "voiceSnoozed": "रिमाइंडर स्नूज़ किया गया।",
+  "homeSnoozedUntil": "{time} तक स्नूज़",
+  "@homeSnoozedUntil": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
   "undo": "वापस करें",
   "undoTaken": "दवा ले ली गई",
   "undoSkipped": "दवा छोड़ दी गई",

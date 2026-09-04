@@ -79,13 +79,15 @@ class DoseScheduler {
     for (final entry in desired.entries) {
       final med = entry.value.medicine;
       final doseWhen = entry.value.when;
+      // "1 tablet · 20 mg · after food · 2:30 PM" — always in the notification.
+      final info = text.info(med.doseLabel, med.foodInstruction, doseWhen);
 
       // Main reminder — only (re)schedule if it isn't already queued.
       if (!pending.contains(entry.key)) {
         await scheduler.scheduleDoseReminder(
           doseId: entry.key,
-          title: text.title,
-          body: text.body(med.name, med.doseLabel),
+          title: text.title(med.name),
+          body: text.body(med.name, info),
           when: doseWhen,
           exact: exact,
           takenLabel: text.takenLabel,
@@ -106,8 +108,8 @@ class DoseScheduler {
         await scheduler.scheduleAdvanceAlarm(
           doseId: entry.key,
           offset: offset,
-          title: text.title,
-          body: text.body(med.name, med.doseLabel),
+          title: text.title(med.name),
+          body: text.body(med.name, info),
           when: advanceTime,
           exact: exact,
         );

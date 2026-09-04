@@ -229,11 +229,17 @@
   "@setScheduledCount": { "placeholders": { "count": { "type": "int" } } },
   "aboutBody": "DoseWise is a reminder and tracking tool only. It does not provide medical advice. Always follow your doctor's instructions.",
   "notifTitle": "💊 Medicine Time",
-  "notifBody": "Take {name} — {dose}",
+  "notifTitleFor": "💊 Time for {name}",
+  "@notifTitleFor": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "notifBody": "Take {name} — {info}",
   "@notifBody": {
     "placeholders": {
       "name": {"type": "String"},
-      "dose": {"type": "String"}
+      "info": {"type": "String"}
     }
   },
   "notifActionTaken": "TAKEN",
@@ -268,6 +274,13 @@
   },
   "voiceTaken": "Well done! Medicine taken.",
   "voiceSkipped": "Medicine skipped.",
+  "voiceSnoozed": "Reminder snoozed.",
+  "homeSnoozedUntil": "Snoozed to {time}",
+  "@homeSnoozedUntil": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
   "undo": "Undo",
   "undoTaken": "Medicine marked as taken",
   "undoSkipped": "Medicine skipped",

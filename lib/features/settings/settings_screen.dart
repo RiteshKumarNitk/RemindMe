@@ -29,6 +29,9 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen>
     with WidgetsBindingObserver {
+  /// Last "test a scheduled reminder" diagnostic, shown under the button.
+  String? _selfTestInfo;
+
   @override
   void initState() {
     super.initState();
@@ -221,6 +224,22 @@ class _SettingsScreenState extends State<SettingsScreen>
                 // Sync the on-screen permission badges to what scheduling
                 // actually found (the cached flags can be stale/optimistic).
                 await appState.refreshPermissionStatus();
+                final t = TimeOfDay.fromDateTime(r.fireAt);
+                final hh = t.hour.toString().padLeft(2, '0');
+                final mm = t.minute.toString().padLeft(2, '0');
+                final ss = r.fireAt.second.toString().padLeft(2, '0');
+                if (mounted) {
+                  setState(() {
+                    _selfTestInfo = [
+                      'scheduled : ${r.scheduled ? "yes" : "NO"}',
+                      'mode      : ${r.mode}'
+                          '${r.scheduled && !r.exact ? "  (inexact — Doze may delay / hold it)" : ""}',
+                      'in OS queue: ${r.verified ? "yes" : "NO — the OS did not keep it"}',
+                      'fires at  : $hh:$mm:$ss',
+                      'timezone  : ${r.tzName}',
+                    ].join('\n');
+                  });
+                }
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -255,6 +274,24 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ),
               ),
             ),
+            if (_selfTestInfo != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: SelectableText(
+                  _selfTestInfo!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontFamily: 'monospace',
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             _SectionHeader(l10n.pauseAll),

@@ -1106,11 +1106,17 @@ abstract class AppLocalizations {
   /// **'💊 Medicine Time'**
   String get notifTitle;
 
+  /// No description provided for @notifTitleFor.
+  ///
+  /// In en, this message translates to:
+  /// **'💊 Time for {name}'**
+  String notifTitleFor(String name);
+
   /// No description provided for @notifBody.
   ///
   /// In en, this message translates to:
-  /// **'Take {name} — {dose}'**
-  String notifBody(String name, String dose);
+  /// **'Take {name} — {info}'**
+  String notifBody(String name, String info);
 
   /// No description provided for @notifActionTaken.
   ///
@@ -1237,6 +1243,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Medicine skipped.'**
   String get voiceSkipped;
+
+  /// No description provided for @voiceSnoozed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder snoozed.'**
+  String get voiceSnoozed;
+
+  /// No description provided for @homeSnoozedUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Snoozed to {time}'**
+  String homeSnoozedUntil(String time);
 
   /// No description provided for @undo.
   ///
