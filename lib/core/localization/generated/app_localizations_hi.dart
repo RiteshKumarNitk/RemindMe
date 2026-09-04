@@ -99,6 +99,20 @@ class AppLocalizationsHi extends AppLocalizations {
   String get homeTakeNowSubtitle => 'एक खुराक बाकी है';
 
   @override
+  String get alarmTitle => 'दवा लेने का समय हो गया!';
+
+  @override
+  String alarmSubtitle(String name, String dose) {
+    return '$name — $dose';
+  }
+
+  @override
+  String get alarmSnooze => 'स्नूज़';
+
+  @override
+  String get alarmLater => 'बाद में लूँगा/लूँगी';
+
+  @override
   String homeOverdueMin(int minutes) {
     return '$minutes मिनट देर';
   }

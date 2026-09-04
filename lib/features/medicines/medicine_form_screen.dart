@@ -7,6 +7,7 @@ import '../../data/models/food_instruction.dart';
 import '../../data/models/medicine.dart';
 import '../../data/models/medicine_frequency.dart';
 import '../../data/models/medicine_schedule.dart';
+import '../../services/interaction_checker.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
 import '../widgets/big_button.dart';
@@ -533,6 +534,69 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
         builder: (ctx) => AlertDialog(
           title: Text(l10n.medConflictTitle),
           content: Text(l10n.medConflictBody(conflicts.join(', '))),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.btnCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l10n.medSave),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) return;
+    }
+
+    // Check for drug interactions with other medicines.
+    final otherMeds = appState.medicines
+        .where((m) => m.id != widget.medicine?.id)
+        .map((m) => m.name)
+        .toList();
+    final interactions = InteractionChecker.checkNewMedicine(
+      _name.text.trim(),
+      otherMeds,
+    );
+    if (interactions.isNotEmpty && mounted) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('⚠️ Drug Interaction Warning'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final w in interactions) ...[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: w.severity == InteractionSeverity.high
+                        ? Colors.red.withValues(alpha: 0.1)
+                        : Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${w.medicine1} + ${w.medicine2}',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(w.warning),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              const Text(
+                'Please consult your doctor before saving.',
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),

@@ -266,6 +266,30 @@ abstract class AppLocalizations {
   /// **'A dose is due'**
   String get homeTakeNowSubtitle;
 
+  /// No description provided for @alarmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Time to take your medicine!'**
+  String get alarmTitle;
+
+  /// No description provided for @alarmSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} — {dose}'**
+  String alarmSubtitle(String name, String dose);
+
+  /// No description provided for @alarmSnooze.
+  ///
+  /// In en, this message translates to:
+  /// **'Snooze'**
+  String get alarmSnooze;
+
+  /// No description provided for @alarmLater.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ll take it later'**
+  String get alarmLater;
+
   /// No description provided for @homeOverdueMin.
   ///
   /// In en, this message translates to:

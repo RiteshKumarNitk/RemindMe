@@ -16,6 +16,11 @@ import '../../state/app_state.dart';
 import '../settings/settings_screen.dart';
 import '../widgets/big_button.dart';
 import '../widgets/permission_banner.dart';
+import 'weekly_calendar_screen.dart';
+import 'voice_mode_screen.dart';
+import 'vitals_log_screen.dart';
+import '../history/adherence_report_screen.dart';
+import '../history/doctor_report_screen.dart';
 
 /// The dashboard. Answers "which medicine do I need to take now?" at a glance,
 /// styled to the product design mockups (indigo hero card, coral accents,
@@ -217,6 +222,42 @@ class _HomeScreenState extends State<HomeScreen> {
             _SectionLabel(l10n.homeDailyProgress),
             const SizedBox(height: 12),
             _ProgressSummary(stats: stats, l10n: l10n),
+
+            const SizedBox(height: 24),
+            Text(
+              'Quick Actions',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _QuickActions(
+              onCalendar: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const WeeklyCalendarScreen(),
+                ),
+              ),
+              onReport: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AdherenceReportScreen(),
+                ),
+              ),
+              onDoctorReport: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const DoctorReportScreen(),
+                ),
+              ),
+              onVoiceMode: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const VoiceModeScreen(),
+                ),
+              ),
+              onVitals: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const VitalsLogScreen(),
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -609,7 +650,6 @@ class _UpcomingDoseCardState extends State<_UpcomingDoseCard>
   late AnimationController _pulseController;
   Timer? _countdownTimer;
   DateTime _now = DateTime.now();
-  bool _hasSpoken = false;
 
   @override
   void initState() {
@@ -621,14 +661,13 @@ class _UpcomingDoseCardState extends State<_UpcomingDoseCard>
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _now = DateTime.now());
     });
-    _checkAutoSpeak();
+    // Auto-speak is now handled by AppState._checkAutoSpeak() which runs
+    // every 30 seconds from any screen. No need to duplicate here.
   }
 
   @override
   void didUpdateWidget(_UpcomingDoseCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.entry.dose.id != widget.entry.dose.id) _hasSpoken = false;
-    _checkAutoSpeak();
   }
 
   @override
@@ -636,22 +675,6 @@ class _UpcomingDoseCardState extends State<_UpcomingDoseCard>
     _countdownTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
-  }
-
-  void _checkAutoSpeak() {
-    final scheduled = widget.entry.dose.scheduledAt;
-    final isDueNow = !scheduled.isAfter(_now.add(const Duration(minutes: 10)));
-    if (isDueNow && !_hasSpoken) {
-      final settings = context.read<SettingsController>();
-      if (settings.voiceEnabled) {
-        _hasSpoken = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _speak(context, widget.entry, AppLocalizations.of(context), settings);
-          }
-        });
-      }
-    }
   }
 
   @override
@@ -1516,6 +1539,122 @@ class _CountRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Quick Actions grid
+// ---------------------------------------------------------------------------
+
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({
+    required this.onCalendar,
+    required this.onReport,
+    required this.onDoctorReport,
+    required this.onVoiceMode,
+    required this.onVitals,
+  });
+
+  final VoidCallback onCalendar;
+  final VoidCallback onReport;
+  final VoidCallback onDoctorReport;
+  final VoidCallback onVoiceMode;
+  final VoidCallback onVitals;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 1.6,
+      children: [
+        _QuickActionCard(
+          icon: Icons.calendar_month_rounded,
+          label: 'Weekly Calendar',
+          color: theme.colorScheme.primary,
+          onTap: onCalendar,
+        ),
+        _QuickActionCard(
+          icon: Icons.bar_chart_rounded,
+          label: 'Adherence Report',
+          color: theme.successColor,
+          onTap: onReport,
+        ),
+        _QuickActionCard(
+          icon: Icons.local_hospital_rounded,
+          label: 'Doctor Report',
+          color: theme.colorScheme.tertiary,
+          onTap: onDoctorReport,
+        ),
+        _QuickActionCard(
+          icon: Icons.mic_rounded,
+          label: 'Voice Mode',
+          color: theme.accentColor,
+          onTap: onVoiceMode,
+        ),
+        _QuickActionCard(
+          icon: Icons.favorite_rounded,
+          label: 'Vitals Log',
+          color: theme.missedColor,
+          onTap: onVitals,
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickActionCard extends StatelessWidget {
+  const _QuickActionCard({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: color.withValues(alpha: 0.2),
+            ),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 28, color: color),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

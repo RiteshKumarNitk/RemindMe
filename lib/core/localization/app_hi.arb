@@ -43,6 +43,16 @@
   "homeDueNow": "अभी लें!",
   "homeTakeNowBanner": "अभी लें!",
   "homeTakeNowSubtitle": "एक खुराक बाकी है",
+  "alarmTitle": "दवा लेने का समय हो गया!",
+  "alarmSubtitle": "{name} — {dose}",
+  "@alarmSubtitle": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "dose": {"type": "String"}
+    }
+  },
+  "alarmSnooze": "स्नूज़",
+  "alarmLater": "बाद में लूँगा/लूँगी",
   "homeOverdueMin": "{minutes} मिनट देर",
   "@homeOverdueMin": {
     "placeholders": {

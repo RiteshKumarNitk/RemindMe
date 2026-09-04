@@ -6,6 +6,7 @@ import '../../core/localization/generated/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
+import 'backup_screen.dart';
 import 'family_sync_screen.dart';
 
 Future<void> _openBatterySettings() => app_settings.AppSettings.openAppSettings(
@@ -410,6 +411,43 @@ class _SettingsScreenState extends State<SettingsScreen>
                 );
               },
             ),
+            const SizedBox(height: 24),
+
+            _SectionHeader('Backup & Restore'),
+            Card(
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                minTileHeight: 68,
+                leading: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.backup_rounded,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                title: const Text('Backup & Restore'),
+                subtitle: const Text('Save or restore your data'),
+                trailing: Icon(
+                  Icons.chevron_right_rounded,
+                  color: theme.colorScheme.outline,
+                ),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const BackupScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
             _SectionHeader(l10n.setAbout),
             Card(
               child: Padding(

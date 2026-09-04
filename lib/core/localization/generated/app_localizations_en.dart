@@ -99,6 +99,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTakeNowSubtitle => 'A dose is due';
 
   @override
+  String get alarmTitle => 'Time to take your medicine!';
+
+  @override
+  String alarmSubtitle(String name, String dose) {
+    return '$name — $dose';
+  }
+
+  @override
+  String get alarmSnooze => 'Snooze';
+
+  @override
+  String get alarmLater => 'I\'ll take it later';
+
+  @override
   String homeOverdueMin(int minutes) {
     return '$minutes min late';
   }

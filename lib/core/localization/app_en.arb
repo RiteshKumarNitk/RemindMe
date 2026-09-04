@@ -43,6 +43,16 @@
   "homeDueNow": "Due now!",
   "homeTakeNowBanner": "Take now!",
   "homeTakeNowSubtitle": "A dose is due",
+  "alarmTitle": "Time to take your medicine!",
+  "alarmSubtitle": "{name} — {dose}",
+  "@alarmSubtitle": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "dose": {"type": "String"}
+    }
+  },
+  "alarmSnooze": "Snooze",
+  "alarmLater": "I'll take it later",
   "homeOverdueMin": "{minutes} min late",
   "@homeOverdueMin": {
     "placeholders": {

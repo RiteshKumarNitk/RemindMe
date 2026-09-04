@@ -695,7 +695,10 @@ class NotificationService implements ReminderScheduler {
   }) async {
     if (!_initialized) return false;
     final tzWhen = tz.TZDateTime.from(when, tz.local);
-    if (!tzWhen.isAfter(tz.TZDateTime.now(tz.local))) return false;
+    // If time is in the past or very near, fire immediately so user still
+    // gets the notification even if the app was closed when it became due.
+    final now = tz.TZDateTime.now(tz.local);
+    final fireAt = tzWhen.isAfter(now) ? tzWhen : now.add(const Duration(seconds: 2));
 
     final channel = _soundEnabled ? _soundChannelId : _silentChannelId;
     final chName =
@@ -721,7 +724,7 @@ class NotificationService implements ReminderScheduler {
           id: doseId,
           title: title,
           body: body,
-          scheduledDate: tzWhen,
+          scheduledDate: fireAt,
           notificationDetails: details,
           androidScheduleMode: mode,
           payload: payload,
@@ -779,6 +782,8 @@ class NotificationService implements ReminderScheduler {
   }) async {
     if (!_initialized) return false;
     final tzWhen = tz.TZDateTime.from(when, tz.local);
+    // If advance time is in the past, skip it (the main notification will
+    // fire instead).
     if (!tzWhen.isAfter(tz.TZDateTime.now(tz.local))) return false;
 
     final details = NotificationDetails(

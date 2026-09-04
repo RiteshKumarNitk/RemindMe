@@ -60,6 +60,11 @@ class AppState extends ChangeNotifier {
   DateTime? _lastActionPreviousTakenAt;
   DateTime? _lastActionPreviousSkippedAt;
 
+  // Auto-speak: periodically checks if a dose is due and speaks the reminder.
+  Timer? _autoSpeakTimer;
+  int? _lastSpokenDoseId;
+  DateTime? _lastSpokenAt;
+
   bool get loading => _loading;
   List<DoseEntry> get todayDoses => _todayDoses;
   List<Medicine> get medicines => _medicines;
@@ -85,6 +90,7 @@ class AppState extends ChangeNotifier {
     await refreshPermissionStatus();
     if (!deferScheduleSync) {
       await refresh();
+      _startAutoSpeak();
       return;
     }
     final now = DateTime.now();
@@ -95,6 +101,70 @@ class AppState extends ChangeNotifier {
     _revision++;
     notifyListeners();
     unawaited(refresh());
+    _startAutoSpeak();
+  }
+
+  /// Starts a periodic timer that checks every 30 seconds if a dose is due
+  /// and automatically speaks the voice reminder. Repeats every 60 seconds
+  /// until the dose is taken or skipped.
+  void _startAutoSpeak() {
+    _autoSpeakTimer?.cancel();
+    _autoSpeakTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _checkAutoSpeak(),
+    );
+    // Also check immediately
+    _checkAutoSpeak();
+  }
+
+  void _checkAutoSpeak() {
+    if (!settings.voiceEnabled) return;
+    if (_loading) return;
+
+    final now = DateTime.now();
+    final grace = settings.graceDuration;
+    final next = _nextDose;
+    if (next == null) return;
+
+    final isDueNow = next.effectiveStatus(grace, now) == DoseStatus.pending &&
+        !next.dose.scheduledAt.isAfter(now.add(const Duration(minutes: 10)));
+
+    if (!isDueNow) {
+      _lastSpokenDoseId = null;
+      return;
+    }
+
+    // Don't repeat more than once per minute
+    if (_lastSpokenDoseId == next.dose.id &&
+        _lastSpokenAt != null &&
+        now.difference(_lastSpokenAt!) < const Duration(seconds: 60)) {
+      return;
+    }
+
+    // Speak the reminder
+    _lastSpokenDoseId = next.dose.id;
+    _lastSpokenAt = now;
+    _speakDoseReminder(next);
+  }
+
+  void _speakDoseReminder(DoseEntry entry) {
+    final l10n = l10nFor(settings.settings.locale);
+    final text = l10n.voiceTimeToTake(
+      entry.medicine.name,
+      entry.medicine.doseLabel,
+    );
+    voice.speak(text, settings.settings.locale);
+  }
+
+  @override
+  void dispose() {
+    _autoSpeakTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Restarts the auto-speak timer. Called when app resumes from background.
+  void restartAutoSpeak() {
+    _startAutoSpeak();
   }
 
   /// Refreshes permission flags without showing any system dialog.
@@ -147,6 +217,7 @@ class AppState extends ChangeNotifier {
     _loading = false;
     _revision++;
     notifyListeners();
+    _checkAutoSpeak(); // Check if a dose is due after data refresh
   }
 
   // ---- Refill reminders -----------------------------------------------------

@@ -134,12 +134,19 @@ class DoseScheduler {
   }
 
   /// When a notification for this dose should fire, or null when none is
-  /// needed (final outcome, or time already past).
+  /// needed (final outcome). If the scheduled time is in the past but
+  /// within the grace window, we still schedule it so the user gets
+  /// reminded even if the app was closed when the dose became due.
   DateTime? _notificationTime(MedicineDose dose, DateTime now) {
     if (dose.status != DoseStatus.pending) return null;
     final snoozed = dose.snoozedUntil;
     if (snoozed != null && snoozed.isAfter(now)) return snoozed;
     if (dose.scheduledAt.isAfter(now)) return dose.scheduledAt;
+    // Dose is overdue but still pending — schedule it to fire 1 second
+    // from now so the user gets a heads-up notification.
+    if (dose.scheduledAt.isAfter(now.subtract(const Duration(minutes: 30)))) {
+      return now.add(const Duration(seconds: 1));
+    }
     return null;
   }
 

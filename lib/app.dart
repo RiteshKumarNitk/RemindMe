@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/localization/generated/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'features/history/history_screen.dart';
+import 'features/home/dose_alarm_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/login/login_screen.dart';
 import 'features/medicines/medicine_form_screen.dart';
@@ -11,6 +12,8 @@ import 'features/medicines/medicines_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/splash/splash_screen.dart';
+import 'data/models/dose_entry.dart';
+import 'data/models/dose_status.dart';
 import 'services/auth_service.dart';
 import 'services/settings_controller.dart';
 import 'services/sync/sync_service.dart';
@@ -130,6 +133,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _index = 0;
+  int _lastAlarmId = -1; // Track which dose we've already shown the alarm for
 
   @override
   void initState() {
@@ -151,6 +155,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       final appState = context.read<AppState>();
       appState.refreshPermissionStatus();
       appState.refresh();
+      appState.restartAutoSpeak();
       context.read<SyncService>().syncNow();
     }
   }
@@ -159,6 +164,50 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => const MedicineFormScreen()));
+  }
+
+
+
+  void _checkAndShowAlarm() {
+    final appState = context.read<AppState>();
+    final settings = context.read<SettingsController>();
+    final next = appState.nextDose;
+    if (next == null) return;
+
+    final now = DateTime.now();
+    final isDueNow = !next.dose.scheduledAt.isAfter(now.add(const Duration(minutes: 10))) &&
+        next.effectiveStatus(settings.graceDuration, now) == DoseStatus.pending;
+
+    // Only show alarm once per dose, and only when due now
+    if (isDueNow && next.dose.id != _lastAlarmId) {
+      _lastAlarmId = next.dose.id!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _showAlarmOverlay(next);
+      });
+    }
+  }
+
+  void _showAlarmOverlay(DoseEntry entry) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: 'alarm',
+      barrierColor: Colors.black87,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return DoseAlarmScreen(entry: entry);
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOut,
+          ),
+          child: child,
+        );
+      },
+    );
   }
 
   @override
@@ -170,6 +219,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       _NavSpec(Icons.history_rounded, l10n.histTitle),
       _NavSpec(Icons.person_rounded, l10n.navProfile),
     ];
+
+    // Check for due-now alarm on every rebuild
+    _checkAndShowAlarm();
 
     return Scaffold(
       extendBody: true,
