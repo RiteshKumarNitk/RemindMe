@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -158,12 +159,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-                    if (auth.debugInfo != null) ...[
+                    if (kDebugMode && auth.debugInfo != null) ...[
                       const SizedBox(height: 8),
                       Text(
                         auth.debugInfo!,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onErrorContainer.withValues(alpha: 0.7),
+                          color: theme.colorScheme.onErrorContainer.withValues(
+                            alpha: 0.7,
+                          ),
                           fontFamily: 'monospace',
                           fontSize: 11,
                         ),

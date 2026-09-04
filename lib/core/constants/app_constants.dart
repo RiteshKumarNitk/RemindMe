@@ -3,7 +3,10 @@ class AppConstants {
   AppConstants._();
 
   /// How many days of doses are pre-generated and scheduled ahead.
-  static const int windowDays = 14;
+  /// Kept small so the notification reconcile (one platform call per dose ×
+  /// advance alarms) finishes in a second or two — the app re-runs it on every
+  /// open/resume and the OS boot receiver re-registers after a reboot.
+  static const int windowDays = 4;
 
   /// Default snooze duration (also user-configurable in Settings).
   static const Duration defaultSnooze = Duration(minutes: 10);

@@ -100,9 +100,10 @@ Future<void> _bootstrap() async {
     ),
   );
 
-  // Fast: local DB read + a few platform reads. Schedule reconcile is deferred
-  // to the background so it can never block first paint.
-  await _guard('appState.init', () => appState.init(deferScheduleSync: true));
+  // Load local data + reconcile the OS notifications. With windowDays small and
+  // the exact-mode short-circuit this finishes in ~1–2 s; the _guard timeout
+  // still protects the splash if a platform call ever stalls.
+  await _guard('appState.init', () => appState.init());
 
   runApp(MediReminderApp(
     appState: appState,

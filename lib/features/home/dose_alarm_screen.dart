@@ -40,7 +40,7 @@ class _DoseAlarmScreenState extends State<DoseAlarmScreen>
     super.initState();
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 750),
     )..repeat(reverse: true);
 
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -162,28 +162,36 @@ class _DoseAlarmScreenState extends State<DoseAlarmScreen>
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Pulsing alarm icon
-                ScaleTransition(
-                  scale: CurvedAnimation(
-                    parent: _pulseController,
-                    curve: Curves.easeInOut,
-                  ),
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        width: 3,
+                // Alarm icon with a pulsing glow ring (no zoom).
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    final t = _pulseController.value;
+                    return Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12 + 0.12 * t),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.25 + 0.55 * t),
+                          width: 3,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withValues(alpha: 0.28 * t),
+                            blurRadius: 28 * t,
+                            spreadRadius: 8 * t,
+                          ),
+                        ],
                       ),
-                    ),
-                    child: const Icon(
-                      Icons.notifications_active_rounded,
-                      size: 50,
-                      color: Colors.white,
-                    ),
+                      child: child,
+                    );
+                  },
+                  child: const Icon(
+                    Icons.notifications_active_rounded,
+                    size: 50,
+                    color: Colors.white,
                   ),
                 ),
 
@@ -298,7 +306,38 @@ class _DoseAlarmScreenState extends State<DoseAlarmScreen>
                   ),
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
+
+                // Snooze button
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: FilledButton.tonalIcon(
+                      onPressed: () async {
+                        await appState.markSnoozed(entry);
+                        if (context.mounted) Navigator.of(context).pop();
+                      },
+                      icon: const Icon(Icons.snooze_rounded),
+                      label: Text(
+                        l10n.notifActionSnooze(settings.snoozeMinutes),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.18),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        textStyle: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
 
                 // Skip button
                 Padding(
@@ -390,18 +429,23 @@ class _AlarmChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: highlight
-              ? Colors.amber.withValues(alpha: 0.25)
+              ? const Color(0xFFFFC857).withValues(alpha: 0.25)
               : Colors.white.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(14),
           border: highlight
-              ? Border.all(color: Colors.amber.withValues(alpha: 0.5), width: 1.5)
+              ? Border.all(
+                  color: const Color(0xFFFFC857).withValues(alpha: 0.5),
+                  width: 1.5,
+                )
               : null,
         ),
         child: Row(
           children: [
             Icon(
               icon,
-              color: highlight ? Colors.amber : Colors.white.withValues(alpha: 0.8),
+              color: highlight
+                  ? const Color(0xFFFFC857)
+                  : Colors.white.withValues(alpha: 0.8),
               size: 20,
             ),
             const SizedBox(width: 12),

@@ -46,6 +46,10 @@
         </activity>
 
         <!-- Receivers used by flutter_local_notifications -->
+        <!-- Handles TAKEN / SNOOZE / SKIP action buttons (showsUserInterface=false). -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
         <receiver
             android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />

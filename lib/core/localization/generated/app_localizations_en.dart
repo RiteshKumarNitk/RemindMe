@@ -63,6 +63,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeDailyProgress => 'Daily Progress';
 
   @override
+  String get homeQuickActions => 'Quick actions';
+
+  @override
+  String get qaWeeklyCalendar => 'Weekly Calendar';
+
+  @override
+  String get qaAdherenceReport => 'Adherence Report';
+
+  @override
+  String get qaDoctorReport => 'Doctor Report';
+
+  @override
+  String get qaVoiceMode => 'Voice Mode';
+
+  @override
+  String get qaVitalsLog => 'Vitals Log';
+
+  @override
   String get navMeds => 'Meds';
 
   @override

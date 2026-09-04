@@ -206,6 +206,42 @@ abstract class AppLocalizations {
   /// **'Daily Progress'**
   String get homeDailyProgress;
 
+  /// No description provided for @homeQuickActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick actions'**
+  String get homeQuickActions;
+
+  /// No description provided for @qaWeeklyCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly Calendar'**
+  String get qaWeeklyCalendar;
+
+  /// No description provided for @qaAdherenceReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Adherence Report'**
+  String get qaAdherenceReport;
+
+  /// No description provided for @qaDoctorReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctor Report'**
+  String get qaDoctorReport;
+
+  /// No description provided for @qaVoiceMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice Mode'**
+  String get qaVoiceMode;
+
+  /// No description provided for @qaVitalsLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Vitals Log'**
+  String get qaVitalsLog;
+
   /// No description provided for @navMeds.
   ///
   /// In en, this message translates to:

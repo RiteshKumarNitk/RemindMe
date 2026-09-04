@@ -1,4 +1,5 @@
 import 'package:app_settings/app_settings.dart' as app_settings;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -187,7 +188,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                   await notifs.requestPermission();
                 }
                 final granted = await notifs.areNotificationsEnabled();
-                final shown = granted &&
+                final shown =
+                    granted &&
                     await notifs.showTestNotification(
                       title: '🔔 ${l10n.setNotificationSound}',
                       body: l10n.setNotifDesc,
@@ -209,88 +211,93 @@ class _SettingsScreenState extends State<SettingsScreen>
               icon: const Icon(Icons.volume_up_rounded),
               label: Text(l10n.testNotification),
             ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () async {
-                final notifs = appState.notifications;
-                if (!await notifs.areNotificationsEnabled()) {
-                  await notifs.requestPermission();
-                }
-                final r = await notifs.scheduleSelfTest(
-                  seconds: 60,
-                  title: '🔔 ${l10n.notifTitle}',
-                  body: l10n.setTestScheduledSent,
-                );
-                // Sync the on-screen permission badges to what scheduling
-                // actually found (the cached flags can be stale/optimistic).
-                await appState.refreshPermissionStatus();
-                final t = TimeOfDay.fromDateTime(r.fireAt);
-                final hh = t.hour.toString().padLeft(2, '0');
-                final mm = t.minute.toString().padLeft(2, '0');
-                final ss = r.fireAt.second.toString().padLeft(2, '0');
-                if (mounted) {
-                  setState(() {
-                    _selfTestInfo = [
-                      'scheduled : ${r.scheduled ? "yes" : "NO"}',
-                      'mode      : ${r.mode}'
-                          '${r.scheduled && !r.exact ? "  (inexact — Doze may delay / hold it)" : ""}',
-                      'in OS queue: ${r.verified ? "yes" : "NO — the OS did not keep it"}',
-                      'fires at  : $hh:$mm:$ss',
-                      'timezone  : ${r.tzName}',
-                    ].join('\n');
-                  });
-                }
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      duration: const Duration(seconds: 8),
-                      content: Text(
-                        !r.scheduled
-                            ? l10n.setTestScheduledFailed
-                            : r.exact
-                            ? l10n.setTestScheduledSent
-                            : l10n.setTestScheduledInexact,
-                      ),
-                      action: (r.scheduled && !r.exact)
-                          ? SnackBarAction(
-                              label: l10n.setPermissions,
-                              onPressed: _openExactAlarmSettings,
-                            )
-                          : null,
-                    ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.timer_outlined),
-              label: Text(l10n.setTestScheduled),
-            ),
-            const SizedBox(height: 8),
-            FutureBuilder<Set<int>>(
-              future: appState.notifications.pendingIds(),
-              builder: (context, snap) => Text(
-                l10n.setScheduledCount(snap.data?.length ?? 0),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-            if (_selfTestInfo != null) ...[
+            // Developer-only scheduling self-test + raw diagnostic dump.
+            // Hidden from release builds; users only see "Send a test
+            // notification" above and the Notification status card below.
+            if (kDebugMode) ...[
               const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: SelectableText(
-                  _selfTestInfo!,
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final notifs = appState.notifications;
+                  if (!await notifs.areNotificationsEnabled()) {
+                    await notifs.requestPermission();
+                  }
+                  final r = await notifs.scheduleSelfTest(
+                    seconds: 60,
+                    title: '🔔 ${l10n.notifTitle}',
+                    body: l10n.setTestScheduledSent,
+                  );
+                  // Sync the on-screen permission badges to what scheduling
+                  // actually found (the cached flags can be stale/optimistic).
+                  await appState.refreshPermissionStatus();
+                  final t = TimeOfDay.fromDateTime(r.fireAt);
+                  final hh = t.hour.toString().padLeft(2, '0');
+                  final mm = t.minute.toString().padLeft(2, '0');
+                  final ss = r.fireAt.second.toString().padLeft(2, '0');
+                  if (mounted) {
+                    setState(() {
+                      _selfTestInfo = [
+                        'scheduled : ${r.scheduled ? "yes" : "NO"}',
+                        'mode      : ${r.mode}'
+                            '${r.scheduled && !r.exact ? "  (inexact — Doze may delay / hold it)" : ""}',
+                        'in OS queue: ${r.verified ? "yes" : "NO — the OS did not keep it"}',
+                        'fires at  : $hh:$mm:$ss',
+                        'timezone  : ${r.tzName}',
+                      ].join('\n');
+                    });
+                  }
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        duration: const Duration(seconds: 8),
+                        content: Text(
+                          !r.scheduled
+                              ? l10n.setTestScheduledFailed
+                              : r.exact
+                              ? l10n.setTestScheduledSent
+                              : l10n.setTestScheduledInexact,
+                        ),
+                        action: (r.scheduled && !r.exact)
+                            ? SnackBarAction(
+                                label: l10n.setPermissions,
+                                onPressed: _openExactAlarmSettings,
+                              )
+                            : null,
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.timer_outlined),
+                label: Text(l10n.setTestScheduled),
+              ),
+              const SizedBox(height: 8),
+              FutureBuilder<Set<int>>(
+                future: appState.notifications.pendingIds(),
+                builder: (context, snap) => Text(
+                  l10n.setScheduledCount(snap.data?.length ?? 0),
                   style: theme.textTheme.bodySmall?.copyWith(
-                    fontFamily: 'monospace',
-                    color: theme.colorScheme.onSurface,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
+              if (_selfTestInfo != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: SelectableText(
+                    _selfTestInfo!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontFamily: 'monospace',
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ],
             ],
             const SizedBox(height: 24),
 
@@ -392,59 +399,60 @@ class _SettingsScreenState extends State<SettingsScreen>
             // Diagnostic status + Fix All button
             Builder(
               builder: (context) {
-                final allOk = appState.notificationsEnabled &&
+                final allOk =
+                    appState.notificationsEnabled &&
                     appState.exactAlarmsEnabled &&
                     appState.batteryUnrestricted;
                 return Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          allOk
-                              ? Icons.check_circle_rounded
-                              : Icons.warning_rounded,
-                          color: allOk
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.error,
-                          size: 24,
+                        Row(
+                          children: [
+                            Icon(
+                              allOk
+                                  ? Icons.check_circle_rounded
+                                  : Icons.warning_rounded,
+                              color: allOk
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.error,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                allOk
+                                    ? l10n.notifStatusOk
+                                    : l10n.notifStatusNeedsFix,
+                                style: theme.textTheme.bodyLarge,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            allOk
-                                ? l10n.notifStatusOk
-                                : l10n.notifStatusNeedsFix,
-                            style: theme.textTheme.bodyLarge,
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.tonalIcon(
+                            onPressed: () async {
+                              if (!appState.notificationsEnabled) {
+                                await appState.requestAllPermissions();
+                              }
+                              if (!appState.exactAlarmsEnabled) {
+                                await appState.requestExactAlarms();
+                              }
+                              if (!appState.batteryUnrestricted) {
+                                await _openBatterySettings();
+                              }
+                            },
+                            icon: const Icon(Icons.build_rounded),
+                            label: Text(l10n.notifFixAll),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.tonalIcon(
-                        onPressed: () async {
-                          if (!appState.notificationsEnabled) {
-                            await appState.requestAllPermissions();
-                          }
-                          if (!appState.exactAlarmsEnabled) {
-                            await appState.requestExactAlarms();
-                          }
-                          if (!appState.batteryUnrestricted) {
-                            await _openBatterySettings();
-                          }
-                        },
-                        icon: const Icon(Icons.build_rounded),
-                        label: Text(l10n.notifFixAll),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
                 );
               },
             ),
@@ -475,9 +483,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ),
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const BackupScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const BackupScreen()),
                   );
                 },
               ),

@@ -410,15 +410,17 @@ class AppState extends ChangeNotifier {
     Duration grace,
     DateTime now,
   ) {
+    // Sort by *effective* time so a snoozed dose is ordered by its new time.
+    DateTime eff(DoseEntry e) => e.dose.snoozedUntil ?? e.dose.scheduledAt;
     final pending =
         entries
             .where((e) => e.effectiveStatus(grace, now) == DoseStatus.pending)
             .toList()
-          ..sort((a, b) => a.dose.scheduledAt.compareTo(b.dose.scheduledAt));
+          ..sort((a, b) => eff(a).compareTo(eff(b)));
     if (pending.isEmpty) return null;
     // A dose that is due now (or up to 10 minutes late) takes priority.
     for (final e in pending) {
-      if (!e.dose.scheduledAt.isAfter(now.add(const Duration(minutes: 10)))) {
+      if (!eff(e).isAfter(now.add(const Duration(minutes: 10)))) {
         return e;
       }
     }

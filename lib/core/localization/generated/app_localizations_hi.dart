@@ -63,6 +63,24 @@ class AppLocalizationsHi extends AppLocalizations {
   String get homeDailyProgress => 'आज की प्रगति';
 
   @override
+  String get homeQuickActions => 'त्वरित क्रियाएँ';
+
+  @override
+  String get qaWeeklyCalendar => 'साप्ताहिक कैलेंडर';
+
+  @override
+  String get qaAdherenceReport => 'अनुपालन रिपोर्ट';
+
+  @override
+  String get qaDoctorReport => 'डॉक्टर रिपोर्ट';
+
+  @override
+  String get qaVoiceMode => 'वॉइस मोड';
+
+  @override
+  String get qaVitalsLog => 'वाइटल्स लॉग';
+
+  @override
   String get navMeds => 'दवाएँ';
 
   @override

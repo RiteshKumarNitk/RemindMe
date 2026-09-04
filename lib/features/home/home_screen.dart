@@ -215,12 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _ProgressSummary(stats: stats, l10n: l10n),
 
             const SizedBox(height: 24),
-            Text(
-              'Quick Actions',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            _SectionLabel(l10n.homeQuickActions),
             const SizedBox(height: 12),
             _QuickActions(
               onCalendar: () => Navigator.of(context).push(
@@ -507,9 +502,10 @@ class _UpcomingDoseCardState extends State<_UpcomingDoseCard>
   @override
   void initState() {
     super.initState();
+    // Fast, assertive cycle for the "due now" alarm glow (not a gentle breathe).
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 750),
     )..repeat(reverse: true);
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _now = DateTime.now());
@@ -540,81 +536,77 @@ class _UpcomingDoseCardState extends State<_UpcomingDoseCard>
     final locale = settings.settings.locale;
 
     final scheduled = entry.dose.scheduledAt;
-    final isDueNow = !scheduled.isAfter(_now.add(const Duration(minutes: 10)));
-    final countdown = _countdown(scheduled, _now, l10n);
-    final summary = _doseSummary(l10n, entry);
+    final snoozedUntil = entry.dose.snoozedUntil;
+    final isSnoozed = snoozedUntil != null && snoozedUntil.isAfter(_now);
+    final effectiveTime = isSnoozed ? snoozedUntil : scheduled;
+    final isDueNow =
+        !effectiveTime.isAfter(_now.add(const Duration(minutes: 10)));
+    final countdown = _countdown(effectiveTime, _now, l10n);
+    final grad = isDueNow ? theme.doseDueGradient : theme.doseGradient;
+    final food = _foodLabel(l10n, entry.medicine.foodInstruction);
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDueNow ? theme.doseDueGradient : theme.doseGradient,
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: (isDueNow ? theme.doseDueGradient : theme.doseGradient)
-                .first
-                .withValues(alpha: 0.32),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, _) {
+        // 0 → 1 → 0. Only "on" when the dose is due, so the resting card is still.
+        final t = isDueNow ? _pulseController.value : 0.0;
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: grad,
+            ),
+            borderRadius: BorderRadius.circular(28),
+            // Bright ring that flashes like an alarm indicator — no zoom.
+            border: isDueNow
+                ? Border.all(
+                    color: Colors.white.withValues(alpha: 0.25 + 0.55 * t),
+                    width: 2,
+                  )
+                : null,
+            boxShadow: [
+              BoxShadow(
+                color: grad.first.withValues(alpha: 0.26 + 0.40 * t),
+                blurRadius: 22 + 30 * t,
+                spreadRadius: isDueNow ? (1 + 7 * t) : 0,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
+          padding: const EdgeInsets.all(20),
+          child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ScaleTransition(
-                scale: isDueNow
-                    ? CurvedAnimation(
-                        parent: _pulseController,
-                        curve: Curves.easeInOut,
-                      )
-                    : const AlwaysStoppedAnimation(1.0),
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    isDueNow
-                        ? Icons.notifications_active_rounded
-                        : Icons.medication_rounded,
-                    color: Colors.white,
-                    size: 26,
-                  ),
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: Colors.white
+                      .withValues(alpha: isDueNow ? (0.14 + 0.24 * t) : 0.18),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isDueNow
+                      ? Icons.notifications_active_rounded
+                      : Icons.medication_rounded,
+                  color: Colors.white,
+                  size: 24,
                 ),
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      entry.medicine.name,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (summary.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          summary,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.85),
-                          ),
-                        ),
-                      ),
-                  ],
+                child: Text(
+                  entry.medicine.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                  ),
                 ),
               ),
               IconButton(
@@ -624,60 +616,132 @@ class _UpcomingDoseCardState extends State<_UpcomingDoseCard>
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          Row(
+          const SizedBox(height: 14),
+          // What & when — every detail the notification also carries.
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               _GlassChip(
                 icon: Icons.schedule_rounded,
-                label: AppDateUtils.timeLabel(scheduled, locale),
+                label: AppDateUtils.timeLabel(effectiveTime, locale),
               ),
-              const SizedBox(width: 8),
-              _GlassChip(
-                icon: countdown.overdue
+              if (entry.medicine.doseLabel.isNotEmpty)
+                _GlassChip(
+                  icon: Icons.medication_liquid_rounded,
+                  label: entry.medicine.doseLabel,
+                ),
+              if (food.isNotEmpty)
+                _GlassChip(icon: Icons.restaurant_rounded, label: food),
+              if (isSnoozed)
+                _GlassChip(
+                  icon: Icons.snooze_rounded,
+                  label: l10n.homeSnoozedUntil(
+                    AppDateUtils.timeLabel(snoozedUntil, locale),
+                  ),
+                  strong: true,
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Icon(
+                countdown.overdue
                     ? Icons.error_outline_rounded
                     : Icons.timelapse_rounded,
-                label: countdown.text,
-                mono: countdown.mono,
-                strong: countdown.overdue,
+                color: Colors.white,
+                size: 20,
               ),
-              const Spacer(),
-              _MarkTakenButton(
-                label: l10n.homeMarkAsTaken,
-                foreground: (isDueNow
-                        ? theme.doseDueGradient
-                        : theme.doseGradient)
-                    .first,
-                onPressed: () async {
-                  await appState.markTaken(entry);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(l10n.undoTaken),
-                        duration: const Duration(seconds: 5),
-                        action: SnackBarAction(
-                          label: l10n.undo,
-                          onPressed: () => appState.undoLastAction(),
-                        ),
-                      ),
-                    );
-                  }
-                },
+              const SizedBox(width: 8),
+              Text(
+                countdown.text,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontFeatures: countdown.mono
+                      ? const [FontFeature.tabularFigures()]
+                      : null,
+                ),
               ),
             ],
           ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: () => _confirmSkip(context, appState, entry, l10n),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white.withValues(alpha: 0.9),
-                padding: const EdgeInsets.symmetric(vertical: 6),
-              ),
-              child: Text(l10n.homeSkip),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: _MarkTakenButton(
+              label: l10n.homeMarkAsTaken,
+              foreground: grad.first,
+              onPressed: () => _takeWithUndo(context, appState, entry, l10n),
             ),
           ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _GhostButton(
+                  icon: Icons.snooze_rounded,
+                  label: l10n.notifActionSnooze(settings.snoozeMinutes),
+                  onPressed: () => _snooze(context, appState, entry, l10n),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GhostButton(
+                  icon: Icons.close_rounded,
+                  label: l10n.homeSkip,
+                  onPressed: () => _confirmSkip(context, appState, entry, l10n),
+                ),
+              ),
+            ],
+          ),
         ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _takeWithUndo(
+    BuildContext context,
+    AppState appState,
+    DoseEntry entry,
+    AppLocalizations l10n,
+  ) async {
+    await appState.markTaken(entry);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.undoTaken),
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: l10n.undo,
+          onPressed: () => appState.undoLastAction(),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _snooze(
+    BuildContext context,
+    AppState appState,
+    DoseEntry entry,
+    AppLocalizations l10n,
+  ) async {
+    await appState.markSnoozed(entry);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          l10n.homeSnoozedUntil(
+            AppDateUtils.timeLabel(
+              DateTime.now().add(appState.settings.snoozeDuration),
+              appState.settings.settings.locale,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -774,17 +838,13 @@ class _GlassChip extends StatelessWidget {
   const _GlassChip({
     this.icon,
     required this.label,
-    this.mono = false,
     this.strong = false,
   });
 
   final IconData? icon;
   final String label;
 
-  /// Tabular figures so a ticking countdown doesn't jitter.
-  final bool mono;
-
-  /// Higher-contrast fill (used when the dose is overdue).
+  /// Higher-contrast fill (used for the snoozed indicator).
   final bool strong;
 
   @override
@@ -807,12 +867,41 @@ class _GlassChip extends StatelessWidget {
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w700,
-              fontFeatures: mono
-                  ? const [FontFeature.tabularFigures()]
-                  : null,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Translucent white button used for the secondary actions (Snooze / Skip)
+/// on the coloured "Upcoming Dose" card.
+class _GhostButton extends StatelessWidget {
+  const _GhostButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18, color: Colors.white),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.white,
+        backgroundColor: Colors.white.withValues(alpha: 0.16),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -1418,6 +1507,7 @@ class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -1428,31 +1518,31 @@ class _QuickActions extends StatelessWidget {
       children: [
         _QuickActionCard(
           icon: Icons.calendar_month_rounded,
-          label: 'Weekly Calendar',
+          label: l10n.qaWeeklyCalendar,
           color: theme.colorScheme.primary,
           onTap: onCalendar,
         ),
         _QuickActionCard(
           icon: Icons.bar_chart_rounded,
-          label: 'Adherence Report',
+          label: l10n.qaAdherenceReport,
           color: theme.successColor,
           onTap: onReport,
         ),
         _QuickActionCard(
           icon: Icons.local_hospital_rounded,
-          label: 'Doctor Report',
+          label: l10n.qaDoctorReport,
           color: theme.colorScheme.tertiary,
           onTap: onDoctorReport,
         ),
         _QuickActionCard(
           icon: Icons.mic_rounded,
-          label: 'Voice Mode',
+          label: l10n.qaVoiceMode,
           color: theme.accentColor,
           onTap: onVoiceMode,
         ),
         _QuickActionCard(
           icon: Icons.favorite_rounded,
-          label: 'Vitals Log',
+          label: l10n.qaVitalsLog,
           color: theme.missedColor,
           onTap: onVitals,
         ),
