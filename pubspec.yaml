@@ -1,7 +1,7 @@
 name: medireminder
 description: "A simple, reliable medicine reminder app for elderly users."
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.9.0
