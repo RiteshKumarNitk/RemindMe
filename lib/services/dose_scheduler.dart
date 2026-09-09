@@ -53,7 +53,7 @@ class DoseScheduler {
         '${d.medicineId}_${d.scheduledAt.toIso8601String()}': d,
     };
 
-    final desired = <int, ({DateTime when, Medicine medicine})>{};
+    final desired = <int, ({DateTime when, Medicine medicine, MedicineDose dose})>{};
     for (final med in medicines) {
       if (!med.active) continue;
       for (final s in med.schedules.where((s) => s.enabled)) {
@@ -71,7 +71,7 @@ class DoseScheduler {
           if (dose == null) continue;
           final when = _notificationTime(dose, now);
           if (when != null) {
-            desired[dose.id!] = (when: when, medicine: med);
+            desired[dose.id!] = (when: when, medicine: med, dose: dose);
           }
         }
       }
@@ -85,9 +85,29 @@ class DoseScheduler {
     );
     for (final entry in desired.entries) {
       final med = entry.value.medicine;
+      final dose = entry.value.dose;
       final doseWhen = entry.value.when;
       // "1 tablet · 20 mg · after food · 2:30 PM" — always in the notification.
       final info = text.info(med.doseLabel, med.foodInstruction, doseWhen);
+
+      // If the notification is already pending, check whether the fire time
+      // has drifted from the original scheduled time (e.g. the dose became
+      // overdue and should now fire immediately). If so, cancel the stale
+      // notification and re-schedule so the user gets prompted promptly.
+      final alreadyPending = pending.contains(entry.key);
+      if (alreadyPending) {
+        final originalTime = dose.snoozedUntil ?? dose.scheduledAt;
+        if (!doseWhen.isAtSameMomentAs(originalTime)) {
+          developer.log(
+            'Fire time changed for dose ${entry.key}: '
+            'was ${originalTime.toIso8601String()} → now ${doseWhen.toIso8601String()}, '
+            're-scheduling',
+            name: 'DoseScheduler',
+          );
+          await scheduler.cancel(entry.key);
+          pending.remove(entry.key);
+        }
+      }
 
       // Main reminder — only (re)schedule if it isn't already queued.
       if (!pending.contains(entry.key)) {
@@ -107,7 +127,7 @@ class DoseScheduler {
         );
       } else {
         developer.log(
-          'Dose ${entry.key} already pending, skipping',
+          'Dose ${entry.key} already pending with correct time, skipping',
           name: 'DoseScheduler',
         );
       }

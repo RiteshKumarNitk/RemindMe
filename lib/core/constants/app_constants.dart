@@ -6,7 +6,7 @@ class AppConstants {
   /// Kept small so the notification reconcile (one platform call per dose ×
   /// advance alarms) finishes in a second or two — the app re-runs it on every
   /// open/resume and the OS boot receiver re-registers after a reboot.
-  static const int windowDays = 4;
+  static const int windowDays = 7;
 
   /// Default snooze duration (also user-configurable in Settings).
   static const Duration defaultSnooze = Duration(minutes: 10);

@@ -58,11 +58,6 @@ class NotificationService implements ReminderScheduler {
   bool _initialized = false;
   bool _soundEnabled = true;
 
-  /// Set to false the first time `exactAllowWhileIdle` scheduling is rejected,
-  /// so we don't pay 2 extra failed platform round-trips for every remaining
-  /// dose in the same reconcile (this was the cause of the splash-screen hang).
-  bool _exactModeUsable = true;
-
   bool get initialized => _initialized;
 
   /// ~6 seconds of insistent buzzing so an elderly user notices even with the
@@ -109,7 +104,6 @@ class NotificationService implements ReminderScheduler {
   }) async {
     try {
       _soundEnabled = soundEnabled;
-      _exactModeUsable = true; // re-test exact scheduling each app run
       const androidInit =
           AndroidInitializationSettings('@mipmap/ic_launcher');
       const initSettings = InitializationSettings(android: androidInit);
@@ -601,7 +595,6 @@ class NotificationService implements ReminderScheduler {
       landedMode = 'alarmClock';
       exact = true;
     } else if (canExact &&
-        _exactModeUsable &&
         await attempt(AndroidScheduleMode.exactAllowWhileIdle)) {
       landedMode = 'exactAllowWhileIdle';
       exact = true;
@@ -758,9 +751,6 @@ class NotificationService implements ReminderScheduler {
         );
         return true;
       } on Exception catch (e) {
-        if (mode == AndroidScheduleMode.exactAllowWhileIdle) {
-          _exactModeUsable = false; // stop retrying it for the rest of this pass
-        }
         developer.log('zonedSchedule ($mode) FAILED for dose $doseId: $e',
             name: 'Notif', error: e);
         return false;
@@ -771,12 +761,16 @@ class NotificationService implements ReminderScheduler {
     // and needs no SCHEDULE_EXACT_ALARM grant — the most reliable option for a
     // medicine alarm. Then exactAllowWhileIdle, then inexact as a last resort.
     if (await tryMode(AndroidScheduleMode.alarmClock)) {
-      developer.log('scheduleDoseReminder: doseId=$doseId scheduled via alarmClock', name: 'Notif');
-      return true;
+      // Verify the OS actually kept it — some devices accept the call but
+      // silently drop the alarm (e.g. aggressive OEM battery savers).
+      final currentPending = await pendingIds();
+      if (currentPending.contains(doseId)) {
+        developer.log('scheduleDoseReminder: doseId=$doseId scheduled via alarmClock', name: 'Notif');
+        return true;
+      }
+      developer.log('scheduleDoseReminder: alarmClock accepted but not in pending list for doseId=$doseId, trying next mode', name: 'Notif');
     }
-    if (exact &&
-        _exactModeUsable &&
-        await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
+    if (exact && await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
       developer.log('scheduleDoseReminder: doseId=$doseId scheduled via exactAllowWhileIdle', name: 'Notif');
       return true;
     }
@@ -864,19 +858,18 @@ class NotificationService implements ReminderScheduler {
         );
         return true;
       } on Exception catch (e) {
-        if (mode == AndroidScheduleMode.exactAllowWhileIdle) {
-          _exactModeUsable = false;
-        }
         developer.log('scheduleAdvanceAlarm ($mode) failed: $e',
             name: 'Notif', error: e);
         return false;
       }
     }
 
-    if (await tryMode(AndroidScheduleMode.alarmClock)) return true;
-    if (exact &&
-        _exactModeUsable &&
-        await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
+    if (await tryMode(AndroidScheduleMode.alarmClock)) {
+      final currentPending = await pendingIds();
+      if (currentPending.contains(notifId)) return true;
+      // alarmClock accepted but not in pending — fall through to other modes.
+    }
+    if (exact && await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
       return true;
     }
     return tryMode(AndroidScheduleMode.inexactAllowWhileIdle);
