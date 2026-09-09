@@ -706,7 +706,10 @@ class NotificationService implements ReminderScheduler {
     required String snoozeLabel,
     required String skipLabel,
   }) async {
-    if (!_initialized) return false;
+    if (!_initialized) {
+      developer.log('scheduleDoseReminder: NOT initialized, skipping dose=$doseId', name: 'Notif');
+      return false;
+    }
     final tzWhen = tz.TZDateTime.from(when, tz.local);
     // If time is in the past or very near, fire immediately so user still
     // gets the notification even if the app was closed when it became due.
@@ -716,6 +719,13 @@ class NotificationService implements ReminderScheduler {
     final channel = _soundEnabled ? _soundChannelId : _silentChannelId;
     final chName =
         _soundEnabled ? AppConstants.channelName : AppConstants.silentChannelName;
+
+    developer.log(
+      'scheduleDoseReminder: doseId=$doseId title="$title" '
+      'when=${when.toIso8601String()} fireAt=${fireAt.toIso8601String()} '
+      'channel=$channel exact=$exact tz=${tz.local.name}',
+      name: 'Notif',
+    );
 
     final details = NotificationDetails(
       android: _buildReminderDetails(
@@ -742,12 +752,16 @@ class NotificationService implements ReminderScheduler {
           androidScheduleMode: mode,
           payload: payload,
         );
+        developer.log(
+          'zonedSchedule OK: doseId=$doseId mode=$mode fireAt=${fireAt.toIso8601String()}',
+          name: 'Notif',
+        );
         return true;
       } on Exception catch (e) {
         if (mode == AndroidScheduleMode.exactAllowWhileIdle) {
           _exactModeUsable = false; // stop retrying it for the rest of this pass
         }
-        developer.log('zonedSchedule ($mode) failed for dose $doseId: $e',
+        developer.log('zonedSchedule ($mode) FAILED for dose $doseId: $e',
             name: 'Notif', error: e);
         return false;
       }
@@ -756,13 +770,21 @@ class NotificationService implements ReminderScheduler {
     // alarmClock first: AlarmManager.setAlarmClock() is exact, fires in Doze,
     // and needs no SCHEDULE_EXACT_ALARM grant — the most reliable option for a
     // medicine alarm. Then exactAllowWhileIdle, then inexact as a last resort.
-    if (await tryMode(AndroidScheduleMode.alarmClock)) return true;
+    if (await tryMode(AndroidScheduleMode.alarmClock)) {
+      developer.log('scheduleDoseReminder: doseId=$doseId scheduled via alarmClock', name: 'Notif');
+      return true;
+    }
     if (exact &&
         _exactModeUsable &&
         await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
+      developer.log('scheduleDoseReminder: doseId=$doseId scheduled via exactAllowWhileIdle', name: 'Notif');
       return true;
     }
-    if (await tryMode(AndroidScheduleMode.inexactAllowWhileIdle)) return true;
+    if (await tryMode(AndroidScheduleMode.inexactAllowWhileIdle)) {
+      developer.log('scheduleDoseReminder: doseId=$doseId scheduled via inexactAllowWhileIdle (may be delayed by Doze)', name: 'Notif');
+      return true;
+    }
+    developer.log('scheduleDoseReminder: ALL MODES FAILED for doseId=$doseId', name: 'Notif');
     return false;
   }
 

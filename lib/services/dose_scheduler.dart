@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import '../core/notifications/notification_service.dart';
 import '../core/notifications/reminder_text.dart';
 import '../data/models/dose_status.dart';
@@ -76,6 +78,11 @@ class DoseScheduler {
     }
 
     final pending = await scheduler.pendingIds();
+    developer.log(
+      'DoseScheduler.sync: ${medicines.length} medicines, '
+      '${desired.length} desired doses, ${pending.length} already pending',
+      name: 'DoseScheduler',
+    );
     for (final entry in desired.entries) {
       final med = entry.value.medicine;
       final doseWhen = entry.value.when;
@@ -84,6 +91,10 @@ class DoseScheduler {
 
       // Main reminder — only (re)schedule if it isn't already queued.
       if (!pending.contains(entry.key)) {
+        developer.log(
+          'Scheduling dose: id=${entry.key} med="${med.name}" when=${doseWhen.toIso8601String()}',
+          name: 'DoseScheduler',
+        );
         await scheduler.scheduleDoseReminder(
           doseId: entry.key,
           title: text.title(med.name),
@@ -93,6 +104,11 @@ class DoseScheduler {
           takenLabel: text.takenLabel,
           snoozeLabel: text.snoozeLabel,
           skipLabel: text.skipLabel,
+        );
+      } else {
+        developer.log(
+          'Dose ${entry.key} already pending, skipping',
+          name: 'DoseScheduler',
         );
       }
 
@@ -117,6 +133,7 @@ class DoseScheduler {
     }
     for (final id in pending) {
       if (!desired.containsKey(id)) {
+        developer.log('Cancelling stale notification id=$id', name: 'DoseScheduler');
         await scheduler.cancel(id);
       }
     }

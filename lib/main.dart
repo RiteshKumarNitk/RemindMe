@@ -34,9 +34,11 @@ void main() {
 
 Future<void> _bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
+  debugPrint('[Boot] Starting bootstrap...');
 
   await _guard('timezone', () => NotificationService.initTimeZone());
   await _guard('firebase', () => Firebase.initializeApp());
+  debugPrint('[Boot] Firebase initialized');
 
   final prefs = await SharedPreferences.getInstance();
   final settings = SettingsController(SettingsRepository(prefs));
@@ -92,6 +94,7 @@ Future<void> _bootstrap() async {
     () => notifications.init(
       soundEnabled: settings.soundEnabled,
       onResponse: (NotificationResponse response) {
+        debugPrint('[Boot] Notification response: actionId=${response.actionId} payload=${response.payload}');
         appState.handleNotificationTap(
           actionId: response.actionId,
           payload: response.payload,
@@ -99,11 +102,13 @@ Future<void> _bootstrap() async {
       },
     ),
   );
+  debugPrint('[Boot] Notifications initialized: ${notifications.initialized}');
 
   // Load local data + reconcile the OS notifications. With windowDays small and
   // the exact-mode short-circuit this finishes in ~1–2 s; the _guard timeout
   // still protects the splash if a platform call ever stalls.
-  await _guard('appState.init', () => appState.init());
+  await _guard('appState.init', () => appState.init(deferScheduleSync: true));
+  debugPrint('[Boot] AppState loaded (deferred schedule sync)');
 
   runApp(MediReminderApp(
     appState: appState,
@@ -128,29 +133,56 @@ Future<void> _postLaunch(
   await _guard('sync.init', () => sync.init());
 
   await _guard('notif.permission', () async {
-    if (!await notifications.areNotificationsEnabled()) {
-      await notifications.requestPermission();
+    final enabled = await notifications.areNotificationsEnabled();
+    debugPrint('[Boot] Notifications enabled: $enabled');
+    if (!enabled) {
+      final granted = await notifications.requestPermission();
+      debugPrint('[Boot] Notification permission request result: $granted');
     }
   });
   await _guard(
     'exact-alarm.permission',
     () => notifications.requestExactAlarmPermission(),
   );
+  final canExact = await notifications.canScheduleExact();
+  debugPrint('[Boot] Can schedule exact alarms: $canExact');
   await _guard(
     'fullscreen.permission',
     () => notifications.requestFullScreenIntentPermission(),
   );
   await _guard('refreshPerms', () => appState.refreshPermissionStatus());
+  debugPrint('[Boot] All permissions refreshed');
+
+  // Run the full schedule sync in the background — reconcile all OS
+  // notifications with the database. This is slow on first run (~2s)
+  // but fast on subsequent runs (~200ms).
+  unawaited(_backgroundScheduleSync(appState, notifications));
 
   await _guard('cold-start-notif', () async {
     final launch = await notifications.getLaunchDetails();
     final r = launch?.notificationResponse;
     if (r != null && r.payload != null && r.payload!.isNotEmpty) {
+      debugPrint('[Boot] Cold start notification: actionId=${r.actionId} payload=${r.payload}');
       await appState.handleNotificationTap(
         actionId: r.actionId,
         payload: r.payload,
       );
     }
+  });
+}
+
+/// Runs the schedule sync in the background after the UI is visible.
+/// This is the most important step for notification reliability — it
+/// reconciles every pending dose with the OS alarm manager.
+Future<void> _backgroundScheduleSync(
+  AppState appState,
+  NotificationService notifications,
+) async {
+  debugPrint('[Boot] Starting background schedule sync...');
+  await _guard('schedule-sync', () async {
+    await appState.refresh();
+    final pending = await notifications.pendingIds();
+    debugPrint('[Boot] Schedule sync complete. ${pending.length} notifications pending in OS.');
   });
 }
 

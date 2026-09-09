@@ -65,12 +65,16 @@ class _SettingsScreenState extends State<SettingsScreen>
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-          children: [
-            Text(l10n.setTitle, style: theme.textTheme.headlineMedium),
-            const SizedBox(height: 16),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        title: Text(l10n.setTitle),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        children: [
 
             _SectionHeader(l10n.familySync),
             ListTile(
@@ -510,7 +514,6 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ],
         ),
-      ),
     );
   }
 
