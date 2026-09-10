@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 
@@ -195,6 +196,15 @@ class AppState extends ChangeNotifier {
   Future<void> refresh() async {
     final now = DateTime.now();
     final grace = settings.graceDuration;
+
+    if (!_notificationsEnabled || !_exactAlarmsEnabled) {
+      developer.log(
+        'DOSE_PERMS result=permission_denied '
+        'notifications=$_notificationsEnabled exactAlarms=$_exactAlarmsEnabled '
+        'battery=$_batteryUnrestricted — scheduled reminders may not fire',
+        name: 'DoseAudit',
+      );
+    }
 
     await doseRepository.sweepMissed(grace, now);
     await doseScheduler.sync(

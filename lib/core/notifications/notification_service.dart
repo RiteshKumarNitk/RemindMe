@@ -78,12 +78,21 @@ class NotificationService implements ReminderScheduler {
   /// Version suffix for channel IDs. Bump when changing channel settings —
   /// Android caches channel config after first creation, so a new sound /
   /// importance / audio stream only takes effect on a channel ID it has
-  /// never seen. v9: re-add ALARM audio attributes on the channel so the
-  /// bundled WAV plays on the alarm stream (louder, bypasses Doze, and
-  /// works even when notification volume is down). The belt-and-suspenders
-  /// approach — sound on BOTH channel AND notification details — ensures
-  /// maximum device compatibility.
-  static const String _v = 'v9';
+  /// never seen.
+  ///
+  /// v10: actually set `audioAttributesUsage: AudioAttributesUsage.alarm` on
+  /// the channel AND the notification details. Up to v9 the code *claimed*
+  /// alarm audio attributes but never passed the parameter, so the WAV played
+  /// on the NOTIFICATION stream — inaudible whenever the user's ring/
+  /// notification volume is low (very common; the alarm/media volume is
+  /// usually left up). Vibration is stream-independent, which is why it kept
+  /// working while sound did not. USAGE_ALARM routes the sound to the alarm
+  /// stream: louder, survives ringer-mute, and honours `bypassDnd`.
+  static const String _v = 'v10';
+
+  /// Route reminder audio to the ALARM stream so a dose alert is heard even
+  /// when the phone's ringer/notification volume is down.
+  static const AudioAttributesUsage _alarmUsage = AudioAttributesUsage.alarm;
 
   // ---- Channel IDs (versioned) --------------------------------------------
 
@@ -176,6 +185,9 @@ class NotificationService implements ReminderScheduler {
       '${AppConstants.channelId}_v8',
       '${AppConstants.silentChannelId}_v8',
       '${AppConstants.familyChannelId}_v8',
+      '${AppConstants.channelId}_v9',
+      '${AppConstants.silentChannelId}_v9',
+      '${AppConstants.familyChannelId}_v9',
       _soundChannelId,
       _silentChannelId,
       _familyChannelId,
@@ -197,6 +209,7 @@ class NotificationService implements ReminderScheduler {
         importance: Importance.max,
         playSound: true,
         sound: _alarmSound,
+        audioAttributesUsage: _alarmUsage,
         enableVibration: true,
         vibrationPattern: _vibrationPattern,
         enableLights: true,
@@ -229,6 +242,7 @@ class NotificationService implements ReminderScheduler {
         importance: Importance.max,
         playSound: true,
         sound: _alarmSound,
+        audioAttributesUsage: _alarmUsage,
         enableVibration: true,
         vibrationPattern: _vibrationPattern,
         enableLights: true,
@@ -297,6 +311,7 @@ class NotificationService implements ReminderScheduler {
             category: AndroidNotificationCategory.reminder,
             playSound: true,
             sound: _alarmSound,
+            audioAttributesUsage: _alarmUsage,
             enableVibration: true,
             vibrationPattern: _vibrationPattern,
           ),
@@ -328,6 +343,7 @@ class NotificationService implements ReminderScheduler {
             category: AndroidNotificationCategory.reminder,
             playSound: true,
             sound: _alarmSound,
+            audioAttributesUsage: _alarmUsage,
             enableVibration: true,
             vibrationPattern: _vibrationPattern,
           ),
@@ -363,6 +379,7 @@ class NotificationService implements ReminderScheduler {
             category: AndroidNotificationCategory.reminder,
             playSound: true,
             sound: _alarmSound,
+            audioAttributesUsage: _alarmUsage,
             enableVibration: true,
             enableLights: true,
             ledColor: const Color(0xFF2E7D32),
@@ -667,6 +684,9 @@ class NotificationService implements ReminderScheduler {
       // Belt-and-suspenders: WAV sound on BOTH channel AND notification details.
       // Some OEMs (Samsung, Xiaomi, OnePlus) only respect one or the other.
       sound: _alarmSound,
+      // Route to the ALARM stream (see _v doc) so the dose alert is audible
+      // even with ring/notification volume down.
+      audioAttributesUsage: _alarmUsage,
       enableVibration: true,
       enableLights: true,
       ledColor: const Color(0xFF2E7D32),
@@ -718,6 +738,18 @@ class NotificationService implements ReminderScheduler {
       'when=${when.toIso8601String()} fireAt=${fireAt.toIso8601String()} '
       'channel=$channel exact=$exact tz=${tz.local.name}',
       name: 'Notif',
+    );
+    // Timezone sanity line: the wall-clock the user picked, and the exact
+    // local wall-clock the OS alarm will fire at. These must read the same
+    // (no accidental UTC shift). tzWhen carries the correct instant even if
+    // the zone name resolved to a fallback, so also print both instants.
+    developer.log(
+      'DOSE_TZ doseId=$doseId '
+      'userSelected=${when.toIso8601String()} (${tz.local.name}) '
+      'androidScheduled=${fireAt.toIso8601String()} (${fireAt.timeZoneName}) '
+      'instantUserUtc=${when.toUtc().toIso8601String()} '
+      'instantFireUtc=${fireAt.toUtc().toIso8601String()}',
+      name: 'DoseAudit',
     );
 
     final details = NotificationDetails(
@@ -825,6 +857,7 @@ class NotificationService implements ReminderScheduler {
         category: AndroidNotificationCategory.alarm,
         playSound: true,
         sound: _alarmSound,
+        audioAttributesUsage: _alarmUsage,
         enableVibration: true,
         enableLights: true,
         ledColor: const Color(0xFFFF6D00),

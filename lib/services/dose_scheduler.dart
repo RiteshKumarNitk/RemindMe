@@ -97,6 +97,7 @@ class DoseScheduler {
       // overdue and should now fire immediately). If so, cancel the stale
       // notification and re-schedule so the user gets prompted promptly.
       final alreadyPending = pending.contains(entry.key);
+      var wasRescheduled = false;
       if (alreadyPending) {
         final originalTime = dose.snoozedUntil ?? dose.scheduledAt;
         if (!doseWhen.isAtSameMomentAs(originalTime)) {
@@ -108,6 +109,7 @@ class DoseScheduler {
           );
           await scheduler.cancel(entry.key);
           pending.remove(entry.key);
+          wasRescheduled = true;
         }
       }
 
@@ -134,7 +136,9 @@ class DoseScheduler {
           effectiveAt: doseWhen,
           notificationId: entry.key,
           alarmId: entry.key,
-          result: ok ? 'scheduled' : 'FAILED',
+          result: ok
+              ? (wasRescheduled ? 'rescheduled' : 'scheduled')
+              : 'schedule_failed',
         );
       } else {
         developer.log(
@@ -176,6 +180,11 @@ class DoseScheduler {
       if (!desired.containsKey(id)) {
         developer.log('Cancelling stale notification id=$id', name: 'DoseScheduler');
         await scheduler.cancel(id);
+        developer.log(
+          'DOSE_CANCEL notificationId=$id alarmId=$id result=cancelled '
+          'reason=no-longer-desired',
+          name: 'DoseAudit',
+        );
       }
     }
     // Cancel advance alarm notifications for doses no longer needed.
