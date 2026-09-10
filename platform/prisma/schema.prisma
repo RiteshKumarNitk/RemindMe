@@ -1,0 +1,928 @@
+// =============================================================================
+// DoseWise Healthcare Platform — Prisma schema (Phase 0, DRAFT for review)
+// =============================================================================
+//
+// Conventions
+// -----------
+// * UUID primary keys everywhere (`@default(uuid())`).
+// * Every tenant-owned row carries `organizationId` + a composite index that
+//   leads with it. Tenant isolation is enforced in the application layer
+//   (a Prisma Client extension) AND proven by the cross-tenant test suite;
+//   Postgres RLS is a documented later hardening step (see MULTI_TENANCY.md).
+// * Real foreign keys model the core clinical graph. "Actor" columns
+//   (`createdById`, `updatedById`, `cancelledById`, `actorUserId`, …) are
+//   plain indexed UUID strings — logical references to `User.id`, enforced at
+//   the app layer — to keep the relation graph maintainable. This is
+//   deliberate and documented in DATABASE_DESIGN.md.
+// * Appointment instants are `timestamptz`. Medication reminder times are
+//   stored as LOCAL wall-clock (`scheduledAtLocal`) + an IANA `timezone`
+//   string, because "9:00 every day" must not drift when the device travels.
+// * Double-booking is prevented by a Postgres EXCLUDE constraint added via
+//   raw SQL — see prisma/sql/0001_appointment_no_overlap.sql. It is scoped by
+//   (organizationId, doctorId, time range) so the SAME doctor may hold
+//   overlapping appointments in DIFFERENT clinics, but never within one
+//   clinic. Prisma cannot express EXCLUDE natively.
+//
+// TOOLCHAIN: targets Prisma 6.x — `url` / `directUrl` live in this datasource
+// block (the Prisma <=6 idiom). Validated with `prisma@6 validate` + formatted
+// with `prisma@6 format` (both pass, 2026-09-10). If the team later adopts
+// Prisma 7, the datasource URLs move to a `prisma.config.ts` file — a
+// mechanical change, no model edits.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled (PgBouncer) connection for the app
+  directUrl = env("DIRECT_URL") // direct connection for migrations (Neon)
+}
+
+// -----------------------------------------------------------------------------
+// Enums
+// -----------------------------------------------------------------------------
+
+enum Role {
+  PATIENT
+  DOCTOR
+  RECEPTIONIST
+  CLINIC_ADMIN
+  SUPER_ADMIN
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+// Fine-grained capabilities layered on top of a role. Empty by default.
+// A role never implies clinical-record access on its own — it must be granted
+// here (see RBAC.md / MEDICAL_DATA_SECURITY.md). DOCTOR clinical access is
+// additionally gated by an assignment/consent link, not by this field alone.
+enum MembershipCapability {
+  CLINICAL_RECORD_READ // read consultation notes, prescription bodies, meds, vitals
+  CLINICAL_RECORD_WRITE // create/amend clinical records
+  BILLING_MANAGE // reserved (post-MVP)
+  DATA_EXPORT // run clinic-wide exports
+}
+
+enum AppointmentStatus {
+  REQUESTED
+  CONFIRMED
+  CHECKED_IN
+  WAITING
+  IN_CONSULTATION
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  RESCHEDULED
+}
+
+enum BookingSource {
+  PATIENT_APP
+  RECEPTION
+  DOCTOR
+  ADMIN
+  IMPORT
+}
+
+enum QueueState {
+  WAITING
+  CALLED
+  IN_CONSULTATION
+  COMPLETED
+  SKIPPED
+}
+
+enum AvailabilityExceptionKind {
+  DAY_OFF
+  HOLIDAY
+  LEAVE
+  EXTRA_HOURS
+  BREAK
+}
+
+enum DoseStatus {
+  PENDING
+  TAKEN
+  SKIPPED
+  MISSED
+}
+
+enum MedicationFrequency {
+  DAILY
+  SPECIFIC_DAYS
+  ONCE
+  MULTIPLE
+}
+
+enum FoodInstruction {
+  NONE
+  BEFORE
+  AFTER
+  WITH_FOOD
+}
+
+enum DocumentKind {
+  PRESCRIPTION
+  LAB_REPORT
+  DISCHARGE_SUMMARY
+  IMAGING
+  INSURANCE
+  OTHER
+}
+
+enum FamilyRelation {
+  SELF
+  SPOUSE
+  FATHER
+  MOTHER
+  CHILD
+  GUARDIAN
+  OTHER
+}
+
+enum AccessPermission {
+  VIEW_PROFILE
+  VIEW_APPOINTMENTS
+  MANAGE_APPOINTMENTS
+  VIEW_MEDICATIONS
+  MANAGE_MEDICATIONS
+  VIEW_DOCUMENTS
+}
+
+enum InvitationScope {
+  CLINIC_STAFF
+  CLINIC_PATIENT
+  FAMILY_ACCESS
+}
+
+enum VitalType {
+  BLOOD_PRESSURE
+  BLOOD_SUGAR
+  WEIGHT
+  TEMPERATURE
+  HEART_RATE
+}
+
+enum NotificationChannel {
+  PUSH
+  EMAIL
+  SMS
+  WHATSAPP
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING // due (or scheduled); eligible to be claimed by a dispatch run
+  SENDING // claimed by a dispatch run; reaped back to PENDING if it goes stale
+  SENT // delivered (terminal)
+  FAILED // exhausted maxAttempts or a permanent error (terminal)
+  SUPPRESSED // intentionally not delivered (recipient opted out)
+}
+
+// -----------------------------------------------------------------------------
+// Tenancy & identity
+// -----------------------------------------------------------------------------
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  timezone  String   @default("Asia/Kolkata") // IANA; per-location tz overrides
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  settings               ClinicSettings?
+  locations              ClinicLocation[]
+  memberships            Membership[]
+  doctorProfiles         DoctorProfile[]
+  staffProfiles          StaffProfile[]
+  patients               Patient[]
+  appointmentTypes       AppointmentType[]
+  availabilityRules      AvailabilityRule[]
+  availabilityExceptions AvailabilityException[]
+  appointments           Appointment[]
+  appointmentEvents      AppointmentEvent[]
+  queueEntries           QueueEntry[]
+  consultations          Consultation[]
+  prescriptions          Prescription[]
+  documents              MedicalDocument[]
+  medications            Medication[]
+  medicationDoses        MedicationDose[]
+  vitalReadings          VitalReading[]
+  familyRelationships    FamilyRelationship[]
+  accessGrants           PatientAccessGrant[]
+  invitations            Invitation[]
+  notifications          Notification[]
+  auditLogs              AuditLog[]
+}
+
+model ClinicSettings {
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  allowPatientSelfBooking       Boolean  @default(true)
+  bookingLeadTimeMinutes        Int      @default(120)
+  cancellationWindowHours       Int      @default(4)
+  maxAdvanceBookingDays         Int      @default(60)
+  defaultAppointmentDurationMin Int      @default(15)
+  localeDefault                 String   @default("en")
+  supportedLocales              String[] @default(["en", "hi"])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ClinicLocation {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name         String
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+  phone        String?
+  timezone     String? // overrides Organization.timezone when set
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  availabilityRules      AvailabilityRule[]
+  availabilityExceptions AvailabilityException[]
+  appointments           Appointment[]
+  queueEntries           QueueEntry[]
+
+  @@index([organizationId])
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique // stored lower-cased; consider citext in prod
+  passwordHash    String? // argon2id; null when the account is OAuth-only
+  fullName        String
+  phone           String?
+  avatarUrl       String?
+  locale          String    @default("en")
+  isPlatformAdmin Boolean   @default(false) // backs SUPER_ADMIN, org-independent
+  isGuest         Boolean   @default(false) // demo/preview session (GUEST_ACCESS.md)
+  // Bumped by logout-all / password reset — invalidates outstanding access
+  // tokens whose `tv` claim no longer matches (AUTHENTICATION.md R6).
+  tokenVersion    Int       @default(0)
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  memberships      Membership[]
+  identityAccounts IdentityAccount[]
+  sessions         Session[]
+  refreshTokens    RefreshToken[]
+  ownedPatients    Patient[]            @relation("PatientOwner")
+  guardianLinks    FamilyRelationship[] @relation("FamilyGuardian")
+  accessGrants     PatientAccessGrant[] @relation("AccessGrantee")
+  notifications    Notification[]
+}
+
+model IdentityAccount {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String // "google"
+  providerAccountId String // Google `sub`
+  createdAt         DateTime @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hashedSessionToken String   @unique // sha256 of the cookie value
+  expiresAt          DateTime
+  createdAt          DateTime @default(now())
+  ip                 String?
+  userAgent          String?
+
+  @@index([userId])
+}
+
+model RefreshToken {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hashedToken  String    @unique // sha256 of the raw refresh token
+  familyId     String // rotation lineage; reuse of a revoked token nukes the family
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  createdAt    DateTime  @default(now())
+  ip           String?
+  userAgent    String?
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+model Membership {
+  id             String                 @id @default(uuid())
+  userId         String
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role           Role
+  status         MembershipStatus       @default(ACTIVE)
+  // Capabilities layered on the role. Empty for every role by default —
+  // notably CLINIC_ADMIN does NOT get clinical-record access unless
+  // CLINICAL_RECORD_READ/WRITE is explicitly present here.
+  capabilities   MembershipCapability[] @default([])
+  invitedById    String? // logical -> User.id
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  doctorProfile DoctorProfile?
+  staffProfile  StaffProfile?
+
+  @@unique([userId, organizationId, role])
+  @@index([organizationId, role])
+}
+
+model DoctorProfile {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  membershipId   String?      @unique
+  membership     Membership?  @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+
+  displayName             String
+  specialty               String?
+  registrationNumber      String?
+  bio                     String?
+  consultationDurationMin Int     @default(15)
+  isAcceptingNewPatients  Boolean @default(true)
+  isActive                Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  availabilityRules      AvailabilityRule[]
+  availabilityExceptions AvailabilityException[]
+  appointments           Appointment[]
+  queueEntries           QueueEntry[]
+  consultations          Consultation[]
+  prescriptions          Prescription[]
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+}
+
+model StaffProfile {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  membershipId   String?      @unique
+  membership     Membership?  @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  jobTitle       String?
+  isActive       Boolean      @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+}
+
+// -----------------------------------------------------------------------------
+// Patients & family
+// -----------------------------------------------------------------------------
+
+model Patient {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // The self-managing user's account, when the patient runs their own care
+  // (e.g. a migrated DoseWise user). Null for clinic-registered dependents.
+  ownerUserId String?
+  ownerUser   User?   @relation("PatientOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+
+  mrn          String? // clinic medical record number
+  firstName    String
+  lastName     String
+  dateOfBirth  DateTime? @db.Date
+  sex          String?
+  phone        String?
+  email        String?
+  addressLine1 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+  bloodGroup   String?
+  allergies    String? // free text for MVP; structured later
+  notes        String?
+  externalRef  String? // legacy import correlation
+  isActive     Boolean   @default(true)
+
+  createdById String
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  appointments    Appointment[]
+  consultations   Consultation[]
+  prescriptions   Prescription[]
+  documents       MedicalDocument[]
+  medications     Medication[]
+  medicationDoses MedicationDose[]
+  vitalReadings   VitalReading[]
+  dependentLinks  FamilyRelationship[] @relation("FamilyDependent")
+  accessGrants    PatientAccessGrant[]
+  queueEntries    QueueEntry[]
+
+  @@unique([organizationId, mrn])
+  @@index([organizationId, lastName])
+  @@index([organizationId, ownerUserId])
+}
+
+model FamilyRelationship {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  guardianUserId     String
+  guardianUser       User    @relation("FamilyGuardian", fields: [guardianUserId], references: [id], onDelete: Cascade)
+  dependentPatientId String
+  dependentPatient   Patient @relation("FamilyDependent", fields: [dependentPatientId], references: [id], onDelete: Cascade)
+
+  relation    FamilyRelation
+  createdById String
+  createdAt   DateTime       @default(now())
+
+  @@unique([guardianUserId, dependentPatientId])
+  @@index([organizationId])
+  @@index([dependentPatientId])
+}
+
+model PatientAccessGrant {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  patientId     String
+  patient       Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  granteeUserId String
+  granteeUser   User    @relation("AccessGrantee", fields: [granteeUserId], references: [id], onDelete: Cascade)
+
+  permissions AccessPermission[]
+  grantedById String
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime           @default(now())
+
+  @@unique([patientId, granteeUserId])
+  @@index([organizationId])
+  @@index([granteeUserId])
+}
+
+model Invitation {
+  id             String        @id @default(uuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  scope       InvitationScope
+  hashedToken String             @unique // sha256(rawToken); raw token lives only in the link/QR
+  email       String?
+  role        Role? // for CLINIC_STAFF
+  patientId   String? // for CLINIC_PATIENT / FAMILY_ACCESS
+  permissions AccessPermission[] // for FAMILY_ACCESS
+  createdById String
+  expiresAt   DateTime
+  usedAt      DateTime?
+  usedById    String?
+  revokedAt   DateTime?
+  createdAt   DateTime           @default(now())
+
+  @@index([organizationId, scope])
+  @@index([expiresAt])
+}
+
+// -----------------------------------------------------------------------------
+// Scheduling & appointments
+// -----------------------------------------------------------------------------
+
+model AppointmentType {
+  id              String       @id @default(uuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name            String
+  durationMinutes Int
+  colorHex        String?
+  isActive        Boolean      @default(true)
+
+  appointments Appointment[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model AvailabilityRule {
+  id             String          @id @default(uuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  doctorId       String
+  doctor         DoctorProfile   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  locationId     String?
+  location       ClinicLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  weekday       Int // ISO 1..7 (Mon=1), matches DoseWise DateTime.monday..sunday
+  startMinute   Int // minutes from local midnight
+  endMinute     Int
+  slotMinutes   Int
+  effectiveFrom DateTime? @db.Date
+  effectiveTo   DateTime? @db.Date
+  isActive      Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, doctorId, weekday])
+}
+
+model AvailabilityException {
+  id             String          @id @default(uuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  doctorId       String
+  doctor         DoctorProfile   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  locationId     String?
+  location       ClinicLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  kind        AvailabilityExceptionKind
+  startsAt    DateTime                  @db.Timestamptz(6)
+  endsAt      DateTime                  @db.Timestamptz(6)
+  reason      String?
+  createdById String
+  createdAt   DateTime                  @default(now())
+
+  @@index([organizationId, doctorId, startsAt])
+}
+
+model Appointment {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  patientId         String
+  patient           Patient          @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  doctorId          String
+  doctor            DoctorProfile    @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  locationId        String?
+  location          ClinicLocation?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  appointmentTypeId String?
+  appointmentType   AppointmentType? @relation(fields: [appointmentTypeId], references: [id], onDelete: SetNull)
+
+  scheduledStart DateTime          @db.Timestamptz(6)
+  scheduledEnd   DateTime          @db.Timestamptz(6)
+  timezone       String // IANA snapshot of the clinic/location tz at booking
+  status         AppointmentStatus @default(REQUESTED)
+  reason         String?
+  notes          String?
+  bookingSource  BookingSource
+
+  createdById String
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  confirmedAt           DateTime?
+  checkedInAt           DateTime?
+  consultationStartedAt DateTime?
+  completedAt           DateTime?
+  cancelledAt           DateTime?
+  cancelledById         String?
+  cancellationReason    String?
+  noShowMarkedAt        DateTime?
+
+  // Reschedule lineage (self relation).
+  rescheduledFromId String?      @unique
+  rescheduledFrom   Appointment? @relation("Reschedule", fields: [rescheduledFromId], references: [id], onDelete: SetNull)
+  rescheduledTo     Appointment? @relation("Reschedule")
+
+  events       AppointmentEvent[]
+  queueEntry   QueueEntry?
+  consultation Consultation?
+
+  @@index([organizationId, doctorId, scheduledStart])
+  @@index([organizationId, patientId, scheduledStart])
+  @@index([organizationId, status])
+}
+
+model AppointmentEvent {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  appointmentId  String
+  appointment    Appointment  @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  fromStatus AppointmentStatus?
+  toStatus   AppointmentStatus
+  actorId    String? // logical -> User.id
+  reason     String?
+  metadata   Json?
+  at         DateTime           @default(now())
+
+  @@index([appointmentId])
+  @@index([organizationId, at])
+}
+
+// -----------------------------------------------------------------------------
+// Queue
+// -----------------------------------------------------------------------------
+
+model QueueEntry {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  appointmentId  String       @unique
+  appointment    Appointment  @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  patientId  String
+  patient    Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  doctorId   String
+  doctor     DoctorProfile   @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  locationId String?
+  location   ClinicLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  queueDate   DateTime   @db.Date // clinic-local day
+  tokenNumber Int
+  state       QueueState @default(WAITING)
+  position    Int
+  recallCount Int        @default(0)
+
+  checkedInAt           DateTime?
+  calledAt              DateTime?
+  consultationStartedAt DateTime?
+  completedAt           DateTime?
+  skippedAt             DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, doctorId, queueDate, tokenNumber])
+  @@index([organizationId, doctorId, queueDate, state, position])
+}
+
+// -----------------------------------------------------------------------------
+// Clinical documentation
+// -----------------------------------------------------------------------------
+
+model Consultation {
+  id             String        @id @default(uuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  appointmentId  String        @unique
+  appointment    Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  doctorId       String
+  doctor         DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+
+  // Structured SOAP-style notes. Free text only — NO AI / decision support.
+  subjective   String?
+  objective    String?
+  assessment   String?
+  plan         String?
+  followUpDate DateTime? @db.Date
+  testsAdvised String?
+  instructions String?
+  signedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prescriptions Prescription[]
+
+  @@index([organizationId, patientId])
+}
+
+model Prescription {
+  id             String        @id @default(uuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id], onDelete: SetNull)
+  patientId      String
+  patient        Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  doctorId       String
+  doctor         DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+
+  issuedAt DateTime @default(now())
+  notes    String?
+
+  items PrescriptionItem[]
+
+  @@index([organizationId, patientId])
+}
+
+model PrescriptionItem {
+  id             String       @id @default(uuid())
+  prescriptionId String
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  drugName        String
+  strength        String?
+  form            String?
+  dosage          String?
+  frequency       String?
+  durationDays    Int?
+  foodInstruction FoodInstruction @default(NONE)
+  instructions    String?
+
+  @@index([prescriptionId])
+}
+
+model MedicalDocument {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  kind            DocumentKind
+  title           String?
+  storageProvider String // "s3" | "gcs" | "local-dev"
+  storageKey      String
+  mimeType        String
+  sizeBytes       Int
+  checksum        String?
+  consultationId  String?
+  uploadedById    String
+  createdAt       DateTime     @default(now())
+
+  @@index([organizationId, patientId, kind])
+}
+
+// -----------------------------------------------------------------------------
+// Medication domain (migrated from DoseWise — patient-owned, offline-sync)
+// -----------------------------------------------------------------------------
+
+model Medication {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  ownerUserId    String? // self-managing user; gates clinic visibility
+
+  name            String
+  dosage          String              @default("")
+  dosageUnit      String              @default("")
+  notes           String              @default("")
+  foodInstruction FoodInstruction     @default(NONE)
+  frequency       MedicationFrequency @default(DAILY)
+  selectedDays    Int[] // ISO weekday numbers 1..7
+  onceDate        DateTime?           @db.Date
+  isActive        Boolean             @default(true)
+  stockCount      Int?
+  refillAt        Int?
+
+  source         String? // "dosewise-import" | "clinic" | "patient"
+  legacyLocalId  Int? // DoseWise per-device autoincrement id
+  sourceDeviceId String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // soft delete = server-authoritative tombstone
+
+  schedules MedicationSchedule[]
+  doses     MedicationDose[]
+
+  @@unique([sourceDeviceId, legacyLocalId])
+  @@index([organizationId, patientId])
+  @@index([patientId, isActive])
+}
+
+model MedicationSchedule {
+  id           String     @id @default(uuid())
+  medicationId String
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  hour         Int
+  minute       Int
+  enabled      Boolean    @default(true)
+
+  @@index([medicationId])
+}
+
+model MedicationDose {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  medicationId   String
+  medication     Medication   @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  // LOCAL wall-clock reminder time (not an instant) + the zone it was set in.
+  scheduledAtLocal DateTime
+  timezone         String
+  status           DoseStatus @default(PENDING)
+  takenAt          DateTime?  @db.Timestamptz(6)
+  skippedAt        DateTime?  @db.Timestamptz(6)
+  snoozedUntil     DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([medicationId, scheduledAtLocal])
+  @@index([patientId, scheduledAtLocal])
+  @@index([medicationId, status])
+}
+
+model VitalReading {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  type        VitalType
+  value       Float
+  value2      Float? // diastolic for BLOOD_PRESSURE
+  recordedAt  DateTime  @db.Timestamptz(6)
+  notes       String?
+  source      String? // "dosewise-import" | "patient" | "clinic"
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([organizationId, patientId, type, recordedAt])
+}
+
+// -----------------------------------------------------------------------------
+// Platform: notifications & audit
+// -----------------------------------------------------------------------------
+
+model Notification {
+  id             String        @id @default(uuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  channel NotificationChannel
+  event   String // "APPOINTMENT_CONFIRMED" | "QUEUE_UPDATE" | ...
+  payload Json
+  status  NotificationStatus  @default(PENDING)
+
+  // Scheduling + reliable delivery (see NOTIFICATION_ARCHITECTURE.md).
+  scheduledFor  DateTime? // becomes due at/after this instant; null = immediately
+  dedupeKey     String?   @unique // deterministic key => idempotent creation
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(5)
+  claimedAt     DateTime? // set on PENDING->SENDING; reaped if stale
+  nextAttemptAt DateTime? // backoff target after a transient failure
+  sentAt        DateTime?
+  error         String?
+  createdAt     DateTime  @default(now())
+
+  @@index([status, scheduledFor])
+  @@index([status, nextAttemptAt])
+  @@index([userId])
+}
+
+model AuditLog {
+  id             String        @id @default(uuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  actorUserId String?
+  actorRole   Role?
+  action      String // "APPOINTMENT_CREATED" | "PRESCRIPTION_CREATED" | ...
+  entityType  String
+  entityId    String
+  before      Json?
+  after       Json?
+  ip          String?
+  userAgent   String?
+  requestId   String?
+  at          DateTime @default(now())
+
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, at])
+  @@index([actorUserId])
+}
