@@ -54,7 +54,7 @@ class _FamilyQrShowScreenState extends State<FamilyQrShowScreen> {
       }
 
       final invitation = await invitationService.createInvitation(
-        householdCode: sync.householdCode,
+        householdId: sync.householdCode,
         creatorUid: auth.uid,
         creatorName: auth.displayName.isNotEmpty ? auth.displayName : 'Family Member',
       );

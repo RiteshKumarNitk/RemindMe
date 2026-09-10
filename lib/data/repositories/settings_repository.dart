@@ -38,7 +38,7 @@ class SettingsRepository {
       onboardingDone: _prefs.getBool(_kOnboarding) ?? false,
       syncEnabled: _prefs.getBool(_kSyncEnabled) ?? false,
       householdCode: _prefs.getString(_kHousehold) ?? '',
-      syncRole: _prefs.getString(_kSyncRole) ?? 'primary',
+      syncRole: _prefs.getString(_kSyncRole) ?? 'owner',
       missedAlertsEnabled: _prefs.getBool(_kMissedAlerts) ?? true,
       lastSyncAt: _prefs.getString(_kLastSyncAt) == null
           ? null

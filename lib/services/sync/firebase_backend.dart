@@ -16,9 +16,16 @@ import 'remote_backend.dart';
 /// Firebase implementation of [RemoteBackend].
 ///
 /// Data layout:
-///   households/{code}                    { createdAt, members: { uid: {role} } }
-///   households/{code}/medicines/{id}     medicine snapshot (tombstone via `deleted`)
-///   households/{code}/doses/{medId_ts}   dose snapshot (identity: medicineId + scheduledAt)
+///   households/{id}                      { createdAt, ownerUid }
+///   households/{id}/members/{uid}        { userId, householdId, role, permissions, createdAt, fcmToken? }
+///   households/{id}/medicines/{id}       medicine snapshot (tombstone via `deleted`)
+///   households/{id}/doses/{medId_ts}     dose snapshot (identity: medicineId + scheduledAt)
+///   invitations/{sha256(token)}          { householdId, creatorUid, creatorName, expiresAt, used }
+///
+/// The household id is an opaque short code used only as a document key and a
+/// human-shareable handle. It is NOT a security boundary — members-only reads
+/// and owner-only removal are enforced by Firestore rules against the
+/// members subcollection, and joining requires a single-use invitation token.
 ///
 /// All timestamps travel as UTC ISO-8601 strings so lexicographic ordering in
 /// Firestore queries is chronological regardless of device time zone.
@@ -65,37 +72,61 @@ class FirebaseBackend implements RemoteBackend {
 
   @override
   Future<String> createHousehold() async {
-    final code = _generateCode();
     final uid = _requireUid();
-    final doc = _fs.collection('households').doc(code);
-    await doc.set({
-      'createdAt': DateTime.now().toUtc().toIso8601String(),
-      'members': {
-        uid: {
-          'role': 'primary',
-          'joinedAt': DateTime.now().toUtc().toIso8601String(),
-        },
-      },
-    });
-    _householdCode = code;
-    return code;
+    final now = DateTime.now().toUtc().toIso8601String();
+
+    // Collision-safe creation: a transaction that only writes when the id is
+    // free, retried with a fresh id on the (astronomically rare) clash. Never
+    // a bare set() — that could silently overwrite someone else's household.
+    for (var attempt = 0; attempt < 5; attempt++) {
+      final code = _generateCode();
+      final doc = _fs.collection('households').doc(code);
+      try {
+        final created = await _fs.runTransaction<bool>((txn) async {
+          final snap = await txn.get(doc);
+          if (snap.exists) return false;
+          txn.set(doc, {'createdAt': now, 'ownerUid': uid});
+          txn.set(doc.collection('members').doc(uid), {
+            'userId': uid,
+            'householdId': code,
+            'role': 'owner',
+            'permissions': {
+              'shareMedicines': false,
+              'shareMissedAlerts': false,
+            },
+            'createdAt': now,
+          });
+          return true;
+        });
+        if (created) {
+          _householdCode = code;
+          return code;
+        }
+      } on FirebaseException catch (e) {
+        if (e.code != 'aborted' && e.code != 'failed-precondition') rethrow;
+      }
+    }
+    throw StateError('Could not create a household. Please try again.');
   }
 
   @override
   Future<String> joinHousehold(String code) async {
+    // The QR flow (InvitationService.acceptInvitation) already wrote this
+    // user's membership record inside a transaction. This just points the
+    // local sync at the household and confirms the membership stuck.
     final normalized = _normalizeCode(code);
-    final doc = _fs.collection('households').doc(normalized);
-    final snap = await doc.get();
-    if (!snap.exists) {
-      throw StateError('Code "$normalized" was not found. Please check it.');
-    }
     final uid = _requireUid();
-    await doc.update({
-      'members.$uid': {
-        'role': 'watcher',
-        'joinedAt': DateTime.now().toUtc().toIso8601String(),
-      },
-    });
+    final member = await _fs
+        .collection('households')
+        .doc(normalized)
+        .collection('members')
+        .doc(uid)
+        .get();
+    if (!member.exists) {
+      throw StateError(
+        'You are not a member of this family. Scan the QR code again.',
+      );
+    }
     _householdCode = normalized;
     return normalized;
   }
@@ -116,9 +147,12 @@ class FirebaseBackend implements RemoteBackend {
         onTimeout: () => null,
       );
       if (token == null) return;
-      await _fs.collection('households').doc(code).update({
-        'members.$uid.fcmToken': token,
-      });
+      await _fs
+          .collection('households')
+          .doc(code)
+          .collection('members')
+          .doc(uid)
+          .set({'fcmToken': token}, SetOptions(merge: true));
     } catch (_) {
       // Push is best-effort; sync keeps working without it.
     }

@@ -17,12 +17,12 @@ class FamilyConnectionConfirmScreen extends StatefulWidget {
   const FamilyConnectionConfirmScreen({
     super.key,
     required this.familyName,
-    required this.householdCode,
+    required this.householdId,
     required this.token,
   });
 
   final String familyName;
-  final String householdCode;
+  final String householdId;
   final String token;
 
   @override

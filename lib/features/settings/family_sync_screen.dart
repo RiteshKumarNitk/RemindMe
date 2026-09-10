@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
@@ -16,6 +15,10 @@ import '../caregiver/caregiver_dashboard_screen.dart';
 import '../widgets/big_button.dart';
 import 'family_qr_scan_screen.dart';
 import 'family_qr_show_screen.dart';
+
+// Family membership is QR-invitation only: a household is created by its
+// owner, everyone else joins by scanning a single-use token. There is no
+// manual code entry — the short household id is not a security boundary.
 
 /// Family sync screen with QR-code based family connection flow.
 ///
@@ -91,51 +94,11 @@ class _FamilySyncScreenState extends State<FamilySyncScreen> {
     }
   }
 
-  Future<void> _askCode() async {
-    final l10n = AppLocalizations.of(context);
-    final controller = TextEditingController();
-    final code = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.syncCodeLabel),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              l10n.syncPrimaryHint,
-              style: Theme.of(dialogContext).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              textCapitalization: TextCapitalization.characters,
-              style: Theme.of(dialogContext).textTheme.headlineSmall?.copyWith(
-                letterSpacing: 4,
-                fontWeight: FontWeight.w800,
-              ),
-              textAlign: TextAlign.center,
-              decoration: InputDecoration(hintText: l10n.syncCodeHint),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(l10n.btnCancel),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(controller.text.trim()),
-            child: Text(l10n.syncJoin),
-          ),
-        ],
-      ),
+  Future<void> _openScanner() async {
+    final joined = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const FamilyQrScanScreen()),
     );
-    controller.dispose();
-    if (code != null && code.isNotEmpty) {
-      await _enable('watcher', code: code);
-    }
+    if (joined == true) _loadMembers();
   }
 
   Future<void> _confirmDisable() async {
@@ -234,18 +197,6 @@ class _FamilySyncScreenState extends State<FamilySyncScreen> {
                     builder: (_) => const FamilyQrShowScreen(),
                   ),
                 );
-              },
-            ),
-            const SizedBox(height: 12),
-
-            // Legacy code option
-            _AddMemberOption(
-              icon: Icons.keyboard_rounded,
-              title: 'Enter Code Manually',
-              subtitle: 'Type a 6-letter family code',
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _askCode();
               },
             ),
           ],
@@ -464,7 +415,7 @@ class _FamilySyncScreenState extends State<FamilySyncScreen> {
                 _MemberTile(
                   member: member,
                   isCurrentUser: member.uid == auth.uid,
-                  isAdmin: sync.role == 'primary' || sync.role == 'admin',
+                  isOwner: sync.role == FamilyRole.owner,
                   onRemove: () async {
                     final confirmed = await showDialog<bool>(
                       context: context,
@@ -492,8 +443,8 @@ class _FamilySyncScreenState extends State<FamilySyncScreen> {
                       try {
                         final service = InvitationService();
                         await service.removeMember(
-                          householdCode: sync.householdCode,
-                          adminUid: auth.uid,
+                          householdId: sync.householdCode,
+                          actorUid: auth.uid,
                           memberUid: member.uid,
                         );
                         _loadMembers();
@@ -564,19 +515,21 @@ class _FamilySyncScreenState extends State<FamilySyncScreen> {
           ] else ...[
             Text(l10n.syncSetupHint, style: theme.textTheme.bodyLarge),
             const SizedBox(height: 18),
+            // Owner path: create a brand-new household.
             BigButton(
               label: l10n.syncCreateCode,
               icon: Icons.qr_code_2_rounded,
               height: 60,
-              onPressed: _busy ? null : () => _enable('primary'),
+              onPressed: _busy ? null : () => _enable(FamilyRole.owner),
             ),
             const SizedBox(height: 12),
+            // Joiner path: scan an existing member's QR invitation.
             BigButton(
               label: l10n.syncHaveCode,
-              icon: Icons.login_rounded,
+              icon: Icons.qr_code_scanner_rounded,
               outlined: true,
               height: 56,
-              onPressed: _busy ? null : _askCode,
+              onPressed: _busy ? null : _openScanner,
             ),
           ],
 
@@ -690,23 +643,22 @@ class _MemberTile extends StatelessWidget {
   const _MemberTile({
     required this.member,
     required this.isCurrentUser,
-    required this.isAdmin,
+    required this.isOwner,
     this.onRemove,
   });
 
   final FamilyMember member;
   final bool isCurrentUser;
-  final bool isAdmin;
+
+  /// Whether the *viewer* is the household owner (controls the remove button).
+  final bool isOwner;
   final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final roleLabel = member.role == 'primary'
-        ? 'Owner'
-        : member.role == 'admin'
-            ? 'Admin'
-            : 'Member';
+    final roleLabel = member.isOwner ? 'Owner' : 'Member';
+    final highlight = member.isOwner;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -714,13 +666,13 @@ class _MemberTile extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: CircleAvatar(
           radius: 22,
-          backgroundColor: member.isAdmin
+          backgroundColor: highlight
               ? theme.colorScheme.primaryContainer
               : theme.colorScheme.surfaceContainerHighest,
           child: Text(
             member.name.isNotEmpty ? member.name[0].toUpperCase() : '?',
             style: theme.textTheme.titleMedium?.copyWith(
-              color: member.isAdmin
+              color: highlight
                   ? theme.colorScheme.primary
                   : theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w700,
@@ -734,13 +686,14 @@ class _MemberTile extends StatelessWidget {
         subtitle: Text(
           roleLabel,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: member.isAdmin
+            color: highlight
                 ? theme.colorScheme.primary
                 : theme.colorScheme.onSurfaceVariant,
-            fontWeight: member.isAdmin ? FontWeight.w600 : FontWeight.normal,
+            fontWeight: highlight ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
-        trailing: (isAdmin && !isCurrentUser && onRemove != null)
+        trailing: (isOwner && !isCurrentUser && !member.isOwner &&
+                onRemove != null)
             ? IconButton(
                 icon: Icon(
                   Icons.remove_circle_outline_rounded,

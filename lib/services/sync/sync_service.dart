@@ -176,7 +176,7 @@ class SyncService extends ChangeNotifier {
     await settings.setSyncSettings(
       syncEnabled: false,
       householdCode: '',
-      syncRole: 'primary',
+      syncRole: 'owner',
       lastSyncAt: _lastSyncAt,
     );
     _lastSyncAt = null;

@@ -14,7 +14,7 @@ class AppSettings {
   // Family sync
   final bool syncEnabled;
   final String householdCode;
-  final String syncRole; // 'primary' | 'watcher'
+  final String syncRole; // 'owner' | 'member'
   final bool missedAlertsEnabled;
   final DateTime? lastSyncAt;
 
@@ -31,7 +31,7 @@ class AppSettings {
     this.onboardingDone = false,
     this.syncEnabled = false,
     this.householdCode = '',
-    this.syncRole = 'primary',
+    this.syncRole = 'owner',
     this.missedAlertsEnabled = true,
     this.lastSyncAt,
   });
