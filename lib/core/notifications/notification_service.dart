@@ -434,6 +434,50 @@ class NotificationService implements ReminderScheduler {
 
   bool get soundEnabled => _soundEnabled;
 
+  /// Posts a dose reminder RIGHT NOW (used by the FCM cloud-backup path).
+  /// Uses `id = doseId` so it collapses with any local-alarm notification for
+  /// the same dose — the phone shows exactly one. Full reminder styling +
+  /// TAKEN / SNOOZE / SKIP actions, same as a scheduled reminder.
+  Future<bool> showDoseNow({
+    required int doseId,
+    required String title,
+    required String body,
+    required String takenLabel,
+    required String snoozeLabel,
+    required String skipLabel,
+  }) async {
+    if (!_initialized) return false;
+    final channel = _soundEnabled ? _soundChannelId : _silentChannelId;
+    final chName = _soundEnabled
+        ? AppConstants.channelName
+        : AppConstants.silentChannelName;
+    try {
+      await _plugin.show(
+        id: doseId,
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
+          android: _buildReminderDetails(
+            channelId: channel,
+            channelName: chName,
+            title: title,
+            body: body,
+            withActions: true,
+            takenLabel: takenLabel,
+            snoozeLabel: snoozeLabel,
+            skipLabel: skipLabel,
+          ),
+        ),
+        payload: '${AppConstants.payloadPrefix}$doseId',
+      );
+      return true;
+    } catch (e) {
+      developer.log('showDoseNow FAILED for dose $doseId: $e',
+          name: 'Notif', error: e);
+      return false;
+    }
+  }
+
   // ---- Permissions ---------------------------------------------------------
 
   Future<bool> areNotificationsEnabled() async {

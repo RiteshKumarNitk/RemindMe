@@ -19,6 +19,7 @@ import 'data/repositories/sync_repository.dart';
 import 'services/auth_service.dart';
 import 'services/dose_action_handler.dart';
 import 'services/dose_scheduler.dart';
+import 'services/push_messaging_service.dart';
 import 'services/settings_controller.dart';
 import 'services/sync/firebase_backend.dart';
 import 'services/sync/sync_service.dart';
@@ -136,6 +137,15 @@ Future<void> _postLaunch(
 ) async {
   await _guard('voice.init', () => voice.init());
   await _guard('sync.init', () => sync.init());
+
+  // FCM cloud-backup reminders (the local AlarmManager alarm is primary).
+  await _guard('push.init', () async {
+    final push = PushMessagingService(notifications);
+    await push.init(
+      onTap: (actionId, payload) =>
+          appState.handleNotificationTap(actionId: actionId, payload: payload),
+    );
+  });
 
   await _guard('notif.permission', () async {
     final enabled = await notifications.areNotificationsEnabled();

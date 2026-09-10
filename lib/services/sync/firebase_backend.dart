@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 import '../../data/models/dose_status.dart';
 import '../../data/models/food_instruction.dart';
@@ -147,12 +148,25 @@ class FirebaseBackend implements RemoteBackend {
         onTimeout: () => null,
       );
       if (token == null) return;
+      String tzName;
+      try {
+        tzName = tz.local.name;
+      } catch (_) {
+        tzName = 'unknown';
+      }
       await _fs
           .collection('households')
           .doc(code)
           .collection('members')
           .doc(uid)
-          .set({'fcmToken': token}, SetOptions(merge: true));
+          .set({
+        'fcmToken': token,
+        // For the sendScheduledReminders delivery log only — dose fire times
+        // are absolute UTC instants, so this is not used for timing.
+        'timezone': tzName,
+        'platform': 'android',
+        'tokenUpdatedAt': DateTime.now().toUtc().toIso8601String(),
+      }, SetOptions(merge: true));
     } catch (_) {
       // Push is best-effort; sync keeps working without it.
     }
