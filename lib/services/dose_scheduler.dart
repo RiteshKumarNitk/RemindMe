@@ -1,7 +1,5 @@
 import 'dart:developer' as developer;
 
-import 'package:timezone/timezone.dart' as tz;
-
 import '../core/notifications/notification_service.dart';
 import '../core/notifications/reminder_text.dart';
 import '../data/models/dose_status.dart';
@@ -85,6 +83,16 @@ class DoseScheduler {
       '${desired.length} desired doses, ${pending.length} already pending',
       name: 'DoseScheduler',
     );
+    // On the first sync after a device reboot / app update, `pending` is the
+    // set the plugin's native ScheduledNotificationBootReceiver already
+    // re-registered with AlarmManager (no Dart ran to do this). This line
+    // lets the log prove reboot recovery happened; sync then reconciles any
+    // gaps against the DB below (creates missing, cancels stale).
+    developer.log(
+      'DOSE_BOOT_RESTORE osPendingAlarmIds=${(pending.toList()..sort())} '
+      'count=${pending.length} desiredThisWindow=${desired.length}',
+      name: 'DoseAudit',
+    );
     for (final entry in desired.entries) {
       final med = entry.value.medicine;
       final dose = entry.value.dose;
@@ -114,9 +122,21 @@ class DoseScheduler {
       }
 
       // Main reminder — only (re)schedule if it isn't already queued.
+      // The canonical DOSE_ALARM_SCHEDULE record (with the landed
+      // scheduleMethod + osQueueVerified) is emitted inside
+      // NotificationService.scheduleDoseReminder.
       if (!pending.contains(entry.key)) {
-        final ok = await scheduler.scheduleDoseReminder(
+        if (wasRescheduled) {
+          developer.log(
+            'DOSE_ALARM_SCHEDULE doseId=${entry.key} note=rescheduled '
+            '(fire time moved from ${(dose.snoozedUntil ?? dose.scheduledAt)
+                .toIso8601String()} to ${doseWhen.toIso8601String()})',
+            name: 'DoseAudit',
+          );
+        }
+        await scheduler.scheduleDoseReminder(
           doseId: entry.key,
+          medicineId: med.id,
           title: text.title(med.name),
           body: text.body(med.name, info),
           when: doseWhen,
@@ -124,21 +144,6 @@ class DoseScheduler {
           takenLabel: text.takenLabel,
           snoozeLabel: text.snoozeLabel,
           skipLabel: text.skipLabel,
-        );
-        // Canonical per-dose audit record (grep 'DOSE_ALARM_SCHEDULE' in logcat).
-        // notificationId == alarmId: flutter_local_notifications uses the
-        // notification id as the AlarmManager request code.
-        _audit(
-          'DOSE_ALARM_SCHEDULE',
-          medicineId: med.id,
-          doseId: entry.key,
-          scheduledAt: dose.scheduledAt,
-          effectiveAt: doseWhen,
-          notificationId: entry.key,
-          alarmId: entry.key,
-          result: ok
-              ? (wasRescheduled ? 'rescheduled' : 'scheduled')
-              : 'schedule_failed',
         );
       } else {
         developer.log(
@@ -156,23 +161,14 @@ class DoseScheduler {
         if (!advanceTime.isAfter(now)) continue;
         final advanceKey = entry.key * 1000 + offset;
         if (pending.contains(advanceKey)) continue;
-        final ok = await scheduler.scheduleAdvanceAlarm(
+        await scheduler.scheduleAdvanceAlarm(
           doseId: entry.key,
+          medicineId: med.id,
           offset: offset,
           title: text.title(med.name),
           body: text.body(med.name, info),
           when: advanceTime,
           exact: exact,
-        );
-        _audit(
-          'DOSE_ALARM_SCHEDULE_ADVANCE',
-          medicineId: med.id,
-          doseId: entry.key,
-          scheduledAt: dose.scheduledAt,
-          effectiveAt: advanceTime,
-          notificationId: advanceKey,
-          alarmId: advanceKey,
-          result: ok ? 'scheduled' : 'skipped',
         );
       }
     }
@@ -200,38 +196,6 @@ class DoseScheduler {
         await scheduler.cancel(id);
       }
     }
-  }
-
-  /// One structured line per scheduling decision so an on-device log capture
-  /// (`adb logcat | grep DoseAudit`) shows exactly what was handed to the OS
-  /// for every dose: which medicine, the stored time vs. the effective fire
-  /// time, the resolved timezone, the notification/alarm id, and the result.
-  void _audit(
-    String event, {
-    required int? medicineId,
-    required int doseId,
-    required DateTime scheduledAt,
-    required DateTime effectiveAt,
-    required int notificationId,
-    required int alarmId,
-    required String result,
-  }) {
-    String tzName;
-    try {
-      tzName = tz.local.name;
-    } catch (_) {
-      tzName = 'unknown';
-    }
-    developer.log(
-      '$event '
-      'medicineId=$medicineId doseId=$doseId '
-      'scheduledAt=${scheduledAt.toIso8601String()} '
-      'effectiveAt=${effectiveAt.toIso8601String()} '
-      'timezone=$tzName '
-      'notificationId=$notificationId alarmId=$alarmId '
-      'result=$result',
-      name: 'DoseAudit',
-    );
   }
 
   /// When a notification for this dose should fire, or null when none is

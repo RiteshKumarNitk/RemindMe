@@ -69,6 +69,23 @@ by design now:** the reminder does not use FCM at all. The local alarm is
 the single source of truth. Any earlier server-side-scheduler scaffold has
 been removed.
 
+### RC-4 — A good exact alarm was being silently downgraded to inexact
+
+`scheduleDoseReminder` scheduled via `AndroidScheduleMode.alarmClock`
+(exact, Doze-exempt), then **re-queried `pendingNotificationRequests()`
+and, if the id wasn't echoed back, fell through and re-scheduled the same
+id with `inexactAllowWhileIdle`** — replacing the reliable alarm with one
+Android's Doze/App-Standby can hold for the entire idle window. Many OEMs
+simply don't list `setAlarmClock` alarms in that query, so on a locked,
+idle phone a 2-minute test frequently never fired.
+
+**Fix:** if `alarmClock` is accepted (no exception) it is **trusted** — a
+missing pending-list echo logs a warning but does **not** trigger a
+downgrade. Fallback to `exactAllowWhileIdle` → `inexactAllowWhileIdle`
+happens only when `alarmClock` itself throws. Same fix in
+`scheduleAdvanceAlarm` and `scheduleSelfTest`. The landed mode is now in
+every `DOSE_ALARM_SCHEDULE` line (`scheduleMethod=` / `osQueueVerified=`).
+
 ---
 
 ## Flow
@@ -116,26 +133,51 @@ non-pending dose so `DoseScheduler.sync` won't re-create it.
 
 ---
 
-## Structured logs (`adb logcat | grep DoseAudit`)
+## Structured logs
+
+Every line is `developer.log(..., name: 'DoseAudit')` → shows in logcat
+tagged `DoseAudit` (or `flutter`).
 
 ```
-DOSE_ALARM_SCHEDULE          medicineId doseId scheduledAt effectiveAt timezone
-                             notificationId alarmId result=scheduled|rescheduled|schedule_failed
-DOSE_ALARM_SCHEDULE_ADVANCE  … result=scheduled|skipped
-DOSE_TZ                      doseId deviceTimezone deviceNow
-                             scheduledLocal scheduledUtc effectiveLocal effectiveUtc alarmId
-DOSE_NOTIFICATION            doseId channelId sound=medicine_alarm.wav audioUsage=alarm
-                             importance=MAX fullScreenIntent=true category=alarm insistent=true
-DOSE_PERMS                   result=ok|permission_denied notifications=
-                             batteryOptimization=unrestricted|restricted alarmCapability=
-DOSE_ALARM_FIRE              source=foreground|background|cold-start actionId payload
-DOSE_CANCEL                  notificationId alarmId result=cancelled reason=…
+DOSE_TZ               doseId deviceTimezone deviceNow scheduledLocal scheduledUtc
+                      effectiveLocal effectiveUtc alarmId
+DOSE_NOTIFICATION     doseId channelId sound=medicine_alarm.wav audioUsage=alarm
+                      importance=MAX fullScreenIntent=true category=alarm insistent=true
+DOSE_ALARM_SCHEDULE   medicineId doseId notificationId alarmId scheduledLocal effectiveLocal
+                      scheduleMethod=alarmClock|exactAllowWhileIdle|inexactAllowWhileIdle|none
+                      osQueueVerified=true|false timezone
+                      result=scheduled|scheduled_inexact|schedule_failed
+DOSE_ALARM_SCHEDULE_ADVANCE  … (same shape, id = doseId*1000+offset)
+DOSE_ALARM_FIRE       source=foreground|background|cold-start actionId payload
+DOSE_CANCEL           notificationId alarmId result=cancelled reason=…
+DOSE_BOOT_RESTORE     osPendingAlarmIds=[…] count= desiredThisWindow=
+DOSE_PERMS            result=ok|permission_denied notifications=
+                      batteryOptimization=unrestricted|restricted alarmCapability=
+DOSE_ERROR            stage=schedule|permission|zonedSchedule doseId= mode= error=
 ```
 
-Trace one dose: `DOSE_TZ` (no UTC shift: `scheduledLocal == effectiveLocal`,
-`scheduledUtc` is the instant) → `DOSE_NOTIFICATION` (channel + sound) →
-`DOSE_ALARM_SCHEDULE result=scheduled` → at fire time, on tap/action,
-`DOSE_ALARM_FIRE`.
+Trace one dose: `DOSE_TZ` (no UTC shift ⇒ `scheduledLocal == effectiveLocal`;
+`scheduledUtc` is the absolute instant) → `DOSE_NOTIFICATION` (channel +
+sound) → `DOSE_ALARM_SCHEDULE scheduleMethod=alarmClock result=scheduled`
+→ at fire time / on tap / on action, `DOSE_ALARM_FIRE`.
+
+**Decision tree (point 17):**
+- No `DOSE_ALARM_SCHEDULE` at all → `DoseScheduler.sync` didn't run for this
+  dose (check the medicine is active, the time is in the 7-day window).
+- `DOSE_ERROR stage=zonedSchedule` for every mode + `result=schedule_failed`
+  → the OS rejected scheduling (rare — usually a bad `tz.local` zone id or a
+  plugin/desugaring problem).
+- `scheduleMethod=inexactAllowWhileIdle` → the only mode that landed; Doze
+  **will** delay it on a locked/idle phone. Grant exact alarms, or set the
+  app to "Unrestricted" battery.
+- `scheduleMethod=alarmClock result=scheduled` **and still no notification
+  at fire time** → not a scheduling problem. Either the app was
+  **force-stopped** (Android cancels all alarms until reopen), an OEM
+  deep-sleep list is killing it, or `POST_NOTIFICATIONS` is denied — check
+  `DOSE_PERMS` and `DOSE_ERROR stage=permission`.
+- `DOSE_ALARM_FIRE` present but no visible notification → permission /
+  channel / device DnD. Check the channel isn't disabled in system
+  settings.
 
 > **Limitation:** Android exposes no Dart callback for "the OS displayed
 > this scheduled notification" — that is the native
@@ -183,34 +225,87 @@ or the system's channels are affected.
 | `SCHEDULE_EXACT_ALARM` + `USE_EXACT_ALARM` | the `exactAllowWhileIdle` fallback path | `requestExactAlarmPermission()`; the primary `alarmClock` mode does **not** need it |
 | `VIBRATE`, `WAKE_LOCK`, `ACCESS_NOTIFICATION_POLICY` | vibration / wake / DnD bypass | n/a |
 
-Receivers (`flutter_local_notifications`, declared in the manifest):
-`ScheduledNotificationReceiver` (fires the alarm; runs with no Flutter UI),
-`ScheduledNotificationBootReceiver` (`BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`,
-QUICKBOOT), `ActionBroadcastReceiver` (TAKEN/SNOOZE/SKIP →
-`notificationBackgroundHandler`).
+### Receivers — verified (`android/app/src/main/AndroidManifest.xml`)
+
+`flutter_local_notifications` 20.1.0's **library** manifest declares only
+`VIBRATE` + `POST_NOTIFICATIONS` — it does **not** ship the receivers, so
+the **app manifest must declare them**, and it does:
+
+```xml
+<receiver android:exported="false"
+    android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
+<receiver android:exported="false"
+    android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+<receiver android:exported="false"
+    android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+    <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED"/>
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+        <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+        <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+    </intent-filter>
+</receiver>
+```
+
+- Class names match the plugin's shipped classes
+  (`.../flutterlocalnotifications/{ActionBroadcastReceiver,
+  ScheduledNotificationReceiver, ScheduledNotificationBootReceiver}.java`).
+- `ScheduledNotificationReceiver` needs **no** `intent-filter`: AlarmManager
+  delivers an **explicit** PendingIntent (component set), and it runs
+  **without a Flutter engine** — the notification is built and posted by the
+  plugin's native Java from the payload persisted at `zonedSchedule` time
+  (which also re-creates the channel via `channelAction=createIfNotExists`).
+- `android:exported="false"` is correct for all three (same-app / OS
+  delivery of the app's own PendingIntents); Android 12+ `exported`
+  requirement satisfied.
+- The boot receiver is declared without `android:enabled="false"` (the
+  plugin's example disables it and flips it on at runtime) — here it is
+  simply enabled from install, which is fine.
+
+**No manifest change was needed or made this round.**
+
+`AndroidActionBroadcastReceiver` (TAKEN/SNOOZE/SKIP) hands off to the
+Dart `notificationBackgroundHandler` isolate (`@pragma('vm:entry-point')`)
+for the action logic only — the notification itself never needs Dart.
 
 ---
 
 ## On-device acceptance test — MUST be run on real Android
 
-```
-adb logcat -c && adb logcat | grep -E "DoseAudit|Notif"
-```
+### ADB (Windows PowerShell / cmd)
 
-Medicine **Test Medicine**, reminder = **now + 2 min**. Confirm
+```
+adb devices
+adb logcat -c
+adb logcat | findstr "DOSE_"
+```
+(macOS/Linux: `adb logcat | grep -E "DOSE_|DoseAudit"`.)
+
+### Quick isolation — the "Test scheduled alarm" button
+
+Settings → **Test scheduled alarm** (visible in release now). It schedules a
+real AlarmManager alarm 60 s out through the *same* code path as a dose,
+then shows the landed `mode`, whether the OS kept it, the fire time and the
+timezone. Press it, read `DOSE_ALARM_SCHEDULE doseId=99998 (SELF-TEST)`,
+**close + lock the phone**, wait 60–90 s. This proves the native pipeline
+without touching the medicine UI.
+
+### Full test
+
+Medicine **Test Medicine**, reminder = **now + 2 min**. Confirm in the log:
 `DOSE_TZ` (`scheduledLocal` == your pick, `== effectiveLocal`),
 `DOSE_NOTIFICATION channelId=medicine_reminders_v10 sound=medicine_alarm.wav`,
-`DOSE_ALARM_SCHEDULE ... result=scheduled`.
+`DOSE_ALARM_SCHEDULE scheduleMethod=alarmClock result=scheduled`.
 
-| # | State | Expect at T+2min |
+| # | State (schedule reminder, then…) | Expect at T |
 |---|---|---|
-| 1 | app open | notification + **sound** + vibration (+ voice) |
-| 2 | app minimized | same |
-| 3 | app swiped from recents (not "Force stop") | notification + sound + vibration |
+| A | press **Home** | notification + **sound** + vibration (+ voice) — **required** |
+| B | **swipe away from Recents** | notification + sound + vibration — **required** |
+| C | Settings → Apps → DoseWise → **Force Stop** | *may* not fire — Android cancels alarms after an explicit force-stop until the app is reopened. **Not an acceptance case.** |
 | 4 | screen locked | + full-screen `DoseAlarmScreen` where FSI granted |
-| 5 | phone idle / Doze (`adb shell dumpsys deviceidle force-idle`) | still fires (alarmClock is Doze-exempt) |
+| 5 | Doze: `adb shell dumpsys deviceidle force-idle` (then `unforce` after) | still fires (`alarmClock` is Doze-exempt) |
 | 6 | **airplane mode / wifi+data off** | still fires (no network involved) |
-| 7 | reboot before T, do not open the app | still fires (boot receiver) |
+| 7 | reboot before T, do **not** open the app | still fires — check `DOSE_BOOT_RESTORE` on next open |
 | 8 | 2 medicines, same minute | both fire independently (distinct `doseId`) |
 | 9 | tap the notification | DoseWise opens on the dose; no new reminder |
 | 10 | action **Taken** | dose = Taken; notification gone; `taken_at` set, others NULL; no re-fire |
@@ -218,10 +313,9 @@ Medicine **Test Medicine**, reminder = **now + 2 min**. Confirm
 | 12 | action **Snooze** | new `DOSE_ALARM_SCHEDULE` for `snoozedUntil`; fires then; no early escalation |
 | 13 | action **Skip** / Skip in-app | alarm cancelled; no further notification for that dose |
 
-If a case fails, the log says where: no `DOSE_ALARM_SCHEDULE` = reconcile
-didn't run; `result=schedule_failed` = OS rejected every mode; line present
-but silent at T = `DOSE_PERMS` shows the denied permission / restricted
-battery, or the app was force-stopped.
+Acceptance = **A and B** pass (sound + vibration + notification, app not
+running). C is explicitly out of scope. If A/B fail, the log pins it — see
+the decision tree above.
 
 **Firebase:** unchanged. `flutter run` against the free Spark project — Auth,
 Google/guest sign-in, Firestore, FCM token registration, and Family Sync

@@ -339,6 +339,7 @@ class AppState extends ChangeNotifier {
     );
     await notifications.scheduleDoseReminder(
       doseId: entry.dose.id!,
+      medicineId: med.id,
       title: text.title(med.name),
       body: text.body(
         med.name,

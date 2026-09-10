@@ -1,5 +1,4 @@
 import 'package:app_settings/app_settings.dart' as app_settings;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -215,10 +214,13 @@ class _SettingsScreenState extends State<SettingsScreen>
               icon: const Icon(Icons.volume_up_rounded),
               label: Text(l10n.testNotification),
             ),
-            // Developer-only scheduling self-test + raw diagnostic dump.
-            // Hidden from release builds; users only see "Send a test
-            // notification" above and the Notification status card below.
-            if (kDebugMode) ...[
+            // Scheduling self-test: schedules a real alarm 60s out via the
+            // exact same path as a dose reminder, then reports the landed
+            // AlarmManager mode + whether the OS kept it. Kept visible in
+            // release too — for a medicine app, "does a scheduled alarm
+            // actually fire on this device?" is a safety question the user
+            // (or their carer) must be able to answer without a debug build.
+            ...[
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: () async {

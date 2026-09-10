@@ -481,3 +481,137 @@ missed-dose trigger is left exactly as it was — it is optional, would need
 Blaze to *deploy*, and is unrelated to the medicine-reminder path (note: it
 still reads the old `members` map and channel `family_alerts`, both changed
 by the family rework — update or drop it if you ever deploy functions).
+
+---
+
+# Round 4 — background/closed alarm debug (`cbXXXXX`)
+
+`flutter analyze` 0/0, `flutter test` 58/58. **Local-only, Spark, no
+background service.**
+
+### 1. Exact reason the alarm wasn't firing
+Two things, both fixed:
+- **RC-4 (new):** `scheduleDoseReminder` scheduled via `alarmClock`
+  (exact, Doze-exempt) then re-queried `pendingNotificationRequests()`; if
+  the id wasn't echoed back it **fell through and re-scheduled the same id
+  with `inexactAllowWhileIdle`**, replacing the good alarm with one Doze
+  holds through the idle window. Many OEMs don't list `setAlarmClock`
+  alarms in that query → a locked, idle 2-minute test never fired.
+  **Fixed:** `alarmClock`, once accepted, is trusted; the fallback chain
+  runs only if it *threw*.
+- **RC-1 (round 3):** sound was on the notification stream, not the alarm
+  stream — inaudible with the ringer down. Fixed via
+  `audioAttributesUsage: alarm` + channel `v10`.
+Everything else (`app closed` fundamentals) is device-state: force-stop /
+OEM deep-sleep / denied `POST_NOTIFICATIONS`, all now logged.
+
+### 2. AlarmManager API currently used
+`flutter_local_notifications` `zonedSchedule` →
+`AndroidScheduleMode.alarmClock` → **`AlarmManager.setAlarmClock(AlarmClockInfo,
+operationPendingIntent)`**. Fallbacks (only if that throws):
+`exactAllowWhileIdle` → `setExactAndAllowWhileIdle`;
+`inexactAllowWhileIdle` → `setAndAllowWhileIdle`.
+
+### 3. Is AlarmClockInfo valid?
+Yes — the plugin builds `new AlarmManager.AlarmClockInfo(triggerAtMillis,
+showIntent)` where `triggerAtMillis` is `scheduledDate.millisecondsSinceEpoch`
+(absolute; timezone of `tz.local` does not affect *when* it fires — the
+`DOSE_TZ` log proves `scheduledLocal == effectiveLocal`). `showIntent` is
+the plugin's launch PendingIntent for MainActivity.
+
+### 4. PendingIntent action
+The plugin uses an **explicit** PendingIntent targeting
+`com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver`
+(component set, no action string) with extra `notification_id`. Delivery
+does not rely on an intent-filter.
+
+### 5. Alarm requestCode
+= the **notification id** = `doseId` for the main reminder,
+`doseId*1000+offset` for advance alarms. Stable and unique per dose, so
+one medicine's reschedule never overwrites another's PendingIntent. Logged
+as `alarmId=` / `notificationId=`.
+
+### 6. BroadcastReceiver class
+`com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver`
+(shipped in the plugin's `android/src/main/java/...`). Also
+`ScheduledNotificationBootReceiver` and `ActionBroadcastReceiver`.
+
+### 7. Manifest registration
+All three declared in `android/app/src/main/AndroidManifest.xml`,
+`android:exported="false"`, boot receiver with the `BOOT_COMPLETED` /
+`MY_PACKAGE_REPLACED` / QUICKBOOT intent-filter. Plugin v20's library
+manifest ships **only** permissions, so the app declaring the receivers is
+**required** and correct. **No manifest change made** (verified sufficient).
+
+### 8. Does the receiver work with the app process killed?
+Yes — `ScheduledNotificationReceiver` is native Java. On fire it reads the
+payload persisted at `zonedSchedule` time, re-creates the channel
+(`channelAction=createIfNotExists`), and calls `NotificationManager.notify()`.
+**No Flutter engine / Dart / MainActivity required** for the notification.
+Action buttons (TAKEN/SNOOZE/SKIP) do spin up the
+`notificationBackgroundHandler` isolate for the DB write, but the alert
+itself does not.
+
+### 9. Notification channel id
+`medicine_reminders_v10` (silent variant `medicine_reminders_silent_v10`,
+family `family_alerts_v10`). Logged every schedule as
+`DOSE_NOTIFICATION channelId=`.
+
+### 10. Sound resource
+`android/app/src/main/res/raw/medicine_alarm.wav` (present, 258 KB, valid
+lowercase resource name). `RawResourceAndroidNotificationSound('medicine_alarm')`
+on the channel **and** the details, `audioAttributesUsage: alarm`.
+
+### 11. Notification permission status handling
+`areNotificationsEnabled()` checked at boot (`_postLaunch`), before the
+in-app test, and now **at schedule time** — a denial logs
+`DOSE_ERROR stage=permission`. `DOSE_PERMS` (every reconcile) reports
+`notifications / batteryOptimization / alarmCapability`. Settings shows a
+live status card + deep links.
+
+### 12. Boot recovery
+Plugin's `ScheduledNotificationBootReceiver` re-registers every persisted
+`zonedSchedule` with AlarmManager on `BOOT_COMPLETED` — natively, no Dart.
+On next app open `DoseScheduler.sync` reconciles against the DB and logs
+`DOSE_BOOT_RESTORE osPendingAlarmIds=[…] count= desiredThisWindow=`. No
+duplicates (id = `doseId`), nothing scheduled in the past
+(`_notificationTime` guards).
+
+### 13. Battery / OEM handling
+`isIgnoringBatteryOptimizations()` (MethodChannel to `PowerManager`)
+surfaced in Settings and in `DOSE_PERMS`. `alarmClock` mode is the
+kill-resistant path. No foreground service, no `Timer.periodic`, no
+polling, no keep-alive — none added, none present. Aggressive OEMs
+(MIUI/Samsung/OnePlus) and explicit Force-Stop are documented as
+out-of-reach; the log identifies them.
+
+### 14. Exact files changed (round 4)
+`lib/core/notifications/notification_service.dart` — trust `alarmClock`
+(no downgrade), `medicineId` param, `_auditSchedule` emits the canonical
+`DOSE_ALARM_SCHEDULE` with `scheduleMethod` + `osQueueVerified`,
+`DOSE_ERROR` at every failure, self-test emits `DOSE_ALARM_SCHEDULE`.
+`lib/services/dose_scheduler.dart` — pass `medicineId`, drop the now-duplicate
+`_audit`, add `DOSE_BOOT_RESTORE`.
+`lib/services/dose_action_handler.dart`, `lib/state/app_state.dart` — pass
+`medicineId` through the snooze reschedule.
+`lib/features/settings/settings_screen.dart` — "Test scheduled alarm" (60 s,
+same code path as a dose) is now visible in release, not just debug.
+`test/test_helpers.dart` — `FakeScheduler` signature.
+`docs/NOTIFICATION_AUDIT.md` — RC-4, log vocabulary, receiver verification,
+decision tree, A/B/C test split, Windows `findstr` ADB.
+
+### 15. Exact ADB commands (Windows)
+```
+adb devices
+adb logcat -c
+adb logcat | findstr "DOSE_"
+```
+Doze: `adb shell dumpsys deviceidle force-idle` … test …
+`adb shell dumpsys deviceidle unforce`.
+Interpretation: `DOSE_ALARM_SCHEDULE` but no `DOSE_ALARM_FIRE` →
+AlarmManager/OS/force-stop (check `scheduleMethod`; if `inexact*`, fix
+battery/exact-alarm); `DOSE_ALARM_FIRE` but nothing visible →
+permission/channel/DnD.
+
+**Not run here** — no Android device in this environment. `flutter analyze`
+0/0, `flutter test` 58/58 is *not* acceptance; A + B on real hardware is.

@@ -16,6 +16,7 @@ import '../constants/app_constants.dart';
 abstract class ReminderScheduler {
   Future<bool> scheduleDoseReminder({
     required int doseId,
+    int? medicineId,
     required String title,
     required String body,
     required DateTime when,
@@ -33,6 +34,7 @@ abstract class ReminderScheduler {
   /// Schedules an advance alarm notification (loops before dose time).
   Future<bool> scheduleAdvanceAlarm({
     required int doseId,
+    int? medicineId,
     required int offset,
     required String title,
     required String body,
@@ -627,6 +629,15 @@ class NotificationService implements ReminderScheduler {
       'fireAt=${result.fireAt} tz=${result.tzName}',
       name: 'Notif',
     );
+    developer.log(
+      'DOSE_ALARM_SCHEDULE medicineId=null doseId=99998 (SELF-TEST) '
+      'notificationId=99998 alarmId=99998 '
+      'effectiveLocal=${result.fireAt.toIso8601String()} '
+      'scheduleMethod=$landedMode osQueueVerified=$verified '
+      'timezone=${result.tzName} '
+      'result=${scheduled ? (exact ? 'scheduled' : 'scheduled_inexact') : 'schedule_failed'}',
+      name: 'DoseAudit',
+    );
     return (
       scheduled: scheduled,
       exact: exact,
@@ -714,6 +725,7 @@ class NotificationService implements ReminderScheduler {
   @override
   Future<bool> scheduleDoseReminder({
     required int doseId,
+    int? medicineId,
     required String title,
     required String body,
     required DateTime when,
@@ -724,7 +736,21 @@ class NotificationService implements ReminderScheduler {
   }) async {
     if (!_initialized) {
       developer.log('scheduleDoseReminder: NOT initialized, skipping dose=$doseId', name: 'Notif');
+      developer.log(
+        'DOSE_ERROR stage=schedule doseId=$doseId error=notification-service-not-initialized',
+        name: 'DoseAudit',
+      );
       return false;
+    }
+    // A scheduled notification is dropped by the OS if POST_NOTIFICATIONS is
+    // denied — the alarm still fires but nothing is shown. Log it so the
+    // trace explains a silent miss.
+    if (!await areNotificationsEnabled()) {
+      developer.log(
+        'DOSE_ERROR stage=permission doseId=$doseId '
+        'error=POST_NOTIFICATIONS-denied (alarm will fire but not display)',
+        name: 'DoseAudit',
+      );
     }
     final tzWhen = tz.TZDateTime.from(when, tz.local);
     // If time is in the past or very near, fire immediately so user still
@@ -796,36 +822,94 @@ class NotificationService implements ReminderScheduler {
           name: 'Notif',
         );
         return true;
-      } on Exception catch (e) {
+      } on Exception catch (e, st) {
         developer.log('zonedSchedule ($mode) FAILED for dose $doseId: $e',
             name: 'Notif', error: e);
+        developer.log(
+          'DOSE_ERROR stage=zonedSchedule doseId=$doseId mode=$mode error=$e\n$st',
+          name: 'DoseAudit',
+        );
         return false;
       }
     }
 
-    // alarmClock first: AlarmManager.setAlarmClock() is exact, fires in Doze,
-    // and needs no SCHEDULE_EXACT_ALARM grant — the most reliable option for a
-    // medicine alarm. Then exactAllowWhileIdle, then inexact as a last resort.
+    String landed = 'none';
+    // alarmClock first: AlarmManager.setAlarmClock() is exact, fires in Doze
+    // AND App Standby, and needs no SCHEDULE_EXACT_ALARM grant — the most
+    // reliable option for a medicine alarm. If it is accepted (no exception)
+    // TRUST it: do NOT fall through to a weaker mode just because the OS
+    // pending-list query didn't echo it back — re-scheduling the same id with
+    // inexactAllowWhileIdle would REPLACE a good exact alarm with one Doze can
+    // hold for the whole idle window. Only fall through if alarmClock threw.
     if (await tryMode(AndroidScheduleMode.alarmClock)) {
-      // Verify the OS actually kept it — some devices accept the call but
-      // silently drop the alarm (e.g. aggressive OEM battery savers).
-      final currentPending = await pendingIds();
-      if (currentPending.contains(doseId)) {
-        developer.log('scheduleDoseReminder: doseId=$doseId scheduled via alarmClock', name: 'Notif');
-        return true;
+      landed = 'alarmClock';
+      final verified = (await pendingIds()).contains(doseId);
+      if (!verified) {
+        developer.log(
+          'scheduleDoseReminder: alarmClock accepted but not echoed in the OS '
+          'pending list for doseId=$doseId — trusting it anyway (query quirk on '
+          'many OEMs); NOT downgrading to inexact',
+          name: 'Notif',
+        );
       }
-      developer.log('scheduleDoseReminder: alarmClock accepted but not in pending list for doseId=$doseId, trying next mode', name: 'Notif');
+      _auditSchedule('DOSE_ALARM_SCHEDULE', medicineId: medicineId,
+          doseId: doseId, notificationId: doseId, alarmId: doseId,
+          scheduledLocal: when, effectiveLocal: fireAt, mode: landed,
+          verified: verified, result: 'scheduled');
+      return true;
     }
     if (exact && await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
-      developer.log('scheduleDoseReminder: doseId=$doseId scheduled via exactAllowWhileIdle', name: 'Notif');
+      landed = 'exactAllowWhileIdle';
+      _auditSchedule('DOSE_ALARM_SCHEDULE', medicineId: medicineId,
+          doseId: doseId, notificationId: doseId, alarmId: doseId,
+          scheduledLocal: when, effectiveLocal: fireAt, mode: landed,
+          verified: (await pendingIds()).contains(doseId), result: 'scheduled');
       return true;
     }
     if (await tryMode(AndroidScheduleMode.inexactAllowWhileIdle)) {
-      developer.log('scheduleDoseReminder: doseId=$doseId scheduled via inexactAllowWhileIdle (may be delayed by Doze)', name: 'Notif');
+      landed = 'inexactAllowWhileIdle';
+      developer.log(
+        'scheduleDoseReminder: doseId=$doseId only got inexactAllowWhileIdle '
+        '— Doze may delay it. Grant exact alarms / disable battery optimisation.',
+        name: 'Notif',
+      );
+      _auditSchedule('DOSE_ALARM_SCHEDULE', medicineId: medicineId,
+          doseId: doseId, notificationId: doseId, alarmId: doseId,
+          scheduledLocal: when, effectiveLocal: fireAt, mode: landed,
+          verified: (await pendingIds()).contains(doseId),
+          result: 'scheduled_inexact');
       return true;
     }
     developer.log('scheduleDoseReminder: ALL MODES FAILED for doseId=$doseId', name: 'Notif');
+    _auditSchedule('DOSE_ALARM_SCHEDULE', medicineId: medicineId, doseId: doseId,
+        notificationId: doseId, alarmId: doseId, scheduledLocal: when,
+        effectiveLocal: fireAt, mode: 'none', verified: false,
+        result: 'schedule_failed');
     return false;
+  }
+
+  /// One canonical structured record per scheduling decision.
+  void _auditSchedule(
+    String event, {
+    required int? medicineId,
+    required int doseId,
+    required int notificationId,
+    required int alarmId,
+    required DateTime scheduledLocal,
+    required DateTime effectiveLocal,
+    required String mode,
+    required bool verified,
+    required String result,
+  }) {
+    developer.log(
+      '$event medicineId=$medicineId doseId=$doseId '
+      'notificationId=$notificationId alarmId=$alarmId '
+      'scheduledLocal=${scheduledLocal.toIso8601String()} '
+      'effectiveLocal=${effectiveLocal.toIso8601String()} '
+      'scheduleMethod=$mode osQueueVerified=$verified '
+      'timezone=${tz.local.name} result=$result',
+      name: 'DoseAudit',
+    );
   }
 
   @override
@@ -849,6 +933,7 @@ class NotificationService implements ReminderScheduler {
   @override
   Future<bool> scheduleAdvanceAlarm({
     required int doseId,
+    int? medicineId,
     required int offset,
     required String title,
     required String body,
@@ -911,15 +996,31 @@ class NotificationService implements ReminderScheduler {
       }
     }
 
+    // Trust alarmClock if accepted (same rationale as scheduleDoseReminder):
+    // never downgrade a good exact alarm to inexact over a pending-list quirk.
     if (await tryMode(AndroidScheduleMode.alarmClock)) {
-      final currentPending = await pendingIds();
-      if (currentPending.contains(notifId)) return true;
-      // alarmClock accepted but not in pending — fall through to other modes.
-    }
-    if (exact && await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
+      final verified = (await pendingIds()).contains(notifId);
+      _auditSchedule('DOSE_ALARM_SCHEDULE_ADVANCE', medicineId: medicineId,
+          doseId: doseId, notificationId: notifId, alarmId: notifId,
+          scheduledLocal: when, effectiveLocal: when, mode: 'alarmClock',
+          verified: verified, result: 'scheduled');
       return true;
     }
-    return tryMode(AndroidScheduleMode.inexactAllowWhileIdle);
+    if (exact && await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
+      _auditSchedule('DOSE_ALARM_SCHEDULE_ADVANCE', medicineId: medicineId,
+          doseId: doseId, notificationId: notifId, alarmId: notifId,
+          scheduledLocal: when, effectiveLocal: when,
+          mode: 'exactAllowWhileIdle',
+          verified: (await pendingIds()).contains(notifId), result: 'scheduled');
+      return true;
+    }
+    final ok = await tryMode(AndroidScheduleMode.inexactAllowWhileIdle);
+    _auditSchedule('DOSE_ALARM_SCHEDULE_ADVANCE', medicineId: medicineId,
+        doseId: doseId, notificationId: notifId, alarmId: notifId,
+        scheduledLocal: when, effectiveLocal: when,
+        mode: ok ? 'inexactAllowWhileIdle' : 'none', verified: false,
+        result: ok ? 'scheduled_inexact' : 'schedule_failed');
+    return ok;
   }
 
   @override

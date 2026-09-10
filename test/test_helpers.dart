@@ -30,6 +30,7 @@ class FakeScheduler implements ReminderScheduler {
   @override
   Future<bool> scheduleDoseReminder({
     required int doseId,
+    int? medicineId,
     required String title,
     required String body,
     required DateTime when,
@@ -60,6 +61,7 @@ class FakeScheduler implements ReminderScheduler {
   @override
   Future<bool> scheduleAdvanceAlarm({
     required int doseId,
+    int? medicineId,
     required int offset,
     required String title,
     required String body,
