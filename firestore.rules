@@ -130,12 +130,5 @@ service cloud.firestore {
       allow delete: if signedIn()
         && resource.data.creatorUid == request.auth.uid;
     }
-
-    // ---- FCM delivery log ----------------------------------------------------
-    // Written only by the sendScheduledReminders Cloud Function via the Admin
-    // SDK (which bypasses rules). No client may read or write it.
-    match /fcm_delivery_log/{entryId} {
-      allow read, write: if false;
-    }
   }
 }

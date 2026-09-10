@@ -434,50 +434,6 @@ class NotificationService implements ReminderScheduler {
 
   bool get soundEnabled => _soundEnabled;
 
-  /// Posts a dose reminder RIGHT NOW (used by the FCM cloud-backup path).
-  /// Uses `id = doseId` so it collapses with any local-alarm notification for
-  /// the same dose — the phone shows exactly one. Full reminder styling +
-  /// TAKEN / SNOOZE / SKIP actions, same as a scheduled reminder.
-  Future<bool> showDoseNow({
-    required int doseId,
-    required String title,
-    required String body,
-    required String takenLabel,
-    required String snoozeLabel,
-    required String skipLabel,
-  }) async {
-    if (!_initialized) return false;
-    final channel = _soundEnabled ? _soundChannelId : _silentChannelId;
-    final chName = _soundEnabled
-        ? AppConstants.channelName
-        : AppConstants.silentChannelName;
-    try {
-      await _plugin.show(
-        id: doseId,
-        title: title,
-        body: body,
-        notificationDetails: NotificationDetails(
-          android: _buildReminderDetails(
-            channelId: channel,
-            channelName: chName,
-            title: title,
-            body: body,
-            withActions: true,
-            takenLabel: takenLabel,
-            snoozeLabel: snoozeLabel,
-            skipLabel: skipLabel,
-          ),
-        ),
-        payload: '${AppConstants.payloadPrefix}$doseId',
-      );
-      return true;
-    } catch (e) {
-      developer.log('showDoseNow FAILED for dose $doseId: $e',
-          name: 'Notif', error: e);
-      return false;
-    }
-  }
-
   // ---- Permissions ---------------------------------------------------------
 
   Future<bool> areNotificationsEnabled() async {
@@ -722,8 +678,11 @@ class NotificationService implements ReminderScheduler {
       channelName,
       channelDescription: AppConstants.channelDescription,
       importance: Importance.max,
-      priority: Priority.high,
-      category: AndroidNotificationCategory.reminder,
+      priority: Priority.max,
+      // CATEGORY_ALARM (not reminder): a medicine dose IS an alarm. Android
+      // 14+/15 rank it above heads-up, keep the full-screen intent, and let
+      // it through DnD more readily.
+      category: AndroidNotificationCategory.alarm,
       playSound: true,
       // Belt-and-suspenders: WAV sound on BOTH channel AND notification details.
       // Some OEMs (Samsung, Xiaomi, OnePlus) only respect one or the other.
@@ -783,16 +742,20 @@ class NotificationService implements ReminderScheduler {
       'channel=$channel exact=$exact tz=${tz.local.name}',
       name: 'Notif',
     );
-    // Timezone sanity line: the wall-clock the user picked, and the exact
-    // local wall-clock the OS alarm will fire at. These must read the same
-    // (no accidental UTC shift). tzWhen carries the correct instant even if
-    // the zone name resolved to a fallback, so also print both instants.
+    // Timezone sanity line: the wall clock the user picked vs the exact local
+    // wall clock the OS alarm will fire at. scheduledLocal and effectiveLocal
+    // must read the same (no accidental UTC shift); scheduledUtc is the
+    // absolute instant. tzWhen carries the right instant even if the zone name
+    // fell back, so the UTC values are the source of truth.
     developer.log(
       'DOSE_TZ doseId=$doseId '
-      'userSelected=${when.toIso8601String()} (${tz.local.name}) '
-      'androidScheduled=${fireAt.toIso8601String()} (${fireAt.timeZoneName}) '
-      'instantUserUtc=${when.toUtc().toIso8601String()} '
-      'instantFireUtc=${fireAt.toUtc().toIso8601String()}',
+      'deviceTimezone=${tz.local.name} '
+      'deviceNow=${DateTime.now().toIso8601String()} '
+      'scheduledLocal=${when.toIso8601String()} '
+      'scheduledUtc=${when.toUtc().toIso8601String()} '
+      'effectiveLocal=${fireAt.toIso8601String()} '
+      'effectiveUtc=${fireAt.toUtc().toIso8601String()} '
+      'alarmId=$doseId',
       name: 'DoseAudit',
     );
 
@@ -807,6 +770,13 @@ class NotificationService implements ReminderScheduler {
         snoozeLabel: snoozeLabel,
         skipLabel: skipLabel,
       ),
+    );
+    developer.log(
+      'DOSE_NOTIFICATION doseId=$doseId channelId=$channel '
+      'sound=${_soundEnabled ? 'medicine_alarm.wav' : 'none'} '
+      'audioUsage=alarm importance=MAX fullScreenIntent=true '
+      'category=alarm insistent=true',
+      name: 'DoseAudit',
     );
     final payload = '${AppConstants.payloadPrefix}$doseId';
 

@@ -125,11 +125,11 @@ class DoseScheduler {
           snoozeLabel: text.snoozeLabel,
           skipLabel: text.skipLabel,
         );
-        // Canonical per-dose audit record (grep 'DOSE_SCHEDULE' in logcat).
+        // Canonical per-dose audit record (grep 'DOSE_ALARM_SCHEDULE' in logcat).
         // notificationId == alarmId: flutter_local_notifications uses the
         // notification id as the AlarmManager request code.
         _audit(
-          'DOSE_SCHEDULE',
+          'DOSE_ALARM_SCHEDULE',
           medicineId: med.id,
           doseId: entry.key,
           scheduledAt: dose.scheduledAt,
@@ -165,7 +165,7 @@ class DoseScheduler {
           exact: exact,
         );
         _audit(
-          'DOSE_SCHEDULE_ADVANCE',
+          'DOSE_ALARM_SCHEDULE_ADVANCE',
           medicineId: med.id,
           doseId: entry.key,
           scheduledAt: dose.scheduledAt,

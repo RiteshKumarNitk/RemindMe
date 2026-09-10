@@ -197,14 +197,17 @@ class AppState extends ChangeNotifier {
     final now = DateTime.now();
     final grace = settings.graceDuration;
 
-    if (!_notificationsEnabled || !_exactAlarmsEnabled) {
-      developer.log(
-        'DOSE_PERMS result=permission_denied '
-        'notifications=$_notificationsEnabled exactAlarms=$_exactAlarmsEnabled '
-        'battery=$_batteryUnrestricted — scheduled reminders may not fire',
-        name: 'DoseAudit',
-      );
-    }
+    // Status line every reconcile so a missed reminder can be pinned to a
+    // permission / battery state. alarmCapability=false only degrades exact
+    // delivery — alarmClock mode still works without the grant.
+    final permsOk = _notificationsEnabled;
+    developer.log(
+      'DOSE_PERMS result=${permsOk ? 'ok' : 'permission_denied'} '
+      'notifications=$_notificationsEnabled '
+      'batteryOptimization=${_batteryUnrestricted ? 'unrestricted' : 'restricted'} '
+      'alarmCapability=$_exactAlarmsEnabled',
+      name: 'DoseAudit',
+    );
 
     await doseRepository.sweepMissed(grace, now);
     await doseScheduler.sync(

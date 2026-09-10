@@ -377,10 +377,107 @@ the guaranteed channel.
 
 ## Still requires human / project verification
 - On-device notification acceptance test (§10–11).
-- `firebase deploy --only functions,firestore:indexes` + create the
-  composite index; watch `firebase functions:log` + `fcm_delivery_log`
-  while a dose comes due.
 - Firestore rules on the emulator (`docs/FAMILY_SYNC.md`).
-- `onBackgroundMessage` is registered in `_postLaunch` (post-`runApp`) — fine
-  for the backup path; move earlier if you want it to catch a message that
-  arrives during the first ~2s of a cold start.
+
+---
+
+# Round 3 — Spark-only: server-side scheduler removed
+
+The Round-2 Cloud Function / Cloud Scheduler approach needs Firebase Blaze.
+Reverted. The medicine reminder is now **local-only** again, which is what
+the working `alarmClock`-first implementation already was.
+
+### 1. Files changed
+- **Reverted** (`00d799f` undone surgically): `functions/index.js` +
+  `functions/package.json` restored to their pre-existing caregiver-alert
+  form; `firebase.json` and `firestore.indexes.json` deleted;
+  `lib/services/push_messaging_service.dart` deleted;
+  `NotificationService.showDoseNow` removed; `main.dart` push wiring
+  removed; `FirebaseBackend.attachPushToken` back to `{fcmToken}` only;
+  `firestore.rules` `fcm_delivery_log` block removed.
+- **Kept / adjusted** (local logging + delivery quality):
+  `lib/core/notifications/notification_service.dart` — RC-1 sound fix
+  (`audioAttributesUsage: alarm`, channel `v10`), reminder `category`
+  `reminder → alarm` + `priority max`, `DOSE_TZ` (renamed fields:
+  `deviceTimezone / deviceNow / scheduledLocal / scheduledUtc /
+  effectiveLocal / effectiveUtc / alarmId`), new `DOSE_NOTIFICATION` line.
+  `lib/services/dose_scheduler.dart` — tags `DOSE_ALARM_SCHEDULE` /
+  `DOSE_ALARM_SCHEDULE_ADVANCE` / `DOSE_CANCEL`.
+  `lib/state/app_state.dart` — `DOSE_PERMS` every reconcile
+  (`notifications / batteryOptimization / alarmCapability`).
+  `lib/main.dart`, `lib/core/notifications/notification_background.dart` —
+  `DOSE_ALARM_FIRE`.
+  `docs/NOTIFICATION_AUDIT.md` rewritten local-only.
+
+### 2. Exact root cause found
+- **Sound:** channel + details never set `audioAttributesUsage` → default
+  `USAGE_NOTIFICATION` → WAV on the notification stream → inaudible with the
+  ringer down (vibration is stream-independent, hence it worked).
+- **Background/closed unreliability:** no code defect; it is device-state
+  (permission denied / force-stop / OEM deep-sleep / Doze on the inexact
+  fallback). Now logged.
+- **"Firebase never fires on time":** expected — FCM can't schedule and the
+  reminder now deliberately does not use it.
+
+### 3. Exact fix applied
+`audioAttributesUsage: AudioAttributesUsage.alarm` on both sound channels
+and every reminder `AndroidNotificationDetails`; channel id `v9 → v10` so
+Android adopts it; `CATEGORY_ALARM` + `PRIORITY_MAX` on the reminder.
+Structured `DoseAudit` logging per the requested vocabulary. No scheduling
+mechanism changed — `alarmClock → exactAllowWhileIdle →
+inexactAllowWhileIdle`, each verified against the OS pending list.
+
+### 4. Notification channel id
+`medicine_reminders_v10` ("Medicine Reminders"). Silent variant
+`medicine_reminders_silent_v10`. Family `family_alerts_v10`.
+
+### 5. Sound configuration
+`playSound: true`, `sound: RawResourceAndroidNotificationSound('medicine_alarm')`
+(`android/app/src/main/res/raw/medicine_alarm.wav`, present),
+`audioAttributesUsage: AudioAttributesUsage.alarm` on the channel **and**
+the details, `Importance.max`, `FLAG_INSISTENT` loop, vibration pattern,
+LED, `fullScreenIntent: true`, `bypassDnd: true`, `CATEGORY_ALARM`.
+
+### 6. Alarm scheduling method
+`flutter_local_notifications` `zonedSchedule` with
+`AndroidScheduleMode.alarmClock` first (`AlarmManager.setAlarmClock()` —
+exact, Doze-exempt, no `SCHEDULE_EXACT_ALARM` grant needed), then
+`exactAllowWhileIdle`, then `inexactAllowWhileIdle`; each accepted only if
+it appears in `pendingNotificationRequests()`.
+
+### 7. Permissions used
+`POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `USE_FULL_SCREEN_INTENT`,
+`SCHEDULE_EXACT_ALARM` + `USE_EXACT_ALARM` (fallback path only), `VIBRATE`,
+`WAKE_LOCK`, `ACCESS_NOTIFICATION_POLICY`. Manifest unchanged this round.
+
+### 8. How background/closed alarms work
+`AlarmManager.setAlarmClock` registers the alarm in the OS, independent of
+the app process. At fire time the OS invokes the plugin's native
+`ScheduledNotificationReceiver` (no Flutter UI required) which posts the
+notification. Actions route to `notificationBackgroundHandler`, a
+`@pragma('vm:entry-point')` isolate that rebuilds the DB + plugin and
+applies TAKEN/SNOOZE/SKIP. The app is reconciled on every open/resume so
+missed windows self-heal.
+
+### 9. How reboot recovery works
+`ScheduledNotificationBootReceiver` (`BOOT_COMPLETED` /
+`MY_PACKAGE_REPLACED` / QUICKBOOT) re-registers every persisted
+`zonedSchedule` with AlarmManager — no duplicates, nothing in the past.
+On the next app open, `DoseScheduler.sync` reconciles the OS alarm set
+against the database (creates missing, cancels stale).
+
+### 10. How to test on a real Android device
+See `docs/NOTIFICATION_AUDIT.md` — 13-row matrix (open / minimized /
+swiped / locked / Doze / airplane / reboot / multi-medicine / tap / Taken /
+Taken-before / Snooze / Skip) with the `adb logcat | grep DoseAudit`
+trace. **Not run here** — no device available to this session. `flutter
+analyze` 0/0, `flutter test` 58/58.
+
+### 11. Any Firebase Blaze feature added?
+**No.** None. Cloud Functions / Cloud Scheduler removed. The project runs
+entirely on the free Spark plan (Auth, Firestore, FCM token registration,
+Family Sync unchanged). The pre-existing `functions/index.js` caregiver
+missed-dose trigger is left exactly as it was — it is optional, would need
+Blaze to *deploy*, and is unrelated to the medicine-reminder path (note: it
+still reads the old `members` map and channel `family_alerts`, both changed
+by the family rework — update or drop it if you ever deploy functions).
