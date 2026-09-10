@@ -15,7 +15,7 @@ class AppDatabase {
       _path = path;
 
   static const String dbFileName = 'medireminder.db';
-  static const int _version = 7;
+  static const int _version = 8;
 
   /// Pending-changes queue for cloud sync (v4). One row per entity that has
   /// changed locally and not yet been uploaded; rows are removed after a
@@ -133,6 +133,24 @@ class AppDatabase {
             );
             await db.execute('COMMIT');
             await db.execute('PRAGMA foreign_keys = ON');
+          }
+          if (oldVersion < 8) {
+            // One-time cleanup of rows orphaned on databases that predate the
+            // medicine_doses / medicine_schedules FK+CASCADE (or where a
+            // delete raced the constraint). Strictly scoped to rows whose
+            // medicine_id no longer resolves to a real medicine — unrelated
+            // data is untouched.
+            await db.execute(
+              'DELETE FROM medicine_doses '
+              'WHERE medicine_id NOT IN (SELECT id FROM medicines)',
+            );
+            await db.execute(
+              'DELETE FROM medicine_schedules '
+              'WHERE medicine_id NOT IN (SELECT id FROM medicines)',
+            );
+            // sync_dose_tombstones is intentionally left alone: a tombstone
+            // legitimately outlives its medicine (it exists to propagate the
+            // deletion) and is cleared only once the push succeeds.
           }
         },
         onCreate: (db, version) async {

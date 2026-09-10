@@ -248,6 +248,7 @@ class AppState extends ChangeNotifier {
     _lastActionPreviousStatus = entry.dose.status;
     _lastActionPreviousTakenAt = entry.dose.takenAt;
     _lastActionPreviousSkippedAt = entry.dose.skippedAt;
+    _lastActionUndoFailed = false;
   }
 
   /// Reverts the last markTaken / markSkipped action.
@@ -255,17 +256,36 @@ class AppState extends ChangeNotifier {
     final entry = _lastActionEntry;
     final prevStatus = _lastActionPreviousStatus;
     if (entry == null || prevStatus == null) return;
-    await doseRepository.restorePreviousStatus(
-      entry.dose.id!,
-      status: prevStatus,
-      takenAt: _lastActionPreviousTakenAt,
-      skippedAt: _lastActionPreviousSkippedAt,
-    );
+    try {
+      await doseRepository.restorePreviousStatus(
+        entry.dose.id!,
+        status: prevStatus,
+        takenAt: _lastActionPreviousTakenAt,
+        skippedAt: _lastActionPreviousSkippedAt,
+      );
+      await refresh();
+    } catch (e, st) {
+      // Keep the undo snapshot so the user can try again — losing it would
+      // make the action permanently irreversible if the refresh failed.
+      debugPrint('undoLastAction failed, retaining undo state: $e\n$st');
+      _lastActionUndoFailed = true;
+      notifyListeners();
+      return;
+    }
+    // DB write + refresh both succeeded: now it is safe to drop the snapshot.
     _lastActionEntry = null;
     _lastActionPreviousStatus = null;
-    await refresh();
+    _lastActionPreviousTakenAt = null;
+    _lastActionPreviousSkippedAt = null;
+    _lastActionUndoFailed = false;
     unawaited(sync.syncNow());
   }
+
+  /// True when the most recent [undoLastAction] could not be completed (the
+  /// DB write or the subsequent refresh threw). The undo state is retained so
+  /// the UI can offer a retry.
+  bool get lastUndoFailed => _lastActionUndoFailed;
+  bool _lastActionUndoFailed = false;
 
   bool get canUndo => _lastActionEntry != null;
 

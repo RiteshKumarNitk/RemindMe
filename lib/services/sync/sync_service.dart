@@ -220,19 +220,33 @@ class SyncService extends ChangeNotifier {
 
       // 2) Apply remote changes to the local DB (last writer wins). These
       //    applies never enqueue, so cloud writes don't echo back.
+      //    Each row is isolated: one bad row (e.g. a transient constraint
+      //    failure) must not abort the batch, the checkpoint, or the
+      //    missed-dose alert check below.
       for (final rm in remoteMeds) {
-        final id = rm.medicine.id;
-        if (rm.deleted) {
-          if (id != null) {
-            await medicineRepository.deleteIfExists(id);
-            await doseRepository.deleteForMedicine(id);
+        try {
+          final id = rm.medicine.id;
+          if (rm.deleted) {
+            if (id != null) {
+              await medicineRepository.deleteIfExists(id);
+              await doseRepository.deleteForMedicine(id);
+            }
+          } else {
+            await medicineRepository.applyRemoteMedicine(rm.medicine);
           }
-        } else {
-          await medicineRepository.applyRemoteMedicine(rm.medicine);
+        } catch (e) {
+          debugPrint('applyRemoteMedicine(${rm.medicine.id}) skipped: $e');
         }
       }
       for (final rd in remoteDoses) {
-        await doseRepository.applyRemoteDose(rd.dose, deleted: rd.deleted);
+        try {
+          await doseRepository.applyRemoteDose(rd.dose, deleted: rd.deleted);
+        } catch (e) {
+          debugPrint(
+            'applyRemoteDose(${rd.dose.medicineId}@${rd.dose.scheduledAt}) '
+            'skipped: $e',
+          );
+        }
       }
 
       // 3) Drain the outbox: push pending local changes (and tombstones).
@@ -306,7 +320,24 @@ class SyncService extends ChangeNotifier {
       ]);
       await syncRepository.clearDoseTombstones(doseTombstones);
 
-      final syncedAt = maxFetched ?? DateTime.now();
+      // Advance the checkpoint conservatively so a client clock jump can never
+      // make us skip a sync window:
+      //  - with fetched changes: move to the newest one we actually accepted,
+      //    but never ahead of our own clock (a client clock running fast would
+      //    otherwise skip everything the server writes between server-time and
+      //    client-time before the next pull);
+      //  - with nothing fetched: move to now only if the clock has not rewound
+      //    behind the previous checkpoint; otherwise hold the checkpoint;
+      //  - never rewind the checkpoint (already-applied remote rows are
+      //    idempotent, so re-pulling a narrow window is safe and cheap).
+      final wallNow = DateTime.now();
+      DateTime syncedAt;
+      if (maxFetched != null) {
+        syncedAt = maxFetched.isAfter(wallNow) ? wallNow : maxFetched;
+      } else {
+        syncedAt = wallNow.isAfter(since) ? wallNow : since;
+      }
+      if (syncedAt.isBefore(since)) syncedAt = since;
       await settings.setLastSyncAt(syncedAt);
       _lastSyncAt = syncedAt;
       _lastError = null;

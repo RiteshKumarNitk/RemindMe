@@ -1,3 +1,5 @@
+import 'package:sqflite/sqflite.dart' show ConflictAlgorithm;
+
 import '../database/app_database.dart';
 import '../models/adherence_stats.dart';
 import '../models/dose_entry.dart';
@@ -127,6 +129,19 @@ class DoseRepository {
       return;
     }
     if (existing.isEmpty) {
+      // The dose's parent medicine may not be applied yet (pull order, a
+      // medicine filtered out remotely, or a watcher that only sees a subset).
+      // Inserting anyway violates the medicine_doses FK and, with foreign_keys
+      // ON, aborts the whole sync. Skip it — a later sync brings it in once the
+      // medicine lands.
+      final parent = await db.query(
+        'medicines',
+        columns: ['id'],
+        where: 'id = ?',
+        whereArgs: [remote.medicineId],
+        limit: 1,
+      );
+      if (parent.isEmpty) return;
       // Dose identity across devices is (medicine_id, scheduled_at); never
       // reuse the remote auto-increment id (it can collide locally).
       await db.insert('medicine_doses', remote.copyWith(id: null).toMap());
@@ -288,24 +303,41 @@ class DoseRepository {
   /// dose tombstones before deletion so the cloud learns about the removal.
   Future<void> deletePendingFrom(int medicineId, DateTime from) async {
     final db = await _db.database;
-    final rows = await db.query(
-      'medicine_doses',
-      columns: ['medicine_id', 'scheduled_at'],
-      where: 'medicine_id = ? AND scheduled_at >= ? AND status = ?',
-      whereArgs: [medicineId, from.toIso8601String(), 'pending'],
-    );
-    // Record tombstones before deletion so sync can propagate the removal.
-    for (final row in rows) {
-      await _sync?.addDoseTombstone(
-        row['medicine_id'] as int,
-        DateTime.parse(row['scheduled_at'] as String),
+    final fromIso = from.toIso8601String();
+    // Tombstone creation and deletion must be atomic: if the app crashes
+    // between them, sync would either lose the deletion (rows gone, no
+    // tombstone) or resurrect nothing (tombstone with rows still present).
+    // A single transaction makes it all-or-nothing.
+    await db.transaction((txn) async {
+      final rows = await txn.query(
+        'medicine_doses',
+        columns: ['medicine_id', 'scheduled_at'],
+        where: 'medicine_id = ? AND scheduled_at >= ? AND status = ?',
+        whereArgs: [medicineId, fromIso, 'pending'],
       );
-    }
-    await db.delete(
-      'medicine_doses',
-      where: 'medicine_id = ? AND scheduled_at >= ? AND status = ?',
-      whereArgs: [medicineId, from.toIso8601String(), 'pending'],
-    );
+      if (_sync != null) {
+        // Mirror SyncRepository.addDoseTombstone, but on this txn handle so it
+        // commits together with the delete below. Identity: (medicine_id,
+        // scheduled_at); UNIQUE + REPLACE keeps it idempotent.
+        final tombAt = DateTime.now().toIso8601String();
+        for (final row in rows) {
+          await txn.insert(
+            'sync_dose_tombstones',
+            {
+              'medicine_id': row['medicine_id'],
+              'scheduled_at': row['scheduled_at'],
+              'updated_at': tombAt,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      }
+      await txn.delete(
+        'medicine_doses',
+        where: 'medicine_id = ? AND scheduled_at >= ? AND status = ?',
+        whereArgs: [medicineId, fromIso, 'pending'],
+      );
+    });
   }
 
   Future<void> deleteForMedicine(int medicineId) async {
