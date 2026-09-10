@@ -947,4 +947,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get navProfile => 'Profile';
+
+  @override
+  String get elapsedJustNow => 'just now';
+
+  @override
+  String elapsedMinAgo(int minutes) {
+    return '$minutes min ago';
+  }
+
+  @override
+  String elapsedHourMinAgo(int hours, int minutes) {
+    return '${hours}h ${minutes}m ago';
+  }
 }

@@ -26,7 +26,8 @@ class HomeWidgetService {
         if (entry.dose.status != DoseStatus.pending) continue;
         final scheduled = entry.dose.snoozedUntil ?? entry.dose.scheduledAt;
         if (scheduled.isAfter(now)) {
-          if (nextDose == null || scheduled.isBefore(nextDose.dose.scheduledAt)) {
+          final nextEffective = nextDose?.dose.snoozedUntil ?? nextDose?.dose.scheduledAt;
+          if (nextDose == null || scheduled.isBefore(nextEffective!)) {
             nextDose = entry;
           }
         }

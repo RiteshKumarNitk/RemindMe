@@ -59,7 +59,8 @@ class MissedDoseEscalation {
       if (status != DoseStatus.missed) continue;
 
       final doseId = entry.dose.id!;
-      final elapsed = now.difference(entry.dose.scheduledAt);
+      final effectiveTime = entry.dose.snoozedUntil ?? entry.dose.scheduledAt;
+      final elapsed = now.difference(effectiveTime);
       final elapsedMin = elapsed.inMinutes;
 
       // Determine escalation level based on time since scheduled
@@ -93,7 +94,7 @@ class MissedDoseEscalation {
   ) async {
     final name = entry.medicine.name;
     final dose = entry.medicine.doseLabel;
-    final time = entry.dose.scheduledAt;
+    final effectiveTime = entry.dose.snoozedUntil ?? entry.dose.scheduledAt;
     final doseId = entry.dose.id;
 
     String title;
@@ -102,7 +103,7 @@ class MissedDoseEscalation {
     switch (level) {
       case 0:
         title = l10n.missedAlertTitle;
-        body = l10n.missedAlertBody(name, _formatTime(time));
+        body = l10n.missedAlertBody(name, _formatTime(effectiveTime));
       case 1:
         title = '⚠️ $name — still not taken';
         body = 'This dose was due $elapsedMin minutes ago. Please take it now.';
@@ -113,7 +114,7 @@ class MissedDoseEscalation {
       case 3:
         title = '🚨 CRITICAL: $name missed for 1+ hour';
         body =
-            '$name ($dose) was due at ${_formatTime(time)} and has not been taken for over an hour. Please check on the patient.';
+            '$name ($dose) was due at ${_formatTime(effectiveTime)} and has not been taken for over an hour. Please check on the patient.';
       default:
         return;
     }

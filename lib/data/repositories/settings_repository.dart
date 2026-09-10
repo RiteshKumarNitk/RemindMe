@@ -28,7 +28,7 @@ class SettingsRepository {
     return AppSettings(
       locale: _prefs.getString(_kLocale) ?? 'en',
       soundEnabled: _prefs.getBool(_kSound) ?? true,
-      voiceEnabled: _prefs.getBool(_kVoice) ?? false,
+      voiceEnabled: _prefs.getBool(_kVoice) ?? true,
       snoozeMinutes: _prefs.getInt(_kSnooze) ?? 10,
       graceMinutes: _prefs.getInt(_kGrace) ?? 30,
       advanceMinutes: _prefs.getInt(_kAdvance) ?? 5,

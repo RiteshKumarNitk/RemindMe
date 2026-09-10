@@ -45,7 +45,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await appState.requestExactAlarms();
 
     await settings.setOnboardingDone(true);
-    if (mounted) setState(() => _busy = false);
+    if (!mounted) return;
+    setState(() => _busy = false);
     widget.onComplete?.call();
   }
 
@@ -112,6 +113,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               onPressed: _busy ? null : () async {
                 final settings = context.read<SettingsController>();
                 await settings.setOnboardingDone(true);
+                if (!mounted) return;
                 widget.onComplete?.call();
               },
             ),

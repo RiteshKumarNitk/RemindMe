@@ -2,8 +2,10 @@ import '../database/app_database.dart';
 import '../models/adherence_stats.dart';
 import '../models/dose_entry.dart';
 import '../models/dose_status.dart';
+import '../models/food_instruction.dart';
 import '../models/medicine.dart';
 import '../models/medicine_dose.dart';
+import '../models/medicine_frequency.dart';
 import 'sync_repository.dart';
 
 /// Persists dose occurrences and their outcomes.
@@ -20,9 +22,10 @@ class DoseRepository {
     SELECT d.id AS dose_id, d.medicine_id, d.scheduled_at, d.status,
            d.taken_at, d.skipped_at, d.snoozed_until,
            d.created_at AS dose_created, d.updated_at AS dose_updated,
-           m.name, m.dosage, m.dosage_unit, m.notes, m.food_instruction,
-           m.frequency, m.selected_days, m.once_date, m.active,
-           m.created_at, m.updated_at
+           m.id AS med_id, m.name, m.dosage, m.dosage_unit, m.notes,
+           m.food_instruction, m.frequency, m.selected_days, m.once_date,
+           m.active, m.stock_count, m.refill_at,
+           m.created_at AS med_created, m.updated_at AS med_updated
     FROM medicine_doses d
     JOIN medicines m ON m.id = d.medicine_id
   ''';
@@ -176,6 +179,7 @@ class DoseRepository {
         'status': status.name,
         'taken_at': takenAt?.toIso8601String(),
         'skipped_at': skippedAt?.toIso8601String(),
+        'snoozed_until': null,
         'updated_at': now.toIso8601String(),
       },
       where: 'id = ?',
@@ -211,8 +215,9 @@ class DoseRepository {
       'medicine_doses',
       {
         'status': status.name,
-        if (takenAt != null) 'taken_at': takenAt,
-        if (skippedAt != null) 'skipped_at': skippedAt,
+        'taken_at': status == DoseStatus.taken ? (takenAt ?? now.toIso8601String()) : null,
+        'skipped_at': status == DoseStatus.skipped ? (skippedAt ?? now.toIso8601String()) : null,
+        'snoozed_until': null,
         'updated_at': now.toIso8601String(),
       },
       where: 'id = ?',
@@ -329,9 +334,29 @@ class DoseRepository {
   }
 
   static DoseEntry _entryFromRow(Map<String, Object?> row) {
-    // Construct Medicine once from the joined row instead of calling fromMap
-    // multiple times (each call re-parses dates, frequency, days, etc.).
-    final medicine = Medicine.fromMap(row);
+    // Construct Medicine from the joined row using aliased columns to avoid
+    // ambiguity (dose_id vs medicine id, created_at vs dose created_at).
+    final once = row['once_date'] as String?;
+    final medicine = Medicine(
+      id: row['med_id'] as int?,
+      name: (row['name'] as String?) ?? '',
+      dosage: (row['dosage'] as String?) ?? '',
+      dosageUnit: (row['dosage_unit'] as String?) ?? '',
+      notes: (row['notes'] as String?) ?? '',
+      foodInstruction: FoodInstruction.from(
+        (row['food_instruction'] as String?) ?? 'none',
+      ),
+      frequency: MedicineFrequency.from(
+        (row['frequency'] as String?) ?? 'daily',
+      ),
+      selectedDays: _decodeDays(row['selected_days'] as String?),
+      onceDate: once == null ? null : DateTime.tryParse(once),
+      active: (row['active'] as int? ?? 1) == 1,
+      stockCount: row['stock_count'] as int?,
+      refillAt: row['refill_at'] as int?,
+      createdAt: DateTime.parse(row['med_created'] as String),
+      updatedAt: DateTime.parse(row['med_updated'] as String),
+    );
     final dose = MedicineDose(
       id: row['dose_id'] as int?,
       medicineId: row['medicine_id'] as int,
@@ -350,5 +375,15 @@ class DoseRepository {
       updatedAt: DateTime.parse(row['dose_updated'] as String),
     );
     return DoseEntry(dose, medicine);
+  }
+
+  static List<int> _decodeDays(String? value) {
+    if (value == null || value.isEmpty) return const [];
+    return value
+        .split(',')
+        .where((s) => s.trim().isNotEmpty)
+        .map((s) => int.tryParse(s.trim()) ?? -1)
+        .where((d) => d >= DateTime.monday && d <= DateTime.sunday)
+        .toList();
   }
 }

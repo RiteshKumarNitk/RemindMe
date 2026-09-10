@@ -69,6 +69,10 @@ class Medicine {
     return parts.join(' ');
   }
 
+  /// Sentinel value to distinguish "parameter not supplied" from
+  /// "parameter explicitly supplied as null" in [copyWith].
+  static const _sentinel = Object();
+
   Medicine copyWith({
     int? id,
     String? name,
@@ -78,10 +82,10 @@ class Medicine {
     FoodInstruction? foodInstruction,
     MedicineFrequency? frequency,
     List<int>? selectedDays,
-    DateTime? onceDate,
+    Object? onceDate = _sentinel,
     bool? active,
-    int? stockCount,
-    int? refillAt,
+    Object? stockCount = _sentinel,
+    Object? refillAt = _sentinel,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<MedicineSchedule>? schedules,
@@ -95,10 +99,10 @@ class Medicine {
       foodInstruction: foodInstruction ?? this.foodInstruction,
       frequency: frequency ?? this.frequency,
       selectedDays: selectedDays ?? this.selectedDays,
-      onceDate: onceDate ?? this.onceDate,
+      onceDate: identical(onceDate, _sentinel) ? this.onceDate : onceDate as DateTime?,
       active: active ?? this.active,
-      stockCount: stockCount ?? this.stockCount,
-      refillAt: refillAt ?? this.refillAt,
+      stockCount: identical(stockCount, _sentinel) ? this.stockCount : stockCount as int?,
+      refillAt: identical(refillAt, _sentinel) ? this.refillAt : refillAt as int?,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       schedules: schedules ?? this.schedules,

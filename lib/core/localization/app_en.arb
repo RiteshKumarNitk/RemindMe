@@ -400,5 +400,19 @@
   "profileNotSet": "Not set",
   "profileEmail": "Email",
   "profileNoInfoYet": "No personal information yet. Tap \"Edit Information\" to add your name and age.",
-  "navProfile": "Profile"
+  "navProfile": "Profile",
+  "elapsedJustNow": "just now",
+  "elapsedMinAgo": "{minutes} min ago",
+  "@elapsedMinAgo": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "elapsedHourMinAgo": "{hours}h {minutes}m ago",
+  "@elapsedHourMinAgo": {
+    "placeholders": {
+      "hours": {"type": "int"},
+      "minutes": {"type": "int"}
+    }
+  }
 }

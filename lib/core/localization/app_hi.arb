@@ -400,5 +400,19 @@
   "profileNotSet": "सेट नहीं",
   "profileEmail": "ईमेल",
   "profileNoInfoYet": "अभी कोई व्यक्तिगत जानकारी नहीं। अपना नाम और उम्र जोड़ने के लिए \"जानकारी बदलें\" दबाएँ।",
-  "navProfile": "प्रोफ़ाइल"
+  "navProfile": "प्रोफ़ाइल",
+  "elapsedJustNow": "अभी",
+  "elapsedMinAgo": "{minutes} मिनट पहले",
+  "@elapsedMinAgo": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "elapsedHourMinAgo": "{hours}घ {minutes}मि पहले",
+  "@elapsedHourMinAgo": {
+    "placeholders": {
+      "hours": {"type": "int"},
+      "minutes": {"type": "int"}
+    }
+  }
 }

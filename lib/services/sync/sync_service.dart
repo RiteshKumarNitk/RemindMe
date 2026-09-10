@@ -204,6 +204,20 @@ class SyncService extends ChangeNotifier {
       final remoteMeds = await backend.pullMedicines(since);
       final remoteDoses = await backend.pullDoses(since);
 
+      // Compute the watermark from actual fetched items rather than the
+      // current wall-clock time. This prevents advancing the checkpoint
+      // past items that were not fetched in this batch (e.g. if the
+      // backend returned a partial result or the local clock is behind).
+      DateTime? maxFetched;
+      for (final rm in remoteMeds) {
+        final t = rm.updatedAt;
+        if (maxFetched == null || t.isAfter(maxFetched)) maxFetched = t;
+      }
+      for (final rd in remoteDoses) {
+        final t = rd.updatedAt;
+        if (maxFetched == null || t.isAfter(maxFetched)) maxFetched = t;
+      }
+
       // 2) Apply remote changes to the local DB (last writer wins). These
       //    applies never enqueue, so cloud writes don't echo back.
       for (final rm in remoteMeds) {
@@ -292,7 +306,7 @@ class SyncService extends ChangeNotifier {
       ]);
       await syncRepository.clearDoseTombstones(doseTombstones);
 
-      final syncedAt = DateTime.now();
+      final syncedAt = maxFetched ?? DateTime.now();
       await settings.setLastSyncAt(syncedAt);
       _lastSyncAt = syncedAt;
       _lastError = null;

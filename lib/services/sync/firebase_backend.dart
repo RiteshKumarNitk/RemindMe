@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -336,14 +338,8 @@ class FirebaseBackend implements RemoteBackend {
 
   String _generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final random = DateTime.now().microsecondsSinceEpoch;
-    var code = '';
-    var seed = random;
-    for (var i = 0; i < 6; i++) {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      code += chars[seed % chars.length];
-    }
-    return code;
+    final random = Random.secure();
+    return List.generate(6, (_) => chars[random.nextInt(chars.length)]).join();
   }
 
   String _normalizeCode(String code) =>

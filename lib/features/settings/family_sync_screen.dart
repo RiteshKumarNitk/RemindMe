@@ -132,6 +132,7 @@ class _FamilySyncScreenState extends State<FamilySyncScreen> {
         ],
       ),
     );
+    controller.dispose();
     if (code != null && code.isNotEmpty) {
       await _enable('watcher', code: code);
     }

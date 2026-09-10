@@ -1819,6 +1819,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Profile'**
   String get navProfile;
+
+  /// No description provided for @elapsedJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get elapsedJustNow;
+
+  /// No description provided for @elapsedMinAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min ago'**
+  String elapsedMinAgo(int minutes);
+
+  /// No description provided for @elapsedHourMinAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h {minutes}m ago'**
+  String elapsedHourMinAgo(int hours, int minutes);
 }
 
 class _AppLocalizationsDelegate

@@ -25,12 +25,21 @@ class _BackupScreenState extends State<BackupScreen> {
 
   Future<void> _loadBackups() async {
     setState(() => _loading = true);
-    final backups = await _backupService.listBackups();
-    if (mounted) {
-      setState(() {
-        _backups = backups;
-        _loading = false;
-      });
+    try {
+      final backups = await _backupService.listBackups();
+      if (mounted) {
+        setState(() {
+          _backups = backups;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load backups: $e')),
+        );
+      }
     }
   }
 
@@ -120,8 +129,16 @@ class _BackupScreenState extends State<BackupScreen> {
     );
 
     if (confirmed == true) {
-      await _backupService.deleteBackup(backup.path);
-      await _loadBackups();
+      try {
+        await _backupService.deleteBackup(backup.path);
+        await _loadBackups();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Delete failed: $e')),
+          );
+        }
+      }
     }
   }
 
