@@ -256,6 +256,12 @@ class DoseRepository {
       'medicine_doses',
       {
         'snoozed_until': until.toIso8601String(),
+        // A snoozed dose is pending by definition — clear any terminal-outcome
+        // timestamps so status, taken_at and skipped_at can never contradict
+        // each other (belt-and-suspenders alongside _setStatus).
+        'status': DoseStatus.pending.name,
+        'taken_at': null,
+        'skipped_at': null,
         'updated_at': now.toIso8601String(),
       },
       where: 'id = ?',
