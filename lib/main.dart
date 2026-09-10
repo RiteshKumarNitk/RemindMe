@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -94,7 +95,11 @@ Future<void> _bootstrap() async {
     () => notifications.init(
       soundEnabled: settings.soundEnabled,
       onResponse: (NotificationResponse response) {
-        debugPrint('[Boot] Notification response: actionId=${response.actionId} payload=${response.payload}');
+        developer.log(
+          'DOSE_FIRE source=foreground actionId=${response.actionId} '
+          'payload=${response.payload}',
+          name: 'DoseAudit',
+        );
         appState.handleNotificationTap(
           actionId: response.actionId,
           payload: response.payload,
@@ -162,7 +167,10 @@ Future<void> _postLaunch(
     final launch = await notifications.getLaunchDetails();
     final r = launch?.notificationResponse;
     if (r != null && r.payload != null && r.payload!.isNotEmpty) {
-      debugPrint('[Boot] Cold start notification: actionId=${r.actionId} payload=${r.payload}');
+      developer.log(
+        'DOSE_FIRE source=cold-start actionId=${r.actionId} payload=${r.payload}',
+        name: 'DoseAudit',
+      );
       await appState.handleNotificationTap(
         actionId: r.actionId,
         payload: r.payload,

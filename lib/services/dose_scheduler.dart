@@ -1,5 +1,7 @@
 import 'dart:developer' as developer;
 
+import 'package:timezone/timezone.dart' as tz;
+
 import '../core/notifications/notification_service.dart';
 import '../core/notifications/reminder_text.dart';
 import '../data/models/dose_status.dart';
@@ -111,11 +113,7 @@ class DoseScheduler {
 
       // Main reminder — only (re)schedule if it isn't already queued.
       if (!pending.contains(entry.key)) {
-        developer.log(
-          'Scheduling dose: id=${entry.key} med="${med.name}" when=${doseWhen.toIso8601String()}',
-          name: 'DoseScheduler',
-        );
-        await scheduler.scheduleDoseReminder(
+        final ok = await scheduler.scheduleDoseReminder(
           doseId: entry.key,
           title: text.title(med.name),
           body: text.body(med.name, info),
@@ -124,6 +122,19 @@ class DoseScheduler {
           takenLabel: text.takenLabel,
           snoozeLabel: text.snoozeLabel,
           skipLabel: text.skipLabel,
+        );
+        // Canonical per-dose audit record (grep 'DOSE_SCHEDULE' in logcat).
+        // notificationId == alarmId: flutter_local_notifications uses the
+        // notification id as the AlarmManager request code.
+        _audit(
+          'DOSE_SCHEDULE',
+          medicineId: med.id,
+          doseId: entry.key,
+          scheduledAt: dose.scheduledAt,
+          effectiveAt: doseWhen,
+          notificationId: entry.key,
+          alarmId: entry.key,
+          result: ok ? 'scheduled' : 'FAILED',
         );
       } else {
         developer.log(
@@ -141,13 +152,23 @@ class DoseScheduler {
         if (!advanceTime.isAfter(now)) continue;
         final advanceKey = entry.key * 1000 + offset;
         if (pending.contains(advanceKey)) continue;
-        await scheduler.scheduleAdvanceAlarm(
+        final ok = await scheduler.scheduleAdvanceAlarm(
           doseId: entry.key,
           offset: offset,
           title: text.title(med.name),
           body: text.body(med.name, info),
           when: advanceTime,
           exact: exact,
+        );
+        _audit(
+          'DOSE_SCHEDULE_ADVANCE',
+          medicineId: med.id,
+          doseId: entry.key,
+          scheduledAt: dose.scheduledAt,
+          effectiveAt: advanceTime,
+          notificationId: advanceKey,
+          alarmId: advanceKey,
+          result: ok ? 'scheduled' : 'skipped',
         );
       }
     }
@@ -170,6 +191,38 @@ class DoseScheduler {
         await scheduler.cancel(id);
       }
     }
+  }
+
+  /// One structured line per scheduling decision so an on-device log capture
+  /// (`adb logcat | grep DoseAudit`) shows exactly what was handed to the OS
+  /// for every dose: which medicine, the stored time vs. the effective fire
+  /// time, the resolved timezone, the notification/alarm id, and the result.
+  void _audit(
+    String event, {
+    required int? medicineId,
+    required int doseId,
+    required DateTime scheduledAt,
+    required DateTime effectiveAt,
+    required int notificationId,
+    required int alarmId,
+    required String result,
+  }) {
+    String tzName;
+    try {
+      tzName = tz.local.name;
+    } catch (_) {
+      tzName = 'unknown';
+    }
+    developer.log(
+      '$event '
+      'medicineId=$medicineId doseId=$doseId '
+      'scheduledAt=${scheduledAt.toIso8601String()} '
+      'effectiveAt=${effectiveAt.toIso8601String()} '
+      'timezone=$tzName '
+      'notificationId=$notificationId alarmId=$alarmId '
+      'result=$result',
+      name: 'DoseAudit',
+    );
   }
 
   /// When a notification for this dose should fire, or null when none is

@@ -24,6 +24,10 @@ import 'notification_service.dart';
 @pragma('vm:entry-point')
 Future<void> notificationBackgroundHandler(NotificationResponse response) async {
   final actionId = response.actionId;
+  developer.log(
+    'DOSE_FIRE source=background actionId=$actionId payload=${response.payload}',
+    name: 'DoseAudit',
+  );
   if (actionId == null || actionId.isEmpty) return;
 
   WidgetsFlutterBinding.ensureInitialized();
