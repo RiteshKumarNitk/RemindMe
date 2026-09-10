@@ -265,3 +265,122 @@ are per-row isolated. This is why the suite went from 47+1-fail to 58 pass.
   32-bit at `doseId ≈ 2.1M` (not reachable with a 7-day window; noted).
 - An overdue-but-pending dose re-schedules its reminder to `now+1s` on
   every app resume (nag-until-actioned). Intended, but noticeable.
+
+---
+
+# Round 2 — notification + FCM follow-up
+
+Commits `c67f9f1` (sound) and `00d799f` (FCM). `flutter analyze` 0/0,
+`flutter test` 58/58, `node --check functions/index.js` OK.
+
+## 1. Root cause — background notification unreliable
+No single code defect. Local pipeline is complete and `alarmClock`-first
+(kill-resistant, Doze-proof, no exact-alarm grant needed). The failures
+are **device-state**: `POST_NOTIFICATIONS` denied, app **force-stopped**
+(Android drops alarms until reopen), OEM deep-sleep allowlists, battery
+not "Unrestricted". Now each is logged (`DOSE_PERMS`) and the FCM backup
+covers the force-stop / dropped-alarm gap.
+
+## 2. Root cause — no notification sound
+The reminder channel + details never set `audioAttributesUsage`, so it
+defaulted to `USAGE_NOTIFICATION`. The WAV played on the **notification
+stream** — inaudible when ring/notification volume is low (common), while
+stream-independent vibration kept working. **Fixed:** `audioAttributesUsage:
+AudioAttributesUsage.alarm` everywhere sound is configured; channel
+`v9 → v10` so Android adopts it.
+
+## 3. Root cause — Firebase reminder never fired on time
+There was **no server-side scheduler** — only a missed-dose Firestore
+trigger. FCM can't schedule, and a client timer dies with the process.
+**Fixed:** `functions/sendScheduledReminders`, Cloud Scheduler every minute.
+
+## 4. Files changed (round 2)
+`lib/core/notifications/notification_service.dart` (alarm audio attrs, v10,
+`showDoseNow`, `DOSE_TZ` log), `lib/services/dose_scheduler.dart`
+(`rescheduled`/`schedule_failed`/`DOSE_CANCEL`), `lib/state/app_state.dart`
+(`DOSE_PERMS`), `lib/core/notifications/notification_background.dart` +
+`lib/main.dart` (push wiring + `DOSE_FIRE`), **new**
+`lib/services/push_messaging_service.dart`,
+`lib/services/sync/firebase_backend.dart` (token + timezone on member doc),
+**new** `functions/index.js` rewrite, `functions/package.json`, **new**
+`firebase.json`, **new** `firestore.indexes.json`, `firestore.rules`
+(`fcm_delivery_log` deny-all), `docs/NOTIFICATION_AUDIT.md`.
+
+## 5. Local alarm architecture
+`AlarmManager` via `flutter_local_notifications`, id = `doseId`
+(advance = `doseId*1000+offset`) — unique/stable, no cross-medicine
+collisions. `alarmClock → exactAllowWhileIdle → inexactAllowWhileIdle`,
+each verified in the OS pending list. Reconciled on cold start, every
+resume, every save/action, and reboot (`ScheduledNotificationBootReceiver`
+re-registers persisted schedules; none duplicated, none in the past).
+Edit → `deletePendingFrom` drops stale doses → their notifications
+cancelled + new ones scheduled. Delete → FK-cascade removes doses → same.
+Independent of the Flutter UI isolate; background actions run in
+`notificationBackgroundHandler`.
+
+## 6. Firebase architecture
+`Cloud Scheduler (every 1 min) → sendScheduledReminders → collectionGroup
+'doses' where status==pending and scheduled_at ∈ [now-3m, now+30s] → per
+household, read members subcollection FCM tokens → sendEachForMulticast →
+stamp dose.reminder_sent_at → write fcm_delivery_log`. `scheduled_at` is an
+absolute UTC instant so no timezone math; the member IANA `timezone` is
+logged only. `onDoseMissed` (ported to v2 + members subcollection) still
+sends caregiver alerts.
+
+## 7. Android permissions required
+`POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`+`USE_EXACT_ALARM`,
+`USE_FULL_SCREEN_INTENT`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`, `WAKE_LOCK`,
+`ACCESS_NOTIFICATION_POLICY` — all in the manifest, the first three
+requested at runtime in `main._postLaunch` + onboarding, live state shown
+in Settings and logged (`DOSE_PERMS`).
+
+## 8. Channel id / name / sound
+`medicine_reminders_v10` — "Medicine Reminders", `Importance.max`,
+`playSound: true`, `sound: RawResourceAndroidNotificationSound('medicine_alarm')`
+(res/raw/medicine_alarm.wav), `audioAttributesUsage:
+AudioAttributesUsage.alarm`, vibration pattern, LED, `bypassDnd: true`.
+Silent variant `medicine_reminders_silent_v10` (vibration only).
+`family_alerts_v10` for caregiver/refill alerts. Reset procedure documented
+in `docs/NOTIFICATION_AUDIT.md`.
+
+## 9. Duplicate prevention (local + FCM)
+Both post with **notification id = `doseId`** → Android shows exactly one;
+the later arrival updates in place. Server also stamps `reminder_sent_at`
+so it sends at most one FCM per dose. The device re-checks local dose
+status before showing the FCM one and suppresses if already
+taken/skipped/missed. No timestamp-based guessing.
+
+## 10. Device testing results
+**Not performed — no Android device/emulator available to this session.**
+Instrumented protocol (13-row matrix, app-open / minimized / swiped /
+locked / offline / reboot / multi-medicine / tap / Taken / Snooze / Skip)
+in `docs/NOTIFICATION_AUDIT.md`. `flutter test` (58) and `flutter analyze`
+(clean) are green; `node --check` on the function passes. This does **not**
+constitute acceptance — the notification must be observed firing on real
+hardware with sound + vibration.
+
+## 11. Exact scheduled time vs actual delivery
+Cannot measure without a device. The `DOSE_TZ` log line prints the
+user-selected wall clock + zone, the exact local wall clock the OS alarm is
+set for, and both UTC instants — so the on-device run proves there is no
+UTC shift (`20:30 Asia/Kolkata` in ⇒ `20:30 Asia/Kolkata` scheduled).
+
+## 12. Android / OEM limitations
+`alarmClock` mode is the most kill-resistant API Android offers and is used
+first, but cannot survive a user **Force-stop** or aggressive OEM
+deep-sleep allowlists (MIUI Autostart, Samsung "Deep sleeping apps",
+OnePlus). Battery-optimisation state is surfaced (`isIgnoringBatteryOptimizations`)
+but not made a hard requirement. The FCM backup is what covers a dropped
+local alarm. Background TTS is unreliable on Android by design, so voice is
+best-effort and never the only alert — sound + vibration + full-screen are
+the guaranteed channel.
+
+## Still requires human / project verification
+- On-device notification acceptance test (§10–11).
+- `firebase deploy --only functions,firestore:indexes` + create the
+  composite index; watch `firebase functions:log` + `fcm_delivery_log`
+  while a dose comes due.
+- Firestore rules on the emulator (`docs/FAMILY_SYNC.md`).
+- `onBackgroundMessage` is registered in `_postLaunch` (post-`runApp`) — fine
+  for the backup path; move earlier if you want it to catch a message that
+  arrives during the first ~2s of a cold start.
