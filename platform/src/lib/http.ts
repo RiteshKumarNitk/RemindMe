@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { Role } from "@prisma/client";
-import { db } from "./db.js";
 import { env } from "./env.js";
 import { AppError, mapPrismaError, toEnvelope } from "./errors.js";
 import { checkRateLimit, type RateClass } from "./rate-limit.js";
 import { authenticate } from "./auth/authenticate.js";
+import { resolveOrgContext } from "./org-context.js";
 import type { RequestContext } from "./context.js";
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -95,22 +95,13 @@ export function withApi<P extends Record<string, string> = Record<string, string
         if (!authed) {
           throw new AppError("NOT_AUTHENTICATED", "Authentication required.");
         }
-        const membership = await db.membership.findFirst({
-          where: { userId: authed.userId, organizationId: orgId, status: "ACTIVE" },
-          include: { organization: { select: { isActive: true } } },
-        });
-        if (!membership) {
+        const org = await resolveOrgContext(authed.userId, orgId);
+        if (!org) {
           // No leak: same as a non-existent org.
           throw new AppError("NOT_FOUND", "Not found.");
         }
-        ctx.org = {
-          id: orgId,
-          membershipId: membership.id,
-          role: membership.role,
-          capabilities: membership.capabilities,
-          isActive: membership.organization.isActive,
-        };
-        if (options.roles && !options.roles.includes(membership.role)) {
+        ctx.org = org;
+        if (options.roles && !options.roles.includes(org.role)) {
           throw new AppError(
             "FORBIDDEN_ROLE",
             `This action requires role: ${options.roles.join(" or ")}.`,

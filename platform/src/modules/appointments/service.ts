@@ -312,6 +312,10 @@ export async function listAppointments(
     where,
     orderBy: { scheduledStart: "asc" },
     take: q.limit,
+    include: {
+      patient: { select: { id: true, firstName: true, lastName: true } },
+      doctor: { select: { id: true, displayName: true } },
+    },
   });
   return { data };
 }

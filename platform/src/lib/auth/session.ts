@@ -61,6 +61,17 @@ export async function revokeAllSessions(userId: string): Promise<void> {
   await db.session.deleteMany({ where: { userId } });
 }
 
+/** Options form for `next/headers` cookies().set() (web app Server Actions). */
+export function sessionCookieOptions(expiresAt: Date) {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    path: "/",
+    secure: env.NODE_ENV === "production",
+    expires: expiresAt,
+  };
+}
+
 export function sessionCookie(raw: string, expiresAt: Date): string {
   const secure = env.NODE_ENV === "production" ? " Secure;" : "";
   return (
