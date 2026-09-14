@@ -133,14 +133,35 @@ Design → Backend → Web → Flutter integration" (spec §41).
 - Generate `docs/openapi.yaml` from the Zod schemas.
 - **Checkpoint:** the Flutter developer can build against a stable API.
 
-## Phase 4 — Web application
+## Phase 4 — Web application  ✅ MVP DONE (2026-09-14)
 
-- Next.js web UI in `platform/app/(web)/**` — auth shell, tenant context,
-  role-based dashboards (PATIENT / DOCTOR / RECEPTION / CLINIC_ADMIN /
-  SUPER_ADMIN), API integration layer.
-- Responsive (desktop / tablet / mobile browser).
-- Restyle to the DoseWise design language (indigo/coral) — keep every feature.
-- No new business logic — same module services.
+- [x] Next.js web UI directly under `app/` (login, register, dashboard shell)
+      — auth via Server Actions + web sessions, tenant context via
+      `requireOrgContext(orgId)`, role-based nav (PATIENT / DOCTOR /
+      RECEPTIONIST / CLINIC_ADMIN). No new business logic — pages and Server
+      Actions call the **same module services** as the API routes.
+- [x] `src/lib/org-context.ts` + `src/lib/web-context.ts` — the web app gets
+      the identical tenant-isolation guarantee as `withApi` (shared
+      implementation, not duplicated).
+- [x] Minimal **`patients`** module added (list/search/create) — Phase 2 had
+      no way to create/find a patient, so booking from the UI was impossible
+      without it. Full family/consultations/prescriptions/documents remain
+      Phase 3.
+- [x] Screens: org picker + create clinic; CLINIC_ADMIN (doctors, staff,
+      team incl. capability grants with no-self-grant enforced, settings,
+      locations, appointment types); doctor weekly availability editor +
+      exceptions; patients search/register; appointments (live slot-picker
+      booking form + confirm/check-in/no-show/start/complete/cancel);
+      queue board (auto-refresh, call/recall/skip/start/complete).
+- [x] Verified: `tsc` clean, `next build` green (61 routes), full 72-test
+      backend suite still passes, **and a real end-to-end run against a
+      local production build** through the actual Server Action wire
+      protocol — register → login → create clinic → every role page loads,
+      including a cross-tenant 404 check at the web layer.
+- [ ] Not done: SUPER_ADMIN screens, restyle pass to the full DoseWise
+      mockup language (currently a clean but original light UI using the
+      indigo/coral tokens, not a pixel match to the Flutter app), responsive/
+      mobile-browser pass, reschedule UI (API exists, no screen yet).
 
 ## Phase 5 — Flutter integration (mirrors FIREBASE_MIGRATION_PLAN.md)
 
