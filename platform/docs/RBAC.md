@@ -19,14 +19,15 @@ clinic and `PATIENT` in another with no leakage between them.
 > (`Consultation` notes, `Prescription`/`PrescriptionItem` contents,
 > `MedicalDocument` contents, `Medication*`, `VitalReading`).
 
-Clinical-record access requires an **explicit capability** on the membership,
-plus — for a doctor — a relationship to the patient:
+Clinical-record access requires either **an assignment to the patient**
+(doctors, on their own patients) or **an explicit capability** on the
+membership (everyone else it's ever extended to — chiefly `CLINIC_ADMIN`):
 
 | Principal | What unlocks clinical **read** | What unlocks clinical **write** |
 |---|---|---|
 | `PATIENT` | it is their own record (or a dependent they own) | their own medications/documents; never consultation notes or prescriptions |
 | guardian / family user | a non-expired `PatientAccessGrant` containing the matching `AccessPermission` (`VIEW_MEDICATIONS`, `VIEW_DOCUMENTS`, …) | `MANAGE_MEDICATIONS` / `MANAGE_APPOINTMENTS` in the grant |
-| `DOCTOR` | **both**: `CLINICAL_RECORD_READ` capability on the membership **and** an assignment link to the patient (an appointment, or a `PatientAccessGrant` to that doctor). "Every doctor sees every patient" is not a default. | `CLINICAL_RECORD_WRITE` + assignment link, and only for their own appointment's `Consultation`/`Prescription` |
+| `DOCTOR` | an **assignment link** to the patient (an appointment they're the doctor on, or a `PatientAccessGrant` naming them) — no separate capability needed; that assignment *is* the credential for a doctor's own patients. "Every doctor sees every patient" is still not the default: an unassigned patient stays out of reach unless the doctor also holds `CLINICAL_RECORD_READ` (an optional clinic-wide override, granted like any other capability, for e.g. covering a colleague). | assignment link only — a doctor writes `Consultation`/`Prescription` **only for their own appointment**; `CLINICAL_RECORD_WRITE` does not extend this to other doctors' charts |
 | `CLINIC_ADMIN` | **only** if `CLINICAL_RECORD_READ` is present in `Membership.capabilities`. Absent by default. It can be granted **only by a different, authorized `CLINIC_ADMIN`** — self-grant is rejected (`403 CANNOT_SELF_GRANT_CAPABILITY`). The grant is audited (`MEMBER_CAPABILITY_GRANTED`) and every subsequent read is audited (`CLINICAL_RECORD_VIEWED`). | `CLINICAL_RECORD_WRITE` capability — same no-self-grant rule; expected to be rare/never; admins are operations, not clinicians |
 | `RECEPTIONIST` | **never.** No capability grants it. Endpoints that would return clinical bodies strip those fields for a receptionist or return `403`. | never |
 | `SUPER_ADMIN` | **never** through normal endpoints. A separate `SUPPORT_ACCESS` flow (post-MVP), time-boxed, reason-required, clinic-notified, is the only path. | never |
@@ -78,22 +79,22 @@ rejected.
 | Manage doctors & availability | — | own | — | ✓ | — |
 | Register a patient | — | — | ✓ | ✓ | — |
 | View patient demographics | own | assigned | ✓ (clinic) | ✓ | — |
-| View consultation notes / clinical history | own | `cap` + assigned | **—** | `cap` | **—** |
-| View patient medications | own | `cap` + assigned | **—** | `cap` | **—** |
-| View patient documents | own | `cap` + assigned | **—** | `cap` | **—** |
+| View consultation notes / clinical history | own | assigned (or `cap`) | **—** | `cap` | **—** |
+| View patient medications | own | assigned (or `cap`) | **—** | `cap` | **—** |
+| View patient documents | own | assigned (or `cap`) | **—** | `cap` | **—** |
 | Book appointment | own | ✓ | ✓ | ✓ | — |
 | Reschedule / cancel appointment | own† | ✓ | ✓ | ✓ | — |
 | Change appointment status (lifecycle) | — | own | ✓ | ✓ | — |
 | Mark NO_SHOW | — | own | ✓ | ✓ | — |
 | Check-in a patient | — | — | ✓ | ✓ | — |
 | Manage queue (call/recall/skip/complete) | — | own | ✓ | ✓ | — |
-| Create / amend consultation notes | — | `cap`-write + own appt | — | `cap`-write (rare) | — |
-| Create prescription | — | `cap`-write + own appt | — | — | — |
-| Upload medical document | own | `cap` + assigned | — | `cap` | — |
+| Create / amend consultation notes | — | own appt only | — | `cap`-write (rare) | — |
+| Create prescription | — | own appt only | — | — | — |
+| Upload medical document | own | assigned (or `cap`) | — | `cap` | — |
 | Manage family / dependents | own | — | — | — | — |
 | Grant patient access to another user | own‡ | — | — | ✓ | — |
 | View operational reports (appointments, no-show) | own | own | clinic (non-clinical) | ✓ | — |
-| View adherence / clinical reports | own | `cap` + assigned | — | `cap` | — |
+| View adherence / clinical reports | own | assigned (or `cap`) | — | `cap` | — |
 | Export data | own | own (`DATA_EXPORT` for clinic-wide) | — | `DATA_EXPORT` | — |
 | Tenant lifecycle / platform health | — | — | — | — | ✓ |
 | Read audit log | — | — | — | ✓ (own org) | ✓ (all, audited) |
@@ -117,14 +118,16 @@ and `bookingLeadTimeMinutes`.
 
 ### DOCTOR
 - **Can:** manage own availability; see assigned appointments and own queue;
-  with `CLINICAL_RECORD_READ` + an assignment link — view that patient's
-  history, medications, documents; with `CLINICAL_RECORD_WRITE` — create/amend
-  the `Consultation` and `Prescription` for their own appointment; set
-  follow-ups.
-- **Cannot:** view patients they are not assigned to and hold no grant for;
-  read clinical bodies without the capability; manage staff, settings, or
-  other doctors' schedules; access another clinic's data; change another
-  doctor's appointments.
+  for a patient they're assigned to (an appointment, or a grant) — view
+  history, medications, documents, and create/amend the `Consultation` and
+  `Prescription` for their own appointment; set follow-ups. No separate
+  capability grant needed for their own patients — the assignment is the
+  credential. Optionally, `CLINICAL_RECORD_READ` extends *read* to patients
+  they aren't assigned to (covering a colleague); nothing extends *write*
+  beyond their own appointment.
+- **Cannot:** view or write for a patient they are not assigned to and hold
+  no grant/override for; manage staff, settings, or other doctors' schedules;
+  access another clinic's data; change another doctor's appointments.
 
 ### RECEPTIONIST
 - **Can:** register patients; edit patient **demographics/contact** only;

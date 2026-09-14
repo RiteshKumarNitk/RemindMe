@@ -122,16 +122,36 @@ Design → Backend → Web → Flutter integration" (spec §41).
 - Recall ordering uses `position = -1` ("next"); a multi-recall tie-breaker
   (`recallPriority`) is deferred.
 
-## Phase 3 — Clinical & patient data
+## Phase 3 — Clinical & patient data  ◐ PARTIAL (patients, consultations, prescriptions, audit done 2026-09-14)
 
-- Modules: `patients`, `family` (relationships + access grants), `consultations`,
-  `prescriptions`, `documents` (metadata; `local-dev` storage), `medications`
-  (incl. `/api/sync/medications`), reports/export, `notifications`
-  (IN_APP + PUSH), `audit` read API.
-- Field-level projection for RECEPTIONIST; grant-based family access.
-- Tests: `family`, `medications`, `audit`, `invitations`, `errors`.
-- Generate `docs/openapi.yaml` from the Zod schemas.
-- **Checkpoint:** the Flutter developer can build against a stable API.
+- [x] **`patients`** — minimal (list/search/create; added ahead of schedule in
+      Phase 4 because booking needed it). No family linkage beyond the single
+      `ownerUserId` field yet.
+- [x] **`consultations`** — SOAP notes (`getConsultation`/`saveConsultation`/
+      `signConsultation`), 1:1 with `Appointment`, auto-created on first save.
+      Signing locks further edits (`409` on a post-sign write).
+      **RBAC corrected from the original draft**: a `DOCTOR` gets read/write
+      on their own assigned appointment with **no separate capability**
+      needed — `CLINICAL_RECORD_READ` is now documented as an optional
+      clinic-wide *override* for doctors (e.g. covering a colleague), not a
+      base requirement. `CLINIC_ADMIN` still needs the capability, granted by
+      a different admin (unchanged). RBAC.md / MEDICAL_DATA_SECURITY.md
+      updated to match; see `tests/integration/consultations.test.ts`.
+- [x] **`prescriptions`** — items added one at a time to "the" prescription
+      for a consultation (auto-created on first item); removable until signed.
+- [x] **`audit`** read API + a web page (`CLINIC_ADMIN`, own org, last 100).
+- [x] Reschedule UI (the API existed since Phase 2; no screen until now).
+- [x] Tests: `consultations` (7 — assigned-doctor write, unassigned-doctor
+      403, RECEPTIONIST 403, admin capability-gated read, patient-owner
+      read-only, prescription item add/remove + audit, sign-locks-edits).
+      **79/79 tests passing overall**, `tsc` clean, `next build` green.
+- [ ] Not done: `family` (relationships + access grants — `PatientAccessGrant`
+      exists in schema, unused), `documents` (metadata table exists, no
+      upload endpoint), `medications` /`/api/sync/medications` (the DoseWise
+      sync target), reports/export, the `notifications` module beyond the
+      dispatcher (no `/api/me/notifications` read endpoint yet), `openapi.yaml`
+      generation, field-level projection tests for RECEPTIONIST beyond
+      consultations (see MEDICAL_DATA_SECURITY.md).
 
 ## Phase 4 — Web application  ✅ MVP DONE (2026-09-14)
 

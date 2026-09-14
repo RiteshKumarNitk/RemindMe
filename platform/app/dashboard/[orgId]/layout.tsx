@@ -17,6 +17,7 @@ const NAV: Record<string, Array<{ href: string; label: string }>> = {
     { href: "/appointments", label: "Appointments" },
     { href: "/queue", label: "Queue" },
     { href: "/settings", label: "Settings" },
+    { href: "/audit", label: "Audit log" },
   ],
   RECEPTIONIST: [
     { href: "", label: "Overview" },

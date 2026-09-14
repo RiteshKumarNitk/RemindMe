@@ -13,24 +13,28 @@ copies the above.
 ## Access model
 
 > **A membership role is never sufficient on its own to read a clinical record
-> body.** Clinical access is gated by an explicit capability
-> (`Membership.capabilities`) and, for a doctor, a relationship to the patient.
+> body.** Access comes from one of: being the assigned doctor, holding an
+> explicit `Membership.capabilities` grant, or a family `PatientAccessGrant`.
 
 Access to a patient's **clinical** PHR (`Consultation` bodies,
 `Prescription*` contents, `MedicalDocument` contents, `Medication*`,
-`VitalReading`) requires **all** of:
+`VitalReading`) requires an `ACTIVE` `Membership` in the patient's
+`organizationId`, **plus one of**:
 
-1. An `ACTIVE` `Membership` in the patient's `organizationId`.
-2. The `CLINICAL_RECORD_READ` capability on that membership
-   (`CLINICAL_RECORD_WRITE` for writes) — **absent by default for every role,
-   including `CLINIC_ADMIN`**; OR the caller is the patient / a family user
-   holding the matching `PatientAccessPermission`.
-3. For `DOCTOR`: additionally an **assignment link** — an appointment with that
-   patient, or a `PatientAccessGrant` naming that doctor. "All doctors see all
-   patients" is **not** the default.
-4. For a guardian/family user: a non-expired, non-revoked `PatientAccessGrant`
-   whose `permissions` include the needed one (this replaces the capability +
-   assignment requirement for that path).
+1. **`DOCTOR`** with an **assignment link** to the patient — an appointment
+   with that patient, or a `PatientAccessGrant` naming that doctor. Writes
+   (`Consultation`/`Prescription`) are further restricted to the doctor's
+   **own** appointment. "All doctors see all patients" is **not** the
+   default; a doctor needs no separate capability for their own patients —
+   the assignment is the credential.
+2. **`CLINICAL_RECORD_READ`** (or `_WRITE`) on the membership — **absent by
+   default for every role**, including `CLINIC_ADMIN` and `DOCTOR`. For
+   `CLINIC_ADMIN` this is the *only* path in. For `DOCTOR` it's an optional
+   override that extends *read* beyond their assigned patients (e.g.
+   covering a colleague) — it never extends write to another doctor's chart.
+3. The caller **is the patient** (own record only).
+4. A guardian/family user with a non-expired, non-revoked
+   `PatientAccessGrant` whose `permissions` include the needed one.
 
 Access to patient **demographics / contact / appointment / queue** data
 requires only (1) + a role permitted for that class (see the [RBAC.md](RBAC.md)
@@ -128,7 +132,8 @@ patient's own routine self-access:
 
 Action vocabulary includes: `APPOINTMENT_CREATED/CONFIRMED/RESCHEDULED/
 CANCELLED/NO_SHOW/CHECKED_IN/COMPLETED`, `PATIENT_CREATED/UPDATED`,
-`CONSULTATION_CREATED/SIGNED`, `PRESCRIPTION_CREATED`, `DOCUMENT_UPLOADED/
+`CONSULTATION_CREATED/UPDATED/SIGNED`, `PRESCRIPTION_CREATED`,
+`PRESCRIPTION_ITEM_ADDED/REMOVED`, `DOCUMENT_UPLOADED/
 DOWNLOADED`, `ACCESS_GRANT_CREATED/REVOKED`, `MEMBER_ADDED/REMOVED/ROLE_CHANGED`,
 `MEMBER_CAPABILITY_GRANTED/REVOKED`, `CLINICAL_RECORD_VIEWED` (capability-gated
 reads by staff), `INVITATION_CREATED/ACCEPTED/REVOKED`, `MEDICATION_IMPORTED`,

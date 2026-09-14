@@ -9,10 +9,8 @@ import {
   bookAppointmentAction,
   cancelAppointmentAction,
   checkInAppointmentAction,
-  completeAppointmentAction,
   confirmAppointmentAction,
   noShowAppointmentAction,
-  startAppointmentAction,
 } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -119,15 +117,22 @@ export default async function AppointmentsPage({
                             </form>
                           </>
                         )}
-                        {role === "DOCTOR" && isMine && ["CHECKED_IN", "WAITING"].includes(a.status) && (
-                          <form action={startAppointmentAction.bind(null, orgId, a.id)}>
-                            <Button variant="ghost">Start</Button>
-                          </form>
-                        )}
-                        {role === "DOCTOR" && isMine && a.status === "IN_CONSULTATION" && (
-                          <form action={completeAppointmentAction.bind(null, orgId, a.id)}>
-                            <Button variant="ghost">Complete</Button>
-                          </form>
+                        {(role === "CLINIC_ADMIN" || (role === "DOCTOR" && isMine)) &&
+                          ["CHECKED_IN", "WAITING", "IN_CONSULTATION", "COMPLETED"].includes(a.status) && (
+                            <a
+                              href={`/dashboard/${orgId}/appointments/${a.id}/consultation`}
+                              style={{ fontSize: 13, fontWeight: 700, alignSelf: "center" }}
+                            >
+                              Notes
+                            </a>
+                          )}
+                        {["REQUESTED", "CONFIRMED"].includes(a.status) && (
+                          <a
+                            href={`/dashboard/${orgId}/appointments/${a.id}/reschedule`}
+                            style={{ fontSize: 13, fontWeight: 700, alignSelf: "center" }}
+                          >
+                            Reschedule
+                          </a>
                         )}
                         {["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING"].includes(a.status) && (
                           <form action={cancelAppointmentAction.bind(null, orgId, a.id)}>
