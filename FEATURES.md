@@ -181,7 +181,29 @@ deployment) and `.freebuff/run.md` (how to run the web preview).
 - **BigTextStyleInformation** — notification body text is rendered expanded
   (not collapsed) so the full medicine name and instructions are visible.
 
-## 13. Platforms & data
+## 13. Home screen widget (Android)
+
+- **Native RemoteViews widget** — shows the next pending dose without opening
+  the app; tap to open DoseWise.
+- **Urgency-colored background** — green when all doses are done, teal for
+  upcoming doses, orange when late, red when due now. Elderly users see at a
+  glance whether action is needed.
+- **Progress counter** — shows "3 / 6 done" in the header so the user knows
+  how many doses remain for the day.
+- **Large 12-hour time** — displayed as "8:00 AM" in bold 22sp text for
+  readability.
+- **Bold medicine name** — 26sp black-weight font so the medicine name is
+  instantly visible from across the room.
+- **Auto-refresh** — widget data is updated on every app open, after every
+  dose action (taken/skipped/snoozed), and on app resume from background.
+- **All-done state** — green background with "✅ All done today!" when every
+  dose is resolved.
+- **Empty state** — friendly "💊 Add a medicine to get started" when no
+  medicines exist yet.
+- **4×2 cell widget** — resizable horizontally and vertically; uses the
+  standard `home_widget` Flutter package.
+
+## 14. Platforms & data
 
 - **Android-first** (minSdk 24); Material 3, large type, 72 px primary buttons,
   4-tab bottom navigation.
@@ -198,6 +220,21 @@ deployment) and `.freebuff/run.md` (how to run the web preview).
 
 Newest first. Format: `date — what changed (why)`.
 
+- **2026-09-14 — Home screen widget improvements**: urgency-colored backgrounds
+  (red/orange/teal/green), progress counter ("3/6 done"), large 12h time
+  display (22sp), bold medicine name (26sp black), auto-refresh on every
+  app lifecycle event; all-done and empty states redesigned for elderly users.
+- **2026-09-14 — Firebase Auth + Google Sign-In + Profile**: splash screen,
+  login screen with Continue with Google, profile page with editable name/age,
+  sign-out with confirmation, Firebase diagnostics card, graceful offline
+  fallback when Firebase is not configured.
+- **2026-09-14 — UX polish**: onboarding 2-step wizard, color-coded time
+  slots in medicine form, labeled action buttons for elderly, warning-colored
+  Pause All card, prominent export button, real-time countdown timer on Next
+  Medicine card, auto-speak at scheduled medicine time.
+- **2026-09-14 — Notification sound hardening**: AudioAttributesUsage.alarm
+  on ALL notification details (not just channel), bypassDnd, FLAG_INSISTENT
+  looping sound, v10 channel with old channel deletion.
 - **2026-08-24 — Notification sound fixes (critical)**: versioned channel IDs
   (v2) to force Android to recreate channels with correct sound/vibration;
   louder triple-beep WAV (880 Hz + harmonic, 3s); `USE_FULL_SCREEN_INTENT`

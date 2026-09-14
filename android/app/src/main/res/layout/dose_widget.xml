@@ -3,7 +3,7 @@
     android:id="@+id/widget_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="14dp"
+    android:padding="16dp"
     android:orientation="vertical"
     android:gravity="center"
     android:background="@drawable/dose_widget_background">
@@ -14,12 +14,12 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="6dp">
+        android:layout_marginBottom="8dp">
 
         <ImageView
             android:id="@+id/widget_icon"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
             android:src="@mipmap/ic_launcher"
             android:layout_marginEnd="6dp" />
 
@@ -27,28 +27,41 @@
             android:id="@+id/widget_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Next Dose"
+            android:text="DoseWise"
             android:textColor="#B0FFFFFF"
-            android:textSize="11sp"
+            android:textSize="12sp"
             android:textStyle="bold"
             android:fontFamily="sans-serif-medium"
             android:letterSpacing="0.04" />
+
+        <!-- Progress counter on the right -->
+        <TextView
+            android:id="@+id/progress_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text=""
+            android:textColor="#90FFFFFF"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="end"
+            android:visibility="gone" />
     </LinearLayout>
 
-    <!-- Medicine name -->
+    <!-- Medicine name — big, bold, easy to read -->
     <TextView
         android:id="@+id/medicine_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="—"
         android:textColor="#FFFFFF"
-        android:textSize="22sp"
+        android:textSize="26sp"
         android:textStyle="bold"
         android:fontFamily="sans-serif-black"
         android:gravity="center"
         android:maxLines="1"
         android:ellipsize="end"
-        android:layout_marginBottom="2dp" />
+        android:layout_marginBottom="4dp" />
 
     <!-- Dose info -->
     <TextView
@@ -57,27 +70,27 @@
         android:layout_height="wrap_content"
         android:text=""
         android:textColor="#D0FFFFFF"
-        android:textSize="13sp"
+        android:textSize="14sp"
         android:fontFamily="sans-serif-medium"
         android:gravity="center"
         android:maxLines="1" />
 
-    <!-- Time display -->
+    <!-- Time display — large 12h format -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center"
-        android:layout_marginTop="6dp"
-        android:layout_marginBottom="4dp">
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="6dp">
 
         <TextView
             android:id="@+id/time_icon"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="🕐"
-            android:textSize="16sp"
-            android:layout_marginEnd="4dp" />
+            android:textSize="18sp"
+            android:layout_marginEnd="6dp" />
 
         <TextView
             android:id="@+id/dose_time"
@@ -85,24 +98,24 @@
             android:layout_height="wrap_content"
             android:text=""
             android:textColor="#FFFFFF"
-            android:textSize="18sp"
+            android:textSize="22sp"
             android:textStyle="bold"
             android:fontFamily="sans-serif-medium" />
     </LinearLayout>
 
-    <!-- Status badge -->
+    <!-- Status badge — colored background for urgency -->
     <TextView
         android:id="@+id/dose_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text=""
         android:textColor="#FFFFFF"
-        android:textSize="11sp"
+        android:textSize="12sp"
         android:textStyle="bold"
         android:fontFamily="sans-serif-medium"
         android:letterSpacing="0.05"
-        android:paddingHorizontal="10dp"
-        android:paddingVertical="3dp"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="4dp"
         android:background="@drawable/status_badge_background" />
 
     <!-- All done message (hidden by default) -->
@@ -112,10 +125,22 @@
         android:layout_height="wrap_content"
         android:text="✅ All done today!"
         android:textColor="#FFFFFF"
-        android:textSize="16sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         android:fontFamily="sans-serif-medium"
         android:gravity="center"
         android:visibility="gone" />
+
+    <!-- Tap hint -->
+    <TextView
+        android:id="@+id/tap_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tap to open"
+        android:textColor="#60FFFFFF"
+        android:textSize="10sp"
+        android:fontFamily="sans-serif"
+        android:gravity="center"
+        android:layout_marginTop="6dp" />
 
 </LinearLayout>

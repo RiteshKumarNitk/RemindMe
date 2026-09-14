@@ -1,4 +1,4 @@
-import type { Role } from "@prisma/client";
+import type { Prisma, PrismaClient, Role } from "@prisma/client";
 import { db } from "./db.js";
 import type { RequestContext } from "./context.js";
 
@@ -8,21 +8,28 @@ import type { RequestContext } from "./context.js";
  * already-redacted `before`/`after`.
  */
 export interface AuditInput {
-  action: string; // e.g. "ORGANIZATION_CREATED", "MEMBER_CAPABILITY_GRANTED"
+  action: string; // e.g. "APPOINTMENT_CREATED", "MEMBER_CAPABILITY_GRANTED"
   entityType: string;
   entityId: string;
   before?: unknown;
   after?: unknown;
+  organizationId?: string | null; // override (e.g. during org bootstrap)
 }
 
-export async function writeAudit(
+type AuditClient = PrismaClient | Prisma.TransactionClient;
+
+export async function writeAuditWith(
+  client: AuditClient,
   ctx: RequestContext,
   input: AuditInput,
 ): Promise<void> {
-  await db.auditLog.create({
+  await client.auditLog.create({
     data: {
-      organizationId: ctx.org?.id ?? null,
-      actorUserId: ctx.userId,
+      organizationId:
+        input.organizationId !== undefined
+          ? input.organizationId
+          : (ctx.org?.id ?? null),
+      actorUserId: ctx.userId || null,
       actorRole: (ctx.org?.role ?? null) as Role | null,
       action: input.action,
       entityType: input.entityType,
@@ -34,4 +41,8 @@ export async function writeAudit(
       requestId: ctx.requestId,
     },
   });
+}
+
+export function writeAudit(ctx: RequestContext, input: AuditInput): Promise<void> {
+  return writeAuditWith(db, ctx, input);
 }

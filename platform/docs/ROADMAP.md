@@ -65,14 +65,62 @@ Design → Backend → Web → Flutter integration" (spec §41).
 - `npm test` TRUNCATEs the shared dev DB; re-run `npm run db:seed` afterward.
 - ESLint not configured (`eslint.ignoreDuringBuilds`); `tsc` is the type gate.
 
-## Phase 2 — Scheduling core
+## Phase 2 — Scheduling core  ✅ DONE (2026-09-11)
 
-- Modules: `availability` (rules, exceptions, slot calculation), `appointments`
-  (booking, lifecycle state machine, reschedule, cancel, no-show), `queue`
-  (tokens, call/recall/skip/complete).
-- EXCLUDE-constraint-backed double-booking, `SERIALIZABLE` booking txn.
-- Tests: `availability`, `appointments`, `double-booking`, `queue`.
-- **Checkpoint:** a full booking→check-in→queue→consultation flow via the API.
+- [x] `src/lib/time.ts` — zero-dep timezone conversion (local wall-clock ↔ UTC
+      instant via `Intl`, DST-corrected), ISO weekday, range overlap.
+- [x] `src/lib/serializable.ts` — `runSerializable()` (SERIALIZABLE txn + write-
+      conflict retry; overlap-constraint violation → `409 APPOINTMENT_SLOT_TAKEN`).
+- [x] `src/lib/notifications/notify.ts` — enqueue helper (idempotent via
+      `dedupeKey`, best-effort).
+- [x] Central Prisma-error mapping in the pipeline (`P2025`→404, `P2002`→409,
+      `P2003`→422, `P2034`→409) — cross-tenant record lookups now 404, not 500.
+- [x] **`availability`** module — recurring `AvailabilityRule`s (weekday +
+      minutes-from-local-midnight + slotMinutes), `AvailabilityException`
+      (`DAY_OFF`/`HOLIDAY`/`LEAVE`/`BREAK` subtract, `EXTRA_HOURS` add),
+      `computeFreeWindows` + `computeSlots` (tz-correct, minus existing
+      appointments, minus lead-time), `assertWithinAvailability` for booking.
+- [x] **`appointments`** module — state machine (`state-machine.ts`, the
+      APPOINTMENT_WORKFLOW.md table; illegal move → `409
+      INVALID_STATUS_TRANSITION`), `bookAppointment` (SERIALIZABLE, lead/advance
+      checks, patient-self-book gate, availability check, EXCLUDE-backed),
+      `confirm` / `cancel` (patient cancellation-window, staff override) /
+      `reschedule` (linked new appt, old → `RESCHEDULED`, reminders re-scheduled)
+      / `check-in` (→ CHECKED_IN → QueueEntry → WAITING) / `no-show` (guarded) /
+      `start` / `complete` (assigned-doctor only). Every transition writes an
+      `AppointmentEvent` + `AuditLog` + a `Notification`. Reminder rows
+      (T-24H/T-2H, `dedupeKey`) created on confirm, suppressed on
+      cancel/reschedule/check-in.
+- [x] **`queue`** module — `state-machine.ts` (`WAITING/CALLED/IN_CONSULTATION/
+      COMPLETED/SKIPPED`; illegal → `409 INVALID_QUEUE_TRANSITION`), token
+      allocation per `(org, doctor, queueDate)` inside the check-in txn (unique
+      constraint backstop), live board with people-ahead, `call`/`recall`
+      (served next)/`skip`/`start`/`complete` (start/complete cascade to the
+      appointment; assigned-doctor-only for those two).
+- [x] **20 new routes**: `/doctors/:id/availability` (+`/exceptions` +
+      `/exceptions/:id`), `/doctors/:id/slots`, `/appointment-types`,
+      `/appointments` (+`/:id` + `confirm|cancel|reschedule|check-in|no-show|
+      start|complete`), `/queue`, `/queue/:entryId/:action`.
+- [x] **Tests: 72 passing total** (+21 in Phase 2) — `availability` (5),
+      `appointments` (9: staff→CONFIRMED, outside-availability→409, **race →
+      one 201 / one 409 `APPOINTMENT_SLOT_TAKEN`**, full flow, invalid
+      transition→409, assigned-doctor-only, no-show guard, reschedule lineage,
+      cancellation-window), `queue` (7: sequential tokens, board order,
+      happy path, invalid→409, skip→recall served next, doctor-only start,
+      cross-tenant→404). `tsc` clean, `next build` green.
+- [x] **Checkpoint reached:** full book → confirm → check-in (token) → queue
+      call → start → complete flow works end-to-end via the API and is tested.
+
+### Phase 2 — known follow-ups (not blockers)
+- Slot **step** is `rule.slotMinutes`; slot **duration** is the appointment
+  type's (or `defaultAppointmentDurationMin`). Intentional, but a clinic that
+  wants step == duration must set them equal.
+- Location-level timezone override is read but there is no locations-with-tz
+  test yet.
+- `no-show` grace is 0 (allowed at/after `scheduledStart`); make it a
+  `ClinicSettings` value when needed.
+- Recall ordering uses `position = -1` ("next"); a multi-recall tie-breaker
+  (`recallPriority`) is deferred.
 
 ## Phase 3 — Clinical & patient data
 

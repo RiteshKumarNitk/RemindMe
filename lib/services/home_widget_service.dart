@@ -20,13 +20,21 @@ class HomeWidgetService {
     String locale = 'en',
   }) async {
     try {
+      // Compute overall stats.
+      final total = todayDoses.length;
+      final taken = todayDoses.where((e) => e.dose.status == DoseStatus.taken).length;
+      final skipped = todayDoses.where((e) => e.dose.status == DoseStatus.skipped).length;
+      final done = taken + skipped;
+
+
       // Find the next pending dose (closest to now, in the future).
       DoseEntry? nextDose;
       for (final entry in todayDoses) {
         if (entry.dose.status != DoseStatus.pending) continue;
         final scheduled = entry.dose.snoozedUntil ?? entry.dose.scheduledAt;
         if (scheduled.isAfter(now)) {
-          final nextEffective = nextDose?.dose.snoozedUntil ?? nextDose?.dose.scheduledAt;
+          final nextEffective =
+              nextDose?.dose.snoozedUntil ?? nextDose?.dose.scheduledAt;
           if (nextDose == null || scheduled.isBefore(nextEffective!)) {
             nextDose = entry;
           }
@@ -42,24 +50,23 @@ class HomeWidgetService {
         }
       }
 
-      if (nextDose == null) {
-        // No pending doses — all done today.
-        await HomeWidget.saveWidgetData<String>(
-          'widget_medicine_name',
-          '',
-        );
+      // Progress text: "3 of 6 done"
+      final progressText = total > 0 ? '$done / $total' : '';
+
+      if (nextDose == null || total == 0) {
+        // No pending doses — all done today or no medicines.
+        await HomeWidget.saveWidgetData<String>('widget_medicine_name', '');
         await HomeWidget.saveWidgetData<bool>('widget_all_done', true);
-        await HomeWidget.saveWidgetData<String>(
-          'widget_dose_info',
-          '',
-        );
-        await HomeWidget.saveWidgetData<String>(
-          'widget_dose_time',
-          '',
-        );
-        await HomeWidget.saveWidgetData<String>(
-          'widget_status_text',
-          '',
+        await HomeWidget.saveWidgetData<String>('widget_dose_info', '');
+        await HomeWidget.saveWidgetData<String>('widget_dose_time', '');
+        await HomeWidget.saveWidgetData<String>('widget_status_text', '');
+        await HomeWidget.saveWidgetData<String>('widget_progress', '');
+        await HomeWidget.saveWidgetData<String>('widget_bg_color', 'done');
+        await HomeWidget.saveWidgetData<int>('widget_done_count', done);
+        await HomeWidget.saveWidgetData<int>('widget_total_count', total);
+        await HomeWidget.saveWidgetData<bool>(
+          'widget_has_medicines',
+          total > 0,
         );
       } else {
         final med = nextDose.medicine;
@@ -68,26 +75,31 @@ class HomeWidgetService {
         final timeFormat = DateFormat('h:mm a', locale);
         final timeStr = timeFormat.format(scheduled);
 
-        // Compute status text.
+        // Compute status text and background color.
         final diff = scheduled.difference(now);
         String status;
+        String bgColor;
         if (diff.isNegative) {
           final overdue = now.difference(scheduled);
           if (overdue.inMinutes <= 30) {
-            // Within grace period — show "Due now!" so the user knows to
-            // take the medicine immediately.
-            status = '🔴 Due now!';
+            status = 'Due now!';
+            bgColor = 'urgent';
           } else if (overdue.inMinutes < 60) {
-            status = '⏰ ${overdue.inMinutes} min late';
+            status = '${overdue.inMinutes} min late';
+            bgColor = 'late';
           } else {
-            status = '⏰ ${overdue.inHours}h late';
+            status = '${overdue.inHours}h ${overdue.inMinutes % 60}m late';
+            bgColor = 'late';
           }
         } else if (diff.inMinutes < 5) {
-          status = '🔴 Due now!';
+          status = 'Due now!';
+          bgColor = 'urgent';
         } else if (diff.inMinutes < 60) {
-          status = '🟡 in ${diff.inMinutes} min';
+          status = 'in ${diff.inMinutes} min';
+          bgColor = 'normal';
         } else {
-          status = '🟢 in ${diff.inHours}h ${diff.inMinutes % 60}m';
+          status = 'in ${diff.inHours}h ${diff.inMinutes % 60}m';
+          bgColor = 'normal';
         }
 
         // Dose info text.
@@ -98,18 +110,17 @@ class HomeWidgetService {
           med.name,
         );
         await HomeWidget.saveWidgetData<bool>('widget_all_done', false);
+        await HomeWidget.saveWidgetData<String>('widget_dose_info', doseInfo);
+        await HomeWidget.saveWidgetData<String>('widget_dose_time', timeStr);
+        await HomeWidget.saveWidgetData<String>('widget_status_text', status);
         await HomeWidget.saveWidgetData<String>(
-          'widget_dose_info',
-          doseInfo,
+          'widget_progress',
+          progressText,
         );
-        await HomeWidget.saveWidgetData<String>(
-          'widget_dose_time',
-          timeStr,
-        );
-        await HomeWidget.saveWidgetData<String>(
-          'widget_status_text',
-          status,
-        );
+        await HomeWidget.saveWidgetData<String>('widget_bg_color', bgColor);
+        await HomeWidget.saveWidgetData<int>('widget_done_count', done);
+        await HomeWidget.saveWidgetData<int>('widget_total_count', total);
+        await HomeWidget.saveWidgetData<bool>('widget_has_medicines', true);
       }
 
       // Tell Android to re-render the widget.

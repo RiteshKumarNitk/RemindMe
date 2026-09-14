@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Role } from "@prisma/client";
 import { db } from "./db.js";
 import { env } from "./env.js";
-import { AppError, toEnvelope } from "./errors.js";
+import { AppError, mapPrismaError, toEnvelope } from "./errors.js";
 import { checkRateLimit, type RateClass } from "./rate-limit.js";
 import { authenticate } from "./auth/authenticate.js";
 import type { RequestContext } from "./context.js";
@@ -124,13 +124,14 @@ export function withApi<P extends Record<string, string> = Record<string, string
       }
       return res;
     } catch (err) {
-      if (err instanceof AppError) {
+      const appErr = err instanceof AppError ? err : mapPrismaError(err);
+      if (appErr) {
         const headers: Record<string, string> = {};
-        if (err.code === "RATE_LIMITED") {
-          const ra = (err.details as { retryAfter?: number })?.retryAfter;
+        if (appErr.code === "RATE_LIMITED") {
+          const ra = (appErr.details as { retryAfter?: number })?.retryAfter;
           if (ra) headers["Retry-After"] = String(ra);
         }
-        return json(toEnvelope(err), { status: err.status, headers });
+        return json(toEnvelope(appErr), { status: appErr.status, headers });
       }
       // Unknown → generic 500; real cause only in the server log.
       console.error(`[${requestId}] unhandled error:`, err);

@@ -18,6 +18,8 @@ export type ErrorCode =
   | "CONFLICT"
   | "APPOINTMENT_SLOT_TAKEN"
   | "INVALID_STATUS_TRANSITION"
+  | "INVALID_QUEUE_TRANSITION"
+  | "OUTSIDE_AVAILABILITY"
   | "TOKEN_ALREADY_USED"
   | "RATE_LIMITED"
   | "NOT_IMPLEMENTED"
@@ -39,6 +41,8 @@ const STATUS: Record<ErrorCode, number> = {
   CONFLICT: 409,
   APPOINTMENT_SLOT_TAKEN: 409,
   INVALID_STATUS_TRANSITION: 409,
+  INVALID_QUEUE_TRANSITION: 409,
+  OUTSIDE_AVAILABILITY: 409,
   TOKEN_ALREADY_USED: 409,
   RATE_LIMITED: 429,
   NOT_IMPLEMENTED: 501,
@@ -65,6 +69,28 @@ export const forbidden = (msg = "You do not have access to this resource.") =>
 export const unauthorized = (msg = "Authentication required.") =>
   new AppError("NOT_AUTHENTICATED", msg);
 export const conflict = (msg: string) => new AppError("CONFLICT", msg);
+
+/**
+ * Map a Prisma known-request error to an AppError (SECURITY.md "Error
+ * handling"). Returns null when it isn't one we translate — the caller then
+ * falls through to a generic 500 with the real cause logged.
+ */
+export function mapPrismaError(err: unknown): AppError | null {
+  const e = err as { name?: string; code?: string; meta?: unknown };
+  if (e?.name !== "PrismaClientKnownRequestError") return null;
+  switch (e.code) {
+    case "P2025": // record not found (findFirstOrThrow / update / delete target)
+      return new AppError("NOT_FOUND", "Not found.");
+    case "P2002": // unique constraint
+      return new AppError("CONFLICT", "That value is already in use.");
+    case "P2003": // foreign key constraint
+      return new AppError("VALIDATION_FAILED", "A referenced record does not exist.");
+    case "P2034": // write conflict / deadlock (serializable)
+      return new AppError("CONFLICT", "The request conflicted with another. Please retry.");
+    default:
+      return null;
+  }
+}
 
 export interface ErrorEnvelope {
   error: { code: ErrorCode; message: string; details?: unknown };

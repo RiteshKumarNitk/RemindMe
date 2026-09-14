@@ -3,6 +3,7 @@ package com.family.medireminder
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
+import android.graphics.Color
 import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
@@ -25,21 +26,37 @@ class DoseWidgetProvider : AppWidgetProvider() {
             val doseTime = widgetData?.getString("widget_dose_time", "") ?: ""
             val statusText = widgetData?.getString("widget_status_text", "") ?: ""
             val allDone = widgetData?.getBoolean("widget_all_done", false) ?: false
+            val progress = widgetData?.getString("widget_progress", "") ?: ""
+            val bgColor = widgetData?.getString("widget_bg_color", "normal") ?: "normal"
+            val hasMedicines = widgetData?.getBoolean("widget_has_medicines", false) ?: false
+
+            // Update gradient background based on urgency
+            views.setInt(R.id.widget_container, "setBackgroundResource",
+                when (bgColor) {
+                    "urgent" -> R.drawable.dose_widget_background_urgent
+                    "late" -> R.drawable.dose_widget_background_late
+                    "done" -> R.drawable.dose_widget_background_done
+                    else -> R.drawable.dose_widget_background
+                }
+            )
 
             if (allDone || medicineName.isEmpty()) {
+                // All done or no medicines
                 views.setViewVisibility(R.id.medicine_name, View.GONE)
                 views.setViewVisibility(R.id.dose_info, View.GONE)
                 views.setViewVisibility(R.id.dose_time, View.GONE)
                 views.setViewVisibility(R.id.dose_status, View.GONE)
                 views.setViewVisibility(R.id.time_icon, View.GONE)
+                views.setViewVisibility(R.id.progress_text, View.GONE)
                 views.setViewVisibility(R.id.all_done_text, View.VISIBLE)
 
-                if (medicineName.isEmpty() && !allDone) {
-                    views.setTextViewText(R.id.all_done_text, "Add a medicine to get started 💊")
+                if (!hasMedicines) {
+                    views.setTextViewText(R.id.all_done_text, "💊 Add a medicine\nto get started")
                 } else {
                     views.setTextViewText(R.id.all_done_text, "✅ All done today!")
                 }
             } else {
+                // Show next dose info
                 views.setViewVisibility(R.id.medicine_name, View.VISIBLE)
                 views.setViewVisibility(R.id.dose_info, View.VISIBLE)
                 views.setViewVisibility(R.id.dose_time, View.VISIBLE)
@@ -51,6 +68,14 @@ class DoseWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(R.id.dose_info, doseInfo)
                 views.setTextViewText(R.id.dose_time, doseTime)
                 views.setTextViewText(R.id.dose_status, statusText)
+
+                // Show progress counter
+                if (progress.isNotEmpty()) {
+                    views.setViewVisibility(R.id.progress_text, View.VISIBLE)
+                    views.setTextViewText(R.id.progress_text, "$progress done")
+                } else {
+                    views.setViewVisibility(R.id.progress_text, View.GONE)
+                }
             }
 
             // Tap widget → open app

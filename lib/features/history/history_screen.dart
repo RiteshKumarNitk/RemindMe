@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -57,6 +59,34 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   void _reload() => setState(() => _future = _load());
+
+  Map<DateTime, _DailyStats> _computeDaily(
+    List<DoseEntry> entries,
+    DateTime weekStart,
+    Duration grace,
+  ) {
+    final now = DateTime.now();
+    final map = <DateTime, _DailyStats>{};
+    for (var i = 0; i < 7; i++) {
+      map[weekStart.add(Duration(days: i))] = _DailyStats();
+    }
+    for (final e in entries) {
+      final day = AppDateUtils.startOfDay(e.dose.scheduledAt);
+      final stats = map[day];
+      if (stats == null) continue;
+      switch (e.effectiveStatus(grace, now)) {
+        case DoseStatus.taken:
+          stats.taken++;
+        case DoseStatus.missed:
+          stats.missed++;
+        case DoseStatus.skipped:
+          stats.skipped++;
+        case DoseStatus.pending:
+          stats.pending++;
+      }
+    }
+    return map;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -152,11 +182,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                     children: [
                       _SummaryCard(stats: stats, l10n: l10n),
-                      if (_range == _Range.week && stats.total > 0)
+                      if (_range == _Range.week && stats.total > 0) ...[
+                        const SizedBox(height: 14),
+                        _WeeklyBarChart(
+                          dailyData: _computeDaily(
+                            allEntries,
+                            AppDateUtils.startOfWeek(DateTime.now()),
+                            grace,
+                          ),
+                          weekStart: AppDateUtils.startOfWeek(DateTime.now()),
+                          locale: locale,
+                        ),
                         _TrendIndicator(
                           currentPercent: stats.adherencePercent,
                           l10n: l10n,
                         ),
+                      ],
                       const SizedBox(height: 14),
                       _StatusFilterBar(
                         selected: _statusFilter,
@@ -164,14 +205,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             setState(() => _statusFilter = s),
                       ),
                       const SizedBox(height: 12),
-                      _ExportRow(
-                        onTap: () => _exportCsv(allEntries, l10n),
-                      ),
-                      const SizedBox(height: 6),
+
                       if (entries.isEmpty)
                         _Empty(text: l10n.histEmpty)
                       else
-                        ..._grouped(entries, l10n, locale, grace),
+                        ..._grouped(entries, l10n, locale, grace, theme),
                     ],
                   );
                 },
@@ -188,6 +226,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     AppLocalizations l10n,
     String locale,
     Duration grace,
+    ThemeData theme,
   ) {
     final now = DateTime.now();
     final groups = <DateTime, List<DoseEntry>>{};
@@ -203,14 +242,38 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ..sort((a, b) => b.dose.scheduledAt.compareTo(a.dose.scheduledAt));
       widgets.add(
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 14, 4, 6),
-          child: Text(
-            AppDateUtils.sameDay(day, now)
-                ? l10n.histToday
-                : AppDateUtils.dayLabel(day, locale),
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+          padding: const EdgeInsets.fromLTRB(4, 18, 4, 8),
+          child: Row(
+            children: [
+              // Colored dot for visual identification
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: AppDateUtils.sameDay(day, now)
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                AppDateUtils.sameDay(day, now)
+                    ? '📍 ${l10n.histToday}'
+                    : AppDateUtils.dayLabel(day, locale),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  height: 2,
+                  color: theme.colorScheme.outlineVariant,
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -219,52 +282,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       }
     }
     return widgets;
-  }
-
-  void _exportCsv(List<DoseEntry> entries, AppLocalizations l10n) {
-    final locale = context.read<AppState>().settings.settings.locale;
-    final buffer = StringBuffer();
-    buffer.writeln('Date,Scheduled,Actual,Medicine,Dose,Food,Status');
-    for (final e in entries) {
-      final date = AppDateUtils.dateLabel(e.dose.scheduledAt, locale);
-      final sched = AppDateUtils.timeLabel(e.dose.scheduledAt, locale);
-      final actual = e.dose.takenAt != null
-          ? AppDateUtils.timeLabel(e.dose.takenAt!, locale)
-          : e.dose.skippedAt != null
-              ? AppDateUtils.timeLabel(e.dose.skippedAt!, locale)
-              : '';
-      final name = e.medicine.name.replaceAll(',', ';');
-      final dose = e.medicine.doseLabel.replaceAll(',', ';');
-      final food = e.medicine.foodInstruction.name;
-      buffer.writeln(
-        '$date,$sched,$actual,$name,$dose,$food,${e.dose.status.name}',
-      );
-    }
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.histExport),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 300,
-          child: SingleChildScrollView(
-            child: SelectableText(
-              buffer.toString(),
-              style: Theme.of(ctx)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(fontFamily: 'monospace'),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l10n.btnClose),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -377,7 +394,7 @@ class _SummaryCard extends StatelessWidget {
     final ringColor = pct >= 80 ? theme.successColor : theme.accentColor;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
@@ -385,16 +402,17 @@ class _SummaryCard extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Larger progress ring for elderly readability
           SizedBox(
-            width: 84,
-            height: 84,
+            width: 100,
+            height: 100,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 SizedBox.expand(
                   child: CircularProgressIndicator(
                     value: (pct / 100).clamp(0.0, 1.0),
-                    strokeWidth: 8,
+                    strokeWidth: 10,
                     strokeCap: StrokeCap.round,
                     backgroundColor: theme.colorScheme.surfaceContainerHighest,
                     valueColor: AlwaysStoppedAnimation(ringColor),
@@ -402,34 +420,36 @@ class _SummaryCard extends StatelessWidget {
                 ),
                 Text(
                   '$pct%',
-                  style: theme.textTheme.titleMedium?.copyWith(
+                  style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w800,
+                    color: ringColor,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 18),
+          const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   l10n.histAdherence,
-                  style: theme.textTheme.titleMedium?.copyWith(
+                  style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   l10n.histTotal(stats.total),
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Wrap(
-                  spacing: 14,
-                  runSpacing: 4,
+                  spacing: 16,
+                  runSpacing: 6,
                   children: [
                     _Count(theme.successColor, l10n.histTakenCount, stats.taken),
                     _Count(theme.missedColor, l10n.histMissedCount, stats.missed),
@@ -459,58 +479,19 @@ class _Count extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: 10,
+          height: 10,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
         Text(
           '$value $label',
-          style: theme.textTheme.bodySmall?.copyWith(
+          style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ExportRow extends StatelessWidget {
-  const _ExportRow({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Icon(Icons.download_rounded, color: theme.colorScheme.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  l10n.histExport,
-                  style: theme.textTheme.titleMedium,
-                ),
-              ),
-              Icon(Icons.chevron_right_rounded,
-                  color: theme.colorScheme.outline),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -583,14 +564,15 @@ class _HistoryTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Larger status icon for elderly readability
           Container(
-            width: 40,
-            height: 40,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 20, color: color),
+            child: Icon(icon, size: 24, color: color),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -729,6 +711,170 @@ class _Empty extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DailyStats {
+  int taken = 0;
+  int missed = 0;
+  int skipped = 0;
+  int pending = 0;
+  int get total => taken + missed + skipped + pending;
+}
+
+/// Weekly bar chart — 7 stacked bars (Mon–Sun) showing taken (green),
+/// missed (red), and skipped (gray) counts per day. Shown only in the
+/// "This Week" range to give elderly users an at-a-glance weekly pattern.
+class _WeeklyBarChart extends StatelessWidget {
+  const _WeeklyBarChart({
+    required this.dailyData,
+    required this.weekStart,
+    required this.locale,
+  });
+
+  final Map<DateTime, _DailyStats> dailyData;
+  final DateTime weekStart;
+  final String locale;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
+    final maxDoses = days
+        .map((d) => dailyData[d]?.total ?? 0)
+        .fold(0, math.max)
+        .toDouble();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 120,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (final day in days) ...[
+                  Expanded(
+                    child: _BarColumn(
+                      stats: dailyData[day],
+                      maxHeight: 100,
+                      maxDoses: maxDoses,
+                    ),
+                  ),
+                  if (day != days.last) const SizedBox(width: 4),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (final day in days) ...[
+                Expanded(
+                  child: Text(
+                    AppDateUtils.weekdayShort(day.weekday, locale),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                if (day != days.last) const SizedBox(width: 4),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BarColumn extends StatelessWidget {
+  const _BarColumn({
+    required this.stats,
+    required this.maxHeight,
+    required this.maxDoses,
+  });
+
+  final _DailyStats? stats;
+  final double maxHeight;
+  final double maxDoses;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final total = stats?.total ?? 0;
+    if (total == 0 || maxDoses == 0) {
+      return SizedBox(
+        height: maxHeight,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            width: 24,
+            height: 4,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final taken = stats?.taken ?? 0;
+    final missed = stats?.missed ?? 0;
+    final skipped = stats?.skipped ?? 0;
+    final pending = stats?.pending ?? 0;
+
+    final totalHeight = (total / maxDoses) * maxHeight;
+    final takenHeight = (taken / total) * totalHeight;
+    final missedHeight = (missed / total) * totalHeight;
+    final skippedHeight = (skipped / total) * totalHeight;
+
+    return SizedBox(
+      height: maxHeight,
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Container(
+          width: 24,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (pending > 0)
+                Container(
+                  height: (pending / total) * totalHeight,
+                  color: theme.pendingColor.withValues(alpha: 0.3),
+                ),
+              if (skipped > 0)
+                Container(
+                  height: skippedHeight,
+                  color: theme.colorScheme.outline.withValues(alpha: 0.5),
+                ),
+              if (missed > 0)
+                Container(
+                  height: missedHeight,
+                  color: theme.missedColor,
+                ),
+              if (taken > 0)
+                Container(
+                  height: takenHeight,
+                  color: theme.successColor,
+                ),
+            ],
+          ),
         ),
       ),
     );
