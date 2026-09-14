@@ -5,6 +5,7 @@ import { AppError } from "@/lib/errors.js";
 import { writeAudit } from "@/lib/audit.js";
 import { assertRole } from "@/lib/rbac.js";
 import { tenantDb } from "@/lib/tenant.js";
+import { hasFamilyAccess } from "@/modules/family/service.js";
 import type { RequestContext } from "@/lib/context.js";
 import type { createPatientSchema, listPatientsQuerySchema } from "./schema.js";
 
@@ -72,7 +73,9 @@ export async function getPatient(ctx: RequestContext, id: string) {
     select: PATIENT_SELECT,
   });
   if (ctx.org!.role === "PATIENT" && patient.ownerUserId !== ctx.userId) {
-    throw new AppError("FORBIDDEN", "You can only view your own record.");
+    if (!(await hasFamilyAccess(ctx, id, "VIEW_PROFILE"))) {
+      throw new AppError("FORBIDDEN", "You can only view your own record.");
+    }
   }
   return patient;
 }

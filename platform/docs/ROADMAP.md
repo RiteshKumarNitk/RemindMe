@@ -122,7 +122,7 @@ Design → Backend → Web → Flutter integration" (spec §41).
 - Recall ordering uses `position = -1` ("next"); a multi-recall tie-breaker
   (`recallPriority`) is deferred.
 
-## Phase 3 — Clinical & patient data  ◐ PARTIAL (patients, consultations, prescriptions, audit done 2026-09-14)
+## Phase 3 — Clinical & patient data  ◐ PARTIAL (patients, consultations, prescriptions, audit, family access done 2026-09-14)
 
 - [x] **`patients`** — minimal (list/search/create; added ahead of schedule in
       Phase 4 because booking needed it). No family linkage beyond the single
@@ -141,17 +141,38 @@ Design → Backend → Web → Flutter integration" (spec §41).
       for a consultation (auto-created on first item); removable until signed.
 - [x] **`audit`** read API + a web page (`CLINIC_ADMIN`, own org, last 100).
 - [x] Reschedule UI (the API existed since Phase 2; no screen until now).
+- [x] **`family`** — `PatientAccessGrant` (+ `FamilyRelationship` for the
+      human-readable relation) now has real CRUD:
+      `POST/GET /orgs/:orgId/patients/:patientId/access-grants`,
+      `DELETE .../:grantId`, `GET /orgs/:orgId/my-access` ("patients I can
+      access as family"). Created only by the patient (self-owned) or
+      `CLINIC_ADMIN`; grantee must already have a platform account
+      (email-lookup, same as `patients.ownerEmail`); re-granting the same
+      grantee upserts instead of duplicating. Wired into reads:
+      `patients.getPatient` checks `VIEW_PROFILE`,
+      `consultations.getConsultation` checks `VIEW_MEDICATIONS` (no separate
+      "view consultation" permission exists in the schema). **Not** wired:
+      `MANAGE_APPOINTMENTS`/`VIEW_APPOINTMENTS` into the `appointments`
+      module — a guardian can't yet book/view a dependent's appointments via
+      a grant, left out deliberately to avoid touching the SERIALIZABLE
+      booking path without dedicated coverage. Web: patient detail page
+      (`/patients/:id`) for admins/owners to manage grants; `/family` page
+      for a PATIENT-role user to see what's been shared with them.
 - [x] Tests: `consultations` (7 — assigned-doctor write, unassigned-doctor
       403, RECEPTIONIST 403, admin capability-gated read, patient-owner
-      read-only, prescription item add/remove + audit, sign-locks-edits).
-      **79/79 tests passing overall**, `tsc` clean, `next build` green.
-- [ ] Not done: `family` (relationships + access grants — `PatientAccessGrant`
-      exists in schema, unused), `documents` (metadata table exists, no
-      upload endpoint), `medications` /`/api/sync/medications` (the DoseWise
-      sync target), reports/export, the `notifications` module beyond the
-      dispatcher (no `/api/me/notifications` read endpoint yet), `openapi.yaml`
-      generation, field-level projection tests for RECEPTIONIST beyond
-      consultations (see MEDICAL_DATA_SECURITY.md).
+      read-only, prescription item add/remove + audit, sign-locks-edits),
+      `family` (8 — no-grant 403, unknown-email 422, self-grant 422,
+      RECEPTIONIST 403, VIEW_PROFILE-only still blocks clinical read,
+      re-grant upserts + extends to VIEW_MEDICATIONS, my-access listing,
+      revoke removes access immediately). **87/87 tests passing overall**,
+      `tsc` clean, `next build` green.
+- [ ] Not done: `documents` (metadata table exists, no upload endpoint),
+      `medications` /`/api/sync/medications` (the DoseWise sync target),
+      reports/export, the `notifications` module beyond the dispatcher (no
+      `/api/me/notifications` read endpoint yet), `openapi.yaml` generation,
+      field-level projection tests for RECEPTIONIST beyond consultations (see
+      MEDICAL_DATA_SECURITY.md), family-grant invites for emails without an
+      existing account, family access wired into appointments.
 
 ## Phase 4 — Web application  ✅ MVP DONE (2026-09-14)
 

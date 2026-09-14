@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { listPatients } from "@/modules/patients/service.js";
 import { Button, Card, EmptyState, ErrorNote, Field, SectionTitle, table, td, th } from "../../ui.js";
@@ -42,7 +43,9 @@ export default async function PatientsPage({
               {patients.map((p) => (
                 <tr key={p.id}>
                   <td style={td}>
-                    {p.firstName} {p.lastName}
+                    <Link href={`/dashboard/${orgId}/patients/${p.id}`} style={{ color: "var(--indigo)" }}>
+                      {p.firstName} {p.lastName}
+                    </Link>
                   </td>
                   <td style={td}>{p.phone ?? "—"}</td>
                   <td style={td}>{p.email ?? "—"}</td>

@@ -173,6 +173,19 @@ Grants can expire (`expiresAt`) and be revoked (`revokedAt`). No permission is
 implied by the family link alone — joining a family exposes nothing until a
 grant is created (carried over from DoseWise's default-private model).
 
+**Implemented (2026-09-14)**: `src/modules/family/service.ts` — created only
+by the patient (self-owned) or a `CLINIC_ADMIN`
+(`POST/GET /orgs/:orgId/patients/:patientId/access-grants`, `DELETE .../:grantId`),
+revocable, re-granting the same grantee upserts rather than duplicates. The
+grantee must already hold a platform account (email-lookup, same pattern as
+linking a patient's own `ownerEmail`) — inviting someone who doesn't have one
+yet is not built. Wired into reads: `patients.getPatient` checks
+`VIEW_PROFILE`; `consultations.getConsultation` checks `VIEW_MEDICATIONS`
+(the schema has no separate "view consultation" permission, and a
+consultation's GET already bundles its prescriptions). `MANAGE_APPOINTMENTS` /
+`VIEW_APPOINTMENTS` are **not yet** wired into the appointments module — a
+guardian cannot yet book/view a dependent's appointments through a grant.
+
 ## SUPER_ADMIN guard rails
 
 - Not a `Membership` role; backed by `User.isPlatformAdmin`.

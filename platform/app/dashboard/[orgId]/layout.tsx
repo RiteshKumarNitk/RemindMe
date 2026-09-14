@@ -33,6 +33,7 @@ const NAV: Record<string, Array<{ href: string; label: string }>> = {
   PATIENT: [
     { href: "", label: "Overview" },
     { href: "/appointments", label: "My appointments" },
+    { href: "/family", label: "Family access" },
   ],
 };
 

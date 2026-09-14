@@ -3,6 +3,7 @@ import { AppError } from "@/lib/errors.js";
 import { writeAudit } from "@/lib/audit.js";
 import { hasCapability } from "@/lib/rbac.js";
 import { tenantDb } from "@/lib/tenant.js";
+import { hasFamilyAccess } from "@/modules/family/service.js";
 import type { RequestContext } from "@/lib/context.js";
 import type { saveConsultationSchema } from "./schema.js";
 
@@ -28,11 +29,18 @@ async function loadAppointmentForAccess(ctx: RequestContext, appointmentId: stri
   });
 }
 
-function assertRead(ctx: RequestContext, appt: { doctor: { userId: string }; patient: { ownerUserId: string | null } }) {
+async function assertRead(
+  ctx: RequestContext,
+  appt: { patientId: string; doctor: { userId: string }; patient: { ownerUserId: string | null } },
+) {
   const role = ctx.org!.role;
   if (role === "DOCTOR" && (appt.doctor.userId === ctx.userId || hasCapability(ctx, "CLINICAL_RECORD_READ"))) return;
   if (role === "CLINIC_ADMIN" && hasCapability(ctx, "CLINICAL_RECORD_READ")) return;
-  if (role === "PATIENT" && appt.patient.ownerUserId === ctx.userId) return;
+  if (role === "PATIENT") {
+    if (appt.patient.ownerUserId === ctx.userId) return;
+    // Guardian/family access (MEDICAL_DATA_SECURITY.md "Family / dependents").
+    if (await hasFamilyAccess(ctx, appt.patientId, "VIEW_MEDICATIONS")) return;
+  }
   throw new AppError("FORBIDDEN", "You do not have access to this consultation.");
 }
 
@@ -45,7 +53,7 @@ function assertWrite(ctx: RequestContext, appt: { doctor: { userId: string } }) 
 
 export async function getConsultation(ctx: RequestContext, appointmentId: string) {
   const appt = await loadAppointmentForAccess(ctx, appointmentId);
-  assertRead(ctx, appt);
+  await assertRead(ctx, appt);
   const t = tenantDb(ctx);
   return t.consultation.findFirst({
     where: { appointmentId, organizationId: ctx.org!.id },
