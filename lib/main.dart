@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'dart:ui';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -16,6 +19,7 @@ import 'data/repositories/dose_repository.dart';
 import 'data/repositories/medicine_repository.dart';
 import 'data/repositories/settings_repository.dart';
 import 'data/repositories/sync_repository.dart';
+import 'services/account_deletion_service.dart';
 import 'services/auth_service.dart';
 import 'services/dose_action_handler.dart';
 import 'services/dose_scheduler.dart';
@@ -25,21 +29,73 @@ import 'services/sync/sync_service.dart';
 import 'services/voice_service.dart';
 import 'state/app_state.dart';
 
+/// Flipped to true once `FirebaseCrashlytics` is safely initialized (i.e.
+/// Firebase itself came up). Every error handler below checks this before
+/// touching Crashlytics, so a device with Firebase unreachable/unconfigured
+/// degrades to local-only `developer.log` — exactly like every other
+/// Firebase-touching path in this app (see AuthService/FirebaseBackend).
+bool _crashlyticsReady = false;
+
 void main() {
   // Guard the whole boot so a failure in any single step can't leave the user
   // staring at a blank window — `runApp` still runs from `_bootstrap`.
   runZonedGuarded(_bootstrap, (e, st) {
-    debugPrint('Uncaught zone error: $e\n$st');
+    developer.log('Uncaught zone error', name: 'FlutterError', error: e, stackTrace: st);
+    if (_crashlyticsReady) {
+      FirebaseCrashlytics.instance.recordError(e, st, fatal: true);
+    }
   });
+}
+
+/// Makes Flutter-framework errors (widget build/layout/paint exceptions) and
+/// errors escaping Flutter's own error zone visible in `developer.log`
+/// (always) and, once Firebase/Crashlytics has initialized, reported to
+/// Crashlytics too — this does not change how Flutter recovers from the
+/// error (the default red/grey error widget behavior is preserved by still
+/// calling `presentError`).
+void _installErrorHandlers() {
+  final previousOnError = FlutterError.onError;
+  FlutterError.onError = (FlutterErrorDetails details) {
+    developer.log(
+      'FlutterError',
+      name: 'FlutterError',
+      error: details.exception,
+      stackTrace: details.stack,
+    );
+    if (_crashlyticsReady) {
+      FirebaseCrashlytics.instance.recordFlutterError(details);
+    }
+    previousOnError?.call(details);
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    developer.log('Platform dispatcher error', name: 'FlutterError', error: error, stackTrace: stack);
+    if (_crashlyticsReady) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    }
+    return false; // let the zone guard / OS also see it
+  };
+}
+
+/// Enables Crashlytics collection (off in debug builds — local `developer.log`
+/// already covers dev-time visibility, and debug noise isn't useful in the
+/// dashboard) and flips [_crashlyticsReady] so the handlers above start
+/// forwarding. Wrapped in the same timeout-guarded, swallow-on-failure
+/// pattern as every other boot step — Crashlytics being unavailable must
+/// never block the reminder app from starting.
+Future<void> _initCrashlytics() async {
+  await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode);
+  _crashlyticsReady = true;
 }
 
 Future<void> _bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _installErrorHandlers();
   debugPrint('[Boot] Starting bootstrap...');
 
   await _guard('timezone', () => NotificationService.initTimeZone());
   await _guard('firebase', () => Firebase.initializeApp());
   debugPrint('[Boot] Firebase initialized');
+  await _guard('crashlytics', _initCrashlytics);
 
   final prefs = await SharedPreferences.getInstance();
   final settings = SettingsController(SettingsRepository(prefs));
@@ -89,6 +145,13 @@ Future<void> _bootstrap() async {
     sync: sync,
   );
   sync.onDataChanged = () => appState.refresh();
+  final accountDeletion = AccountDeletionService(
+    db: db,
+    prefs: prefs,
+    auth: auth,
+    sync: sync,
+    notifications: notifications,
+  );
 
   await _guard(
     'notifications.init',
@@ -120,6 +183,7 @@ Future<void> _bootstrap() async {
     settings: settings,
     sync: sync,
     auth: auth,
+    accountDeletion: accountDeletion,
   ));
 
   // Everything below happens AFTER the UI is on screen. Nothing here may block

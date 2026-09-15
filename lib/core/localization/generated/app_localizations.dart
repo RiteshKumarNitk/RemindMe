@@ -734,6 +734,12 @@ abstract class AppLocalizations {
   /// **'Search medicines...'**
   String get medSearch;
 
+  /// No description provided for @medSearchClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get medSearchClear;
+
   /// No description provided for @medSearchEmpty.
   ///
   /// In en, this message translates to:
@@ -1759,6 +1765,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Signed out successfully'**
   String get profileSignedOut;
+
+  /// No description provided for @profileDangerZone.
+  ///
+  /// In en, this message translates to:
+  /// **'Danger zone'**
+  String get profileDangerZone;
+
+  /// No description provided for @profileDeleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete my account & data'**
+  String get profileDeleteAccount;
+
+  /// No description provided for @profileDeleteAccountDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently erase everything on this device, and your account if signed in'**
+  String get profileDeleteAccountDesc;
+
+  /// No description provided for @profileDeleteAccountConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete everything?'**
+  String get profileDeleteAccountConfirmTitle;
+
+  /// No description provided for @profileDeleteAccountConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently deletes every medicine, dose and history entry stored on this device. This cannot be undone.'**
+  String get profileDeleteAccountConfirmBody;
+
+  /// No description provided for @profileDeleteAccountConfirmBodySignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'It will also delete your signed-in account and remove you from any family you\'ve joined.'**
+  String get profileDeleteAccountConfirmBodySignedIn;
+
+  /// No description provided for @profileDeleteAccountButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete everything'**
+  String get profileDeleteAccountButton;
+
+  /// No description provided for @profileDeleteAccountReauthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Please sign in again'**
+  String get profileDeleteAccountReauthTitle;
+
+  /// No description provided for @profileDeleteAccountReauthBody.
+  ///
+  /// In en, this message translates to:
+  /// **'For your security, deleting your account needs a recent sign-in. Sign in again, then try again.'**
+  String get profileDeleteAccountReauthBody;
+
+  /// No description provided for @profileDeleteAccountReauthButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in again'**
+  String get profileDeleteAccountReauthButton;
+
+  /// No description provided for @profileDeleteAccountDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything has been deleted.'**
+  String get profileDeleteAccountDone;
+
+  /// No description provided for @profileDeleteAccountPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data on this device was deleted. Some account cleanup couldn\'t finish — you can try again later while online.'**
+  String get profileDeleteAccountPartial;
+
+  /// No description provided for @profileDeleteAccountOwnerNote.
+  ///
+  /// In en, this message translates to:
+  /// **'You created a family household, so a small amount of membership info stays until another member removes it.'**
+  String get profileDeleteAccountOwnerNote;
 
   /// No description provided for @profileSignInPrompt.
   ///

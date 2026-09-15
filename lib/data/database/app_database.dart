@@ -226,6 +226,23 @@ class AppDatabase {
     );
   }
 
+  /// Deletes every row from every local table (account/data deletion — see
+  /// `AccountDeletionService`). `medicines` is cleared last-to-first isn't
+  /// required: `medicine_schedules`/`medicine_doses` cascade from
+  /// `medicines` via `ON DELETE CASCADE`, but the three sync tables have no
+  /// FK to `medicines` (they store a plain `medicine_id` int so a tombstone
+  /// can outlive its medicine), so they're cleared explicitly. Runs in one
+  /// transaction — either everything is wiped or nothing is.
+  Future<void> wipeAllData() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('medicines');
+      await txn.delete('sync_tombstones');
+      await txn.delete('sync_outbox');
+      await txn.delete('sync_dose_tombstones');
+    });
+  }
+
   Future<void> close() async {
     await _db?.close();
     _db = null;

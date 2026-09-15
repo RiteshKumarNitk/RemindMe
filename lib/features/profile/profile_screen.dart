@@ -2,9 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../app.dart' show RootScreen;
 import '../../core/localization/generated/app_localizations.dart';
+import '../../services/account_deletion_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/settings_controller.dart';
+import '../../state/app_state.dart';
 import '../settings/settings_screen.dart';
 
 /// Profile screen: shows user info, allows editing name/age, and logout.
@@ -381,6 +384,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 24),
+
+            // Danger zone
+            _SectionHeader(l10n.profileDangerZone),
+            Card(
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                minTileHeight: 60,
+                leading: Icon(
+                  Icons.delete_forever_rounded,
+                  size: 28,
+                  color: theme.colorScheme.error,
+                ),
+                title: Text(
+                  l10n.profileDeleteAccount,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+                subtitle: Text(l10n.profileDeleteAccountDesc),
+                onTap: () => _confirmDeleteAccount(context, auth, l10n),
+              ),
+            ),
           ],
         ),
       ),
@@ -449,6 +475,123 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
     }
+  }
+
+  Future<void> _confirmDeleteAccount(
+    BuildContext context,
+    AuthService auth,
+    AppLocalizations l10n,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.profileDeleteAccountConfirmTitle),
+        content: Text(
+          auth.isSignedIn
+              ? '${l10n.profileDeleteAccountConfirmBody}\n\n${l10n.profileDeleteAccountConfirmBodySignedIn}'
+              : l10n.profileDeleteAccountConfirmBody,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.btnCancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.profileDeleteAccountButton),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await _runDeletion(context, l10n);
+  }
+
+  Future<void> _runDeletion(BuildContext context, AppLocalizations l10n) async {
+    final deletion = context.read<AccountDeletionService>();
+    final auth = context.read<AuthService>();
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final result = await deletion.deleteEverything();
+
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop(); // close the spinner
+
+    if (result.requiresRecentLogin) {
+      final retry = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(l10n.profileDeleteAccountReauthTitle),
+          content: Text(l10n.profileDeleteAccountReauthBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.btnCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.profileDeleteAccountReauthButton),
+            ),
+          ],
+        ),
+      );
+      if (retry == true && context.mounted) {
+        final user = await auth.signInWithGoogle();
+        if (user != null && context.mounted) {
+          await _runDeletion(context, l10n);
+        }
+      }
+      // Local data was NOT wiped on a requires-recent-login outcome (the
+      // cloud steps ran first and this path returns before local wipe would
+      // make sense to retry blind) — nothing further to do if declined.
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    final messages = <String>[
+      result.fullyCleaned ? l10n.profileDeleteAccountDone : l10n.profileDeleteAccountPartial,
+      if (!result.householdPresenceRemoved) l10n.profileDeleteAccountOwnerNote,
+    ];
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.profileDeleteAccountConfirmTitle),
+        content: Text(messages.join('\n\n')),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.btnClose),
+          ),
+        ],
+      ),
+    );
+
+    if (!context.mounted) return;
+
+    // Local settings/DB are now empty on disk — reload the in-memory
+    // controllers to match, then rebuild the whole app from a fresh
+    // RootScreen so it re-evaluates signed-in/onboarding state (both now
+    // false) and lands back on Login, not a stale Home screen. Captured
+    // before the awaits below, not read from `context` after one.
+    final settingsCtrl = context.read<SettingsController>();
+    final appStateCtrl = context.read<AppState>();
+    await settingsCtrl.load();
+    await appStateCtrl.refresh();
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const RootScreen()),
+      (route) => false,
+    );
   }
 }
 

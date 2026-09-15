@@ -5,7 +5,9 @@ this document (add a line to the [Changelog](#changelog) and adjust the relevant
 section below). Keep the changelog newest-first.
 
 Companion docs: [`README.md`](README.md) (setup, database, permissions,
-deployment) and `.freebuff/run.md` (how to run the web preview).
+deployment), [`docs/PROJECT_DOCUMENTATION.md`](docs/PROJECT_DOCUMENTATION.md)
+(master record: everything built, fixed, verified, and direction assessment),
+and `.freebuff/run.md` (how to run the web preview).
 
 ---
 
@@ -214,12 +216,44 @@ deployment) and `.freebuff/run.md` (how to run the web preview).
 - **Localization** — English + हिंदी via ARB (`app_en.arb`, `app_hi.arb`),
   generated with `flutter gen-l10n`.
 
+## 15. Account & data management
+
+- **Delete my account & data** — a "Danger zone" section on Profile.
+  Permanently wipes every medicine, dose and setting on the device
+  regardless of sign-in state; if signed in, also best-effort deletes the
+  user's household membership (a household owner's record can only be
+  partially cleared — Firestore rules prevent an owner from removing their
+  own record, to avoid orphaning the household — the app tells the user
+  this happened) and the Firebase Auth account itself, with a re-sign-in
+  prompt if Firebase requires a fresher sign-in first. One confirmation
+  dialog, then the app returns to Login.
+- **Crash reporting** — Firebase Crashlytics, off in debug builds, feeding
+  from the same error handlers that already logged locally (nothing
+  duplicated, nothing replaced).
+
 ---
 
 ## Changelog
 
 Newest first. Format: `date — what changed (why)`.
 
+- **2026-09-15 — Account deletion + crash reporting**: in-app "delete my
+  account & data" flow (local wipe always; best-effort household + Firebase
+  Auth cleanup when signed in, with a household-owner edge case handled
+  honestly rather than silently failing) — closes a likely Play Store
+  submission blocker. Firebase Crashlytics wired into the existing error
+  handlers. Forced a Firebase package version bump
+  (`firebase_auth`/`cloud_firestore`/`firebase_messaging`) to resolve a
+  native plugin-version-skew build break, unrelated to this app's own code.
+  63/63 tests passing (+5).
+- **2026-09-15 — Production hardening pass**: found and redacted a real
+  committed secret (upload-keystore password in `PLAY_STORE_RELEASE.md` —
+  still needs rotating), stopped logging the user's email, disabled Android
+  Auto Backup for the local health data (`allowBackup="false"`), added
+  framework-error logging (`FlutterError.onError`), pinned the Firebase
+  deploy project (`.firebaserc`/`firebase.json`), prepared (not yet
+  enabled) R8 keep rules, fixed one accessibility gap. See
+  `docs/PRODUCTION_READINESS_REPORT.md` for the full audit.
 - **2026-09-14 — Home screen widget improvements**: urgency-colored backgrounds
   (red/orange/teal/green), progress counter ("3/6 done"), large 12h time
   display (22sp), bold medicine name (26sp black), auto-refresh on every

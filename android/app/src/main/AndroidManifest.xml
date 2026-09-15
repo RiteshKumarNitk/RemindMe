@@ -21,7 +21,15 @@
     <application
         android:label="DoseWise"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false">
+        <!-- No android:allowBackup means Android defaults to true with no
+             exclusion rules, which would let Android Auto Backup silently
+             copy the local SQLite DB (medicine names + dose/health history)
+             to the user's Google Drive. The app already ships its own
+             explicit export/backup flow (Settings → Backup & Restore), so
+             the OS-level backup channel is disabled outright rather than
+             carved out with data-extraction rules. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -232,6 +232,23 @@ class FakeBackend implements RemoteBackend {
 
   void emitDoses(List<RemoteDose> items) => _watch.add(items);
 
+  /// Mirrors `FirebaseBackend`'s owner-can't-self-delete rule for tests.
+  String householdRole = 'owner';
+  bool householdPresenceDeleted = false;
+  bool householdFcmCleared = false;
+
+  @override
+  Future<bool> deleteMyHouseholdPresence() async {
+    if (household == null) return true;
+    if (householdRole == 'owner') {
+      householdFcmCleared = true;
+      return false;
+    }
+    householdPresenceDeleted = true;
+    household = null;
+    return true;
+  }
+
   @override
   Future<void> dispose() async {}
 }

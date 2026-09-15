@@ -264,6 +264,29 @@ class FirebaseBackend implements RemoteBackend {
   }
 
   @override
+  Future<bool> deleteMyHouseholdPresence() async {
+    final code = _householdCode;
+    final uid = _authRef.currentUser?.uid;
+    if (code == null || uid == null) return true;
+    final memberRef = _fs
+        .collection('households')
+        .doc(code)
+        .collection('members')
+        .doc(uid);
+    final snap = await memberRef.get();
+    if (!snap.exists) return true;
+    if (snap.data()?['role'] == 'owner') {
+      // firestore.rules forbids an owner deleting their own member doc (it
+      // would leave the household ownerless) — clear what a self-update is
+      // still allowed to touch instead.
+      await memberRef.update({'fcmToken': FieldValue.delete()});
+      return false;
+    }
+    await memberRef.delete();
+    return true;
+  }
+
+  @override
   Future<void> dispose() async {
     // Firebase handles its own connection lifecycle.
   }

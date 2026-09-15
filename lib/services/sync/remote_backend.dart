@@ -52,5 +52,15 @@ abstract class RemoteBackend {
   /// Live stream of dose changes (used by watchers for missed-dose alerts).
   Stream<List<RemoteDose>> watchDoses();
 
+  /// Best-effort cleanup of this user's presence in their household, for
+  /// account/data deletion (`AccountDeletionService`). Returns `true` if the
+  /// member record itself was removed, `false` if it could only be
+  /// partially cleared (a household owner's member doc can't be
+  /// self-deleted — see `firestore.rules` — so only revocable fields like
+  /// the FCM token are cleared and the record is left in place; callers
+  /// should tell the user this happened). Returns `true` doing nothing if
+  /// the user isn't in a household.
+  Future<bool> deleteMyHouseholdPresence();
+
   Future<void> dispose();
 }

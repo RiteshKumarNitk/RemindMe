@@ -17,6 +17,13 @@ caregiver view adherence and receive missed-dose push alerts.
 
 > 📋 A maintained, itemised feature inventory with changelog lives in
 > [`FEATURES.md`](FEATURES.md) — keep it updated whenever features change.
+> 📘 The master project record (what was built, bugs fixed, what is verified
+> vs. unverified, direction assessment) lives in
+> [`docs/PROJECT_DOCUMENTATION.md`](docs/PROJECT_DOCUMENTATION.md).
+> 🛠️ A comprehensive, code-verified technical reference (architecture, every
+> screen, the full DB schema, notification internals, Firebase/sync/auth
+> internals, tests, build config) lives in
+> [`docs/TECHNICAL_DOCUMENTATION.md`](docs/TECHNICAL_DOCUMENTATION.md).
 
 - **Home dashboard** – greeting, "Next Medicine" card with a huge **TAKE MEDICINE**
   button, today's schedule, and Taken / Remaining / Missed counters.
