@@ -66,3 +66,16 @@ export async function requireOrgContext(orgId: string): Promise<RequestContext> 
   ctx.org = org;
   return ctx;
 }
+
+/**
+ * Requires a signed-in `User.isPlatformAdmin` — the SUPER_ADMIN surface
+ * (MEDICAL_DATA_SECURITY.md "SUPER_ADMIN — no routine clinical access"):
+ * platform/tenant operations only, no membership in any clinic, no clinical
+ * data access. A non-admin gets 404, not 403 — same "don't confirm this
+ * surface exists" posture as cross-tenant lookups elsewhere.
+ */
+export async function requireSuperAdmin(): Promise<RequestContext> {
+  const ctx = await requireWebUser();
+  if (!ctx.isPlatformAdmin) notFound();
+  return ctx;
+}

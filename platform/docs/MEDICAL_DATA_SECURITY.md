@@ -93,8 +93,16 @@ clinical.
 
 `SUPER_ADMIN` (`User.isPlatformAdmin`) holds **no `Membership`** in any clinic,
 so the tenant-scoped client returns nothing clinical for them. They manage
-tenants and platform health only. The single sanctioned path to clinical data
-is a future `SUPPORT_ACCESS` flow: explicitly initiated, reason-required,
+tenants and platform health only — concretely, the `/admin` console
+(`src/modules/superadmin/service.ts`, added 2026-09-15): list/search
+clinics, suspend/reactivate a clinic, view a clinic's membership roster and
+counts, and a platform-wide audit feed. That module uses the unscoped `db`
+client (the one deliberate exception to `tenantDb()`) but only ever touches
+`Organization`/`Membership`/`AuditLog` — never `Consultation`/`Prescription*`/
+`MedicalDocument`/`Medication*`/`VitalReading`. There is no API or UI path
+that grants `isPlatformAdmin` — it's a manual DB flag, deliberately with no
+self-service route. The single sanctioned path to *clinical* data is a
+future `SUPPORT_ACCESS` flow: explicitly initiated, reason-required,
 time-boxed, clinic-notified, and fully audited. It does not exist in MVP.
 
 ## Family / dependents (spec §15)
@@ -137,7 +145,9 @@ CANCELLED/NO_SHOW/CHECKED_IN/COMPLETED`, `PATIENT_CREATED/UPDATED`,
 DOWNLOADED`, `ACCESS_GRANT_CREATED/REVOKED`, `MEMBER_ADDED/REMOVED/ROLE_CHANGED`,
 `MEMBER_CAPABILITY_GRANTED/REVOKED`, `CLINICAL_RECORD_VIEWED` (capability-gated
 reads by staff), `INVITATION_CREATED/ACCEPTED/REVOKED`, `MEDICATION_IMPORTED`,
-`SUPPORT_ACCESS` (platform admin).
+`ORGANIZATION_SUSPENDED/REACTIVATED` (SUPER_ADMIN, recorded on the affected
+org's own audit trail — see `src/modules/superadmin/service.ts`),
+`SUPPORT_ACCESS` (platform admin — not built yet, see ROADMAP.md).
 
 **Never logged**: passwords, password hashes, session/refresh/reset tokens,
 FCM/device tokens, OAuth secrets, full document bytes, or medical free-text

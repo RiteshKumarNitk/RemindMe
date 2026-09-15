@@ -199,10 +199,34 @@ Design → Backend → Web → Flutter integration" (spec §41).
       local production build** through the actual Server Action wire
       protocol — register → login → create clinic → every role page loads,
       including a cross-tenant 404 check at the web layer.
-- [ ] Not done: SUPER_ADMIN screens, restyle pass to the full DoseWise
-      mockup language (currently a clean but original light UI using the
-      indigo/coral tokens, not a pixel match to the Flutter app), responsive/
-      mobile-browser pass, reschedule UI (API exists, no screen yet).
+- [x] **SUPER_ADMIN console** added 2026-09-15 — `src/modules/superadmin/`
+      (`listOrganizations`, `getOrganizationDetail`, `setOrganizationActive`,
+      `listPlatformAuditLog`, `platformStats`), all using the **unscoped**
+      `db` client (the one deliberate exception to `tenantDb()`, per
+      SYSTEM_ARCHITECTURE.md) and re-asserting `ctx.isPlatformAdmin`
+      themselves regardless of route-level gating. API: `GET/PUT
+      /api/admin/organizations[/:targetOrgId[/status]]`, `GET
+      /api/admin/audit`, `GET /api/admin/stats` — the dynamic segment is
+      named `targetOrgId`, not `orgId`, specifically so `withApi()`'s
+      auto tenant-resolution (keyed on a literal `params.orgId`) doesn't
+      try and fail to find the admin's own membership in the org being
+      inspected. Web: `/admin` (stats), `/admin/organizations`
+      (list/search/status filter), `/admin/organizations/:orgId` (detail +
+      suspend/reactivate), `/admin/audit` (cross-tenant audit feed); an
+      "Admin panel" link appears on `/dashboard` for a platform admin.
+      **No self-service way to become a platform admin exists** (by
+      design — `User.isPlatformAdmin` is a manual DB flag, set directly in
+      Neon; there is deliberately no API or UI path that grants it). 5 new
+      tests (non-admin 403 on every route, cross-tenant listing,
+      search/status filters, org detail + membership roster, suspend →
+      audited → reactivate → audited, platform-wide audit + stats). **92
+      tests passing overall**, `tsc` clean, `next build` green.
+- [ ] Not done: restyle pass to the full DoseWise mockup language (currently
+      a clean but original light UI using the indigo/coral tokens, not a
+      pixel match to the Flutter app), responsive/mobile-browser pass,
+      reschedule UI (API exists, no screen yet), a `SUPPORT_ACCESS` flow for
+      genuine clinical-data support (MEDICAL_DATA_SECURITY.md already
+      specs this as SUPER_ADMIN's only sanctioned path to PHI — not built).
 
 ## Phase 5 — Flutter integration (mirrors FIREBASE_MIGRATION_PLAN.md)
 

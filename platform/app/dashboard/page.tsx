@@ -25,11 +25,18 @@ export default async function DashboardHome() {
           />
           <strong style={{ fontSize: 18 }}>DoseWise Platform</strong>
         </div>
-        <form action={logoutAction}>
-          <Button variant="ghost" type="submit">
-            Sign out
-          </Button>
-        </form>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {ctx.isPlatformAdmin && (
+            <Link href="/admin" style={{ fontSize: 13, fontWeight: 700 }}>
+              Admin panel
+            </Link>
+          )}
+          <form action={logoutAction}>
+            <Button variant="ghost" type="submit">
+              Sign out
+            </Button>
+          </form>
+        </div>
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
