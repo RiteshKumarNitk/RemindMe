@@ -113,3 +113,94 @@ state.
   to keep the diff reviewable and the risk near zero. Verified: `pnpm typecheck` clean,
   `pnpm build` clean (every existing route — dashboard, admin, API — still generates with no
   errors or warnings).
+
+## ADR-006: Organization public-profile — "listed" and "verified" are separate, independent flags
+
+- **Context.** `PRODUCT_EVOLUTION_PLAN.md` (Phase 3) needs a way for a clinic to publish its
+  profile for public discovery (a later phase), plus the plan's own §15 verification model
+  (`DRAFT`/`PENDING_VERIFICATION`/`VERIFIED`/`REJECTED`/`SUSPENDED`). The audit found
+  `Organization` already has a superadmin-controlled `isActive` boolean (suspend/reactivate) —
+  a third, pre-existing on/off concept.
+- **Decision.** Three independent concerns, not one status field: `Organization.isActive`
+  (existing, superadmin suspend/reactivate — an inactive org can't be used at all),
+  `Organization.isPubliclyListed` (new — whether the org appears in public discovery, set by the
+  clinic admin via a "Publish" action, gated by `canPublishOrganization()`, a pure function
+  requiring name/type/a description/contact info/≥1 location), and
+  `Organization.verificationStatus` (new enum, default `DRAFT` — whether the platform has
+  reviewed the org; **deliberately dropped `SUSPENDED` from the plan's proposed enum values**,
+  since that would duplicate `isActive`'s job under a different name). A clinic can be publicly
+  listed while still unverified — the profile page and (later) public discovery must render an
+  honest "not verified yet" state, never fabricate a badge (per the plan's own §8 instruction:
+  "Do not claim a doctor or hospital is 'verified' unless the system actually verifies them").
+  The verification *review workflow* itself (an admin approving `PENDING_VERIFICATION →
+  VERIFIED`) is deliberately not built yet — out of scope until Phase 10, per the plan's own
+  "don't build a huge manual verification bureaucracy unless required, but make sure the
+  architecture can support it."
+- **Consequences.** Migration `20260916055537_organization_public_profile` is additive only —
+  every existing `Organization` row is valid with no backfill (`verificationStatus` defaults
+  `DRAFT`, `isPubliclyListed` defaults `false`, every new profile field is nullable). The
+  publish-readiness check (`src/modules/clinics/publish.ts`) is a pure function, deliberately
+  separated from the DB-touching service call, specifically so it's unit-testable without a
+  database connection — 8 new tests, no integration/DB test suite run needed to verify this
+  piece.
+
+## ADR-007: Doctor public-profile edit reuses the existing self-edit authorization; no separate publish gate
+
+- **Context.** `PRODUCT_EVOLUTION_PLAN.md` (Phase 4) needs doctor-facing profile fields (photo,
+  qualifications, experience, languages, consultation fee) and a way for a doctor to edit their
+  own profile, not just a clinic admin. `doctors/service.ts`'s `updateDoctor` already had exactly
+  this authorization shape: a doctor may edit their own `DoctorProfile` row, an admin may edit
+  any, and only an admin may deactivate one — built for the existing availability/bio fields, and
+  it required zero changes to extend to the new marketing fields.
+- **Decision.** Added the new fields (`photoUrl`, `qualifications`, `yearsOfExperience`,
+  `languages String[]`, `consultationFeeMinor`, `isPubliclyListed`) directly to
+  `updateDoctorSchema`/`updateDoctor` rather than a parallel "doctor profile" model or a separate
+  authorization path. **No `canPublishDoctor()` gate function** (unlike Organization's
+  `canPublishOrganization()`, ADR-006) — `isPubliclyListed` is a plain checkbox on the same edit
+  form. Reasoning: a doctor's public listing is only ever reachable through their *own*
+  organization's public listing (Phase 5 discovery will nest doctors under their org), so an
+  incomplete doctor profile within a published org is a display-quality concern for that later
+  phase's UI, not a data-integrity concern worth a second blocking-validation system now.
+  `specialty` stays freeform text (unchanged) rather than being promoted to a lookup/enum table —
+  the plan flagged this as "recommended" for reliable discovery filtering, but that's additive
+  work deferred to Phase 5 prep, not required to unblock this phase.
+- **Consequences.** Migration `20260916060502_doctor_public_profile` is additive only, same
+  pattern as ADR-006 (every field nullable/defaulted, zero backfill). New
+  `/dashboard/:orgId/doctors/:doctorId/profile` page, reachable from the doctors list ("Profile"
+  link, admin) and a new "My profile" sidebar link (doctor, own row only) — both hit the same
+  page, which itself re-derives `canEdit` the same way the service layer does
+  (`role === CLINIC_ADMIN || doctor.userId === ctx.userId`) for the UI-level redirect, while the
+  service layer remains the actual enforcement point. `PATCH /api/orgs/:orgId/doctors/:doctorId`
+  picked up the new fields automatically, same as ADR-006's org route.
+
+## ADR-008: Public discovery module — unscoped `db` + named select-allowlist constants, not `tenantDb()`
+
+- **Context.** `PRODUCT_EVOLUTION_PLAN.md` (Phase 5) needs the platform's first genuinely
+  unauthenticated, cross-tenant read surface: anyone, logged in or not, can browse published
+  clinics and doctors. `tenantDb()` can't be used at all here — there is no `ctx.org` to scope
+  by, because there's no session. This is a third instance of the "deliberate exception to
+  tenant scoping" pattern, after ADR-001 (superadmin, trusted+re-checked) — but for the opposite
+  reason: not "a trusted caller needs to see everything," but "nobody is authenticated, so the
+  *query itself* must be the only thing standing between an anonymous caller and every
+  organization's full row."
+- **Decision.** `src/modules/public/service.ts` uses the base `db` client directly, and every
+  function's `where` clause hardcodes `isActive: true, isPubliclyListed: true` (checked on the
+  organization, and — for doctors — on both the doctor row and its parent organization; a
+  doctor's own `isPubliclyListed` flag is necessary but not sufficient). Every `select` is a
+  named, top-level, reviewable constant (`PUBLIC_ORG_SUMMARY_SELECT`,
+  `PUBLIC_ORG_DETAIL_SELECT`, `PUBLIC_DOCTOR_SUMMARY_SELECT`, `PUBLIC_DOCTOR_DETAIL_SELECT`) —
+  never an inline `select` built ad hoc per query — specifically so a future field added to
+  `Organization`/`DoctorProfile` (e.g. something clinical, or an internal-only setting) doesn't
+  silently become public just by existing on the model; it has to be deliberately added to one
+  of these four lists. `getPublicOrganization`/`getPublicDoctor` both throw a plain `NOT_FOUND`
+  for "doesn't exist" and "exists but isn't published" alike — never a distinguishable response,
+  so an anonymous caller can't probe which org slugs exist but are unpublished.
+- **Consequences.** No clinical model (`Consultation`/`Prescription`/`MedicalDocument`/
+  `Medication`/`VitalReading`/`Patient`/`AuditLog`) is reachable from this module at all — not
+  filtered out, structurally absent from every select. `ClinicLocation` has no
+  `isPubliclyVisible` field yet (flagged as a "nice to have" in the plan's §6); every *active*
+  location of a *publicly-listed* org is treated as public for now — a reasonable default,
+  revisit if a clinic wants some locations hidden from discovery while still using others
+  operationally. Also moved the old developer-facing homepage (API module status card) from `/`
+  to `/status`, since `/` is now the patient-facing homepage — nothing was deleted, `/api/health`
+  is unchanged and still linked from both.

@@ -129,6 +129,16 @@ export async function updateDoctor(
         ? { isAcceptingNewPatients: input.isAcceptingNewPatients }
         : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      ...(input.photoUrl !== undefined ? { photoUrl: input.photoUrl } : {}),
+      ...(input.qualifications !== undefined ? { qualifications: input.qualifications } : {}),
+      ...(input.yearsOfExperience !== undefined
+        ? { yearsOfExperience: input.yearsOfExperience }
+        : {}),
+      ...(input.languages !== undefined ? { languages: { set: input.languages } } : {}),
+      ...(input.consultationFeeMinor !== undefined
+        ? { consultationFeeMinor: input.consultationFeeMinor }
+        : {}),
+      ...(input.isPubliclyListed !== undefined ? { isPubliclyListed: input.isPubliclyListed } : {}),
     },
   });
   await writeAudit(ctx, {

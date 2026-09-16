@@ -4,6 +4,55 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-09-16 — Phase 5: public hospital & doctor discovery — the first pages a patient can actually use (uncommitted)
+
+The platform's first unauthenticated, cross-tenant read surface. New `src/modules/public/`
+(schema + service, unscoped `db` client with hardcoded `isActive`/`isPubliclyListed` filters and
+named select-allowlist constants — see ADR-008) backs 4 new public API routes:
+`GET /api/public/organizations` (+ `/:slug`), `GET /api/public/doctors` (+ `/:doctorId`) — search,
+pagination, only ever returning published, active rows and only public-safe fields. New
+patient-facing pages: `/` (rebuilt homepage — search, featured hospitals/doctors, honest empty
+state when nothing's published yet), `/hospitals` (search + list), `/hospitals/:slug` (profile —
+about, contact, locations, doctors), `/doctors` (search + list), `/doctors/:id` (profile — bio,
+qualifications, fee, practice location, a clear "online booking isn't live yet" notice since
+booking is Phase 6). The old developer status page moved from `/` to `/status`, nothing deleted.
+Verified for real, not just build-clean: started the app on a real port (avoided colliding with
+an unrelated project already running on 3000 on this machine), confirmed `/api/health` reaches
+the real Neon DB, hit every new route and got the correct empty-state copy (no clinics published
+yet, which is accurate — this feature is brand new), and confirmed both detail pages 404
+correctly for a nonexistent slug/id. `pnpm typecheck`/`pnpm build` clean. **Not yet committed.**
+
+## 2026-09-16 — Phase 4: doctor public-profile fields + self-edit page (uncommitted)
+
+`DoctorProfile` gains `photoUrl`, `qualifications`, `yearsOfExperience`, `languages` (string
+array), `consultationFeeMinor`, and its own `isPubliclyListed` flag (independent of the
+organization's) — migration `20260916060502_doctor_public_profile`, additive only, applied to
+the dev DB. Reused the existing self-edit authorization in `updateDoctor()` (a doctor can edit
+their own row, an admin can edit any) rather than building anything new — extending the schema
+was the only change needed. New `/dashboard/:orgId/doctors/:doctorId/profile` page (preview +
+edit + a "list publicly" checkbox), linked from the doctors list ("Profile") and, for a doctor
+viewing their own dashboard, a new "My profile" sidebar link. No publish-readiness gate at the
+doctor level (unlike the organization one) — see ADR-007 for why. `PATCH
+/api/orgs/:orgId/doctors/:doctorId` picked up the new fields automatically. Verified: `pnpm
+typecheck` clean, `pnpm build` clean, new route confirmed in the build output. **Not yet
+committed.**
+
+## 2026-09-16 — Phase 3: organization public-profile fields + guided profile/publish page (uncommitted)
+
+`Organization` gains public-profile fields (`orgType`, `tagline`, `about`, `logoUrl`,
+`coverImageUrl`, `publicPhone`, `publicEmail`, `website`), a `verificationStatus` enum (default
+`DRAFT`), and an `isPubliclyListed` gate — migration `20260916055537_organization_public_profile`,
+additive only, applied to the dev DB. New `canPublishOrganization()` pure validator (name/type/
+description/contact/≥1 location required to publish) with 8 unit tests. New
+`/dashboard/:orgId/profile` page (CLINIC_ADMIN-only) — edit the public profile, see a live preview
+of how it'll look once public discovery ships, and publish/unpublish, all built with the new
+Tailwind component kit from Phase 2. New clinic creation now lands on this page instead of the
+bare dashboard. `PATCH /api/orgs/:orgId` picks up the new fields automatically (same Zod schema
+the web app uses). See ADR-006. Verified: `pnpm typecheck` clean, `pnpm build` clean, new unit
+tests 8/8 passing. Full integration suite not run against the shared dev DB (known truncation
+risk, and an unrelated pre-existing test-suite flakiness investigation is still open — see
+`STATUS.md`). **Not yet committed.**
+
 ## 2026-09-16 — Product evolution plan + design-system Phase 2 started (Tailwind v4, shared component kit)
 
 Audited the entire `platform/` codebase against actual source (schema, routes, services, RBAC,

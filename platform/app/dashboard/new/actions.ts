@@ -27,5 +27,5 @@ export async function createOrgAction(formData: FormData) {
     const message = err instanceof AppError ? err.message : "Could not create the clinic.";
     redirect(`/dashboard/new?error=${encodeURIComponent(message)}`);
   }
-  redirect(`/dashboard/${orgId}`);
+  redirect(`/dashboard/${orgId}/profile`);
 }

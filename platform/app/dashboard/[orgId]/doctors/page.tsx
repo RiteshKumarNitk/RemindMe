@@ -45,6 +45,8 @@ export default async function DoctorsPage({
                   <td style={td}>{d.isActive ? "Active" : "Inactive"}</td>
                   <td style={td}>
                     <Link href={`/dashboard/${orgId}/doctors/${d.id}/availability`}>Availability</Link>
+                    {" · "}
+                    <Link href={`/dashboard/${orgId}/doctors/${d.id}/profile`}>Profile</Link>
                   </td>
                 </tr>
               ))}

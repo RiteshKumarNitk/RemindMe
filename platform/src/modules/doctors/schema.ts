@@ -27,6 +27,13 @@ export const updateDoctorSchema = z
     consultationDurationMin: z.number().int().min(5).max(240).optional(),
     isAcceptingNewPatients: z.boolean().optional(),
     isActive: z.boolean().optional(),
+    // Public profile fields (PRODUCT_EVOLUTION_PLAN.md §6/§15 Phase 4).
+    photoUrl: z.string().url().max(1000).nullable().optional(),
+    qualifications: z.string().max(500).nullable().optional(),
+    yearsOfExperience: z.number().int().min(0).max(80).nullable().optional(),
+    languages: z.array(z.string().min(1).max(60)).max(20).optional(),
+    consultationFeeMinor: z.number().int().min(0).max(100_000_00).nullable().optional(),
+    isPubliclyListed: z.boolean().optional(),
   })
   .strict();
 

@@ -5,6 +5,7 @@ import { writeAudit } from "@/lib/audit.js";
 import { assertRole, assertCanEditCapabilities } from "@/lib/rbac.js";
 import { tenantDb } from "@/lib/tenant.js";
 import type { RequestContext } from "@/lib/context.js";
+import { canPublishOrganization } from "./publish.js";
 import type {
   capabilitiesSchema,
   createLocationSchema,
@@ -14,17 +15,31 @@ import type {
   updateSettingsSchema,
 } from "./schema.js";
 
+const PUBLIC_PROFILE_SELECT = {
+  id: true,
+  name: true,
+  slug: true,
+  timezone: true,
+  isActive: true,
+  createdAt: true,
+  orgType: true,
+  tagline: true,
+  about: true,
+  logoUrl: true,
+  coverImageUrl: true,
+  publicPhone: true,
+  publicEmail: true,
+  website: true,
+  verificationStatus: true,
+  isPubliclyListed: true,
+} as const;
+
 export async function getOrganization(ctx: RequestContext) {
   const t = tenantDb(ctx);
   const org = await t.organization.findFirstOrThrow({
     where: { id: ctx.org!.id },
     select: {
-      id: true,
-      name: true,
-      slug: true,
-      timezone: true,
-      isActive: true,
-      createdAt: true,
+      ...PUBLIC_PROFILE_SELECT,
       settings: true,
       locations: { where: { isActive: true }, orderBy: { name: "asc" } },
     },
@@ -47,8 +62,18 @@ export async function updateOrganization(
     data: {
       ...(input.name !== undefined ? { name: input.name.trim() } : {}),
       ...(input.timezone !== undefined ? { timezone: input.timezone } : {}),
+      ...(input.orgType !== undefined ? { orgType: input.orgType } : {}),
+      ...(input.tagline !== undefined ? { tagline: input.tagline?.trim() || null } : {}),
+      ...(input.about !== undefined ? { about: input.about?.trim() || null } : {}),
+      ...(input.logoUrl !== undefined ? { logoUrl: input.logoUrl } : {}),
+      ...(input.coverImageUrl !== undefined ? { coverImageUrl: input.coverImageUrl } : {}),
+      ...(input.publicPhone !== undefined ? { publicPhone: input.publicPhone?.trim() || null } : {}),
+      ...(input.publicEmail !== undefined
+        ? { publicEmail: input.publicEmail?.trim().toLowerCase() || null }
+        : {}),
+      ...(input.website !== undefined ? { website: input.website } : {}),
     },
-    select: { id: true, name: true, slug: true, timezone: true, isActive: true },
+    select: PUBLIC_PROFILE_SELECT,
   });
   await writeAudit(ctx, {
     action: "ORGANIZATION_UPDATED",
@@ -58,6 +83,65 @@ export async function updateOrganization(
     after: { name: org.name, timezone: org.timezone },
   });
   return org;
+}
+
+/**
+ * Flip the org's public-discovery listing on/off. Publishing does NOT grant
+ * `verificationStatus: VERIFIED` — verification is a separate, later,
+ * platform-reviewed concern (PRODUCT_EVOLUTION_PLAN.md §11/§15 Phase 10). An
+ * org can be publicly listed while still `DRAFT`-verified; discovery pages
+ * (Phase 5) must render an "unverified" state honestly, never a fake badge.
+ */
+export async function publishOrganization(ctx: RequestContext) {
+  assertRole(ctx, "CLINIC_ADMIN");
+  const t = tenantDb(ctx);
+  const org = await t.organization.findFirstOrThrow({
+    where: { id: ctx.org!.id },
+    select: { ...PUBLIC_PROFILE_SELECT, _count: { select: { locations: { where: { isActive: true } } } } },
+  });
+
+  const readiness = canPublishOrganization({
+    name: org.name,
+    orgType: org.orgType,
+    tagline: org.tagline,
+    about: org.about,
+    publicPhone: org.publicPhone,
+    publicEmail: org.publicEmail,
+    activeLocationCount: org._count.locations,
+  });
+  if (!readiness.ready) {
+    throw new AppError("VALIDATION_FAILED", readiness.reasons.join(" "));
+  }
+
+  const updated = await t.organization.update({
+    where: { id: ctx.org!.id },
+    data: { isPubliclyListed: true },
+    select: PUBLIC_PROFILE_SELECT,
+  });
+  await writeAudit(ctx, {
+    action: "ORGANIZATION_PUBLISHED",
+    entityType: "Organization",
+    entityId: updated.id,
+    after: { isPubliclyListed: true },
+  });
+  return updated;
+}
+
+export async function unpublishOrganization(ctx: RequestContext) {
+  assertRole(ctx, "CLINIC_ADMIN");
+  const t = tenantDb(ctx);
+  const updated = await t.organization.update({
+    where: { id: ctx.org!.id },
+    data: { isPubliclyListed: false },
+    select: PUBLIC_PROFILE_SELECT,
+  });
+  await writeAudit(ctx, {
+    action: "ORGANIZATION_UNPUBLISHED",
+    entityType: "Organization",
+    entityId: updated.id,
+    after: { isPubliclyListed: false },
+  });
+  return updated;
 }
 
 export async function getSettings(ctx: RequestContext) {

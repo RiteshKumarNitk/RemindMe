@@ -1,9 +1,27 @@
 import { z } from "zod";
 
+export const organizationTypeEnum = z.enum([
+  "HOSPITAL",
+  "CLINIC",
+  "DIAGNOSTIC_CENTER",
+  "POLYCLINIC",
+  "OTHER",
+]);
+
 export const updateOrgSchema = z
   .object({
     name: z.string().min(2).max(160).optional(),
     timezone: z.string().min(1).max(64).optional(),
+    // Public profile fields (PRODUCT_EVOLUTION_PLAN.md §6/§15 Phase 3).
+    // `null` explicitly clears a field; `undefined` (omitted) leaves it as-is.
+    orgType: organizationTypeEnum.nullable().optional(),
+    tagline: z.string().max(200).nullable().optional(),
+    about: z.string().max(4000).nullable().optional(),
+    logoUrl: z.string().url().max(1000).nullable().optional(),
+    coverImageUrl: z.string().url().max(1000).nullable().optional(),
+    publicPhone: z.string().max(40).nullable().optional(),
+    publicEmail: z.string().email().max(320).nullable().optional(),
+    website: z.string().url().max(500).nullable().optional(),
   })
   .strict();
 

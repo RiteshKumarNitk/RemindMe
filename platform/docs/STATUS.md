@@ -35,6 +35,8 @@ foundation underneath both.
 | **Multi-clinic isolation** | One clinic can never see another clinic's data — tested and enforced, not just assumed. |
 | **Roles & permissions** | Admin / Doctor / Receptionist / Patient each see only what their role should — including a rule that no admin can grant themselves extra medical-record access (must be a second admin). |
 | **Clinic setup** | A clinic admin can register their organization, add locations, add doctors and staff. |
+| **Organization & doctor public profiles** | A clinic admin can fill in a real public-facing clinic profile (type, description, branding, contact info) and publish/unpublish it; each doctor can fill in their own professional profile (photo, qualifications, experience, languages, fee) and choose to be listed. |
+| **Public hospital & doctor search** | Anyone — no login needed — can search for hospitals and doctors and view their public profiles at `dosewise.example/hospitals` and `/doctors`. Nothing shows up yet simply because no clinic has clicked "Publish" — the pages themselves work, verified against the real database. |
 | **Doctor scheduling** | Doctors set weekly availability + exceptions (holidays, leave); the system calculates real open slots automatically. |
 | **Booking a real appointment** | A patient/staff can book, confirm, cancel, reschedule, or no-show an appointment — double-booking the same doctor at the same time is physically impossible (enforced at the database level, not just in app code). |
 | **Front-desk queue** | Check-in issues a token, a live board shows who's waiting, staff can call/recall/skip, and starting/completing a visit is restricted to the assigned doctor. |
@@ -60,10 +62,8 @@ and the doctor/clinic onboarding wizard.
 
 | Area | Notes |
 |---|---|
-| **Clinic/doctor onboarding wizard** | Today, setup happens screen-by-screen; a guided "Register → Profile → Locations → Doctors → Publish" flow doesn't exist yet. |
-| **Public doctor/clinic discovery pages** | No public-facing "search doctors near me" / hospital profile pages yet — booking today requires already being logged into a specific clinic. |
-| **Doctor public profile** (photo, bio, qualifications, ratings) | Doctors exist as accounts with schedules, not yet as a patient-facing marketable profile. |
-| **Visual design pass** | Current UI is clean but generic — not yet matching DoseWise's actual brand look. |
+| **Patient self-service booking** | A patient can find a doctor publicly but can't yet book an appointment from there — today, booking still requires staff inside the clinic's own dashboard. This is the next piece of work. |
+| **Visual design pass** | Current UI is clean but generic — not yet matching DoseWise's actual brand look (the new public pages use a real component system now; the older dashboard screens still don't). |
 | **Mobile-app integration (Flutter)** | The existing DoseWise app and this new backend aren't connected yet — planned as the final phase, deliberately last so the web product is solid first. |
 | Document uploads, SMS/WhatsApp notifications, right-to-erasure workflow | Explicitly deferred, not required for MVP. |
 
@@ -75,17 +75,18 @@ A detailed, phase-by-phase plan for turning this from a clinic-operations tool i
 patient-facing product (public hospital/doctor discovery, self-service booking, guided
 onboarding for clinics and doctors) now exists at
 [`PRODUCT_EVOLUTION_PLAN.md`](../PRODUCT_EVOLUTION_PLAN.md), based on an audit of the actual
-current code. **Phase 2 (design-system foundation) is in progress** — Tailwind + a shared
-component kit have been added without touching any existing page, verified clean (typecheck +
-build). Phases 3 onward (organization/doctor profile fields, public discovery pages, patient
-booking, patient dashboard) have not started yet.
+current code. **Phases 2–5 are done** — design system, organization & doctor public profiles,
+and now real public discovery pages (homepage, hospital search + profile, doctor search +
+profile). Nothing is visible there yet because no clinic has actually published its profile in
+this database — that's expected, this feature only shipped today. Phase 6 (patient booking from
+discovery) is next.
 
 ## Recommended next milestone
 
-**Provider onboarding + public discovery + patient booking** — turn the
-current "clinic administration tool" into the beginning of an actual
-marketplace patients can find and book through, starting with fixing the
-test-stability issue above first so we're building on solid ground.
+**Patient self-service booking (Phase 6)** — let a patient book directly from a doctor's public
+profile instead of needing clinic staff to do it, closing the loop on "find → view → book" that
+the last few days of work have been building toward. Worth fixing the test-stability issue above
+first so this is built on solid ground.
 
 ---
 

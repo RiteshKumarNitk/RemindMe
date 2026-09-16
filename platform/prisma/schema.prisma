@@ -188,6 +188,26 @@ enum NotificationStatus {
 // Tenancy & identity
 // -----------------------------------------------------------------------------
 
+enum OrganizationType {
+  HOSPITAL
+  CLINIC
+  DIAGNOSTIC_CENTER
+  POLYCLINIC
+  OTHER
+}
+
+// Whether this org's public profile has been reviewed by the platform — a
+// distinct concern from Organization.isActive, which is the superadmin
+// suspend/reactivate switch (an inactive org is disabled outright; an
+// unverified org can still operate and even be publicly listed, it just
+// carries no "verified" badge yet). See PRODUCT_EVOLUTION_PLAN.md §15/§6.
+enum OrganizationVerificationStatus {
+  DRAFT
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+}
+
 model Organization {
   id        String   @id @default(uuid())
   name      String
@@ -196,6 +216,19 @@ model Organization {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // --- Public profile (PRODUCT_EVOLUTION_PLAN.md §6/§15 Phase 3) ---
+  // All optional/defaulted so every existing row stays valid with no backfill.
+  orgType            OrganizationType?
+  tagline            String? // short one-line description
+  about              String? // longer public "About" copy
+  logoUrl            String?
+  coverImageUrl      String?
+  publicPhone        String?
+  publicEmail        String?
+  website            String?
+  verificationStatus OrganizationVerificationStatus @default(DRAFT)
+  isPubliclyListed   Boolean                         @default(false) // gate for public discovery (Phase 5)
 
   settings               ClinicSettings?
   locations              ClinicLocation[]
@@ -374,6 +407,14 @@ model DoctorProfile {
   consultationDurationMin Int     @default(15)
   isAcceptingNewPatients  Boolean @default(true)
   isActive                Boolean @default(true)
+
+  // --- Public profile (PRODUCT_EVOLUTION_PLAN.md §6/§15 Phase 4) ---
+  photoUrl             String?
+  qualifications       String? // free text for now, e.g. "MBBS, MD (Cardiology)"
+  yearsOfExperience    Int?
+  languages            String[] @default([])
+  consultationFeeMinor Int? // currency minor units (e.g. paise); null = not published
+  isPubliclyListed     Boolean  @default(false) // independent of Organization.isPubliclyListed
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

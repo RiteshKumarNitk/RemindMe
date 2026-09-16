@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 const NAV: Record<string, Array<{ href: string; label: string }>> = {
   CLINIC_ADMIN: [
     { href: "", label: "Overview" },
+    { href: "/profile", label: "Profile" },
     { href: "/doctors", label: "Doctors" },
     { href: "/staff", label: "Staff" },
     { href: "/team", label: "Team" },
@@ -52,12 +53,16 @@ export default async function OrgLayout({
   });
 
   let doctorHref: string | null = null;
+  let doctorProfileHref: string | null = null;
   if (ctx.org!.role === "DOCTOR") {
     const doctor = await db.doctorProfile.findFirst({
       where: { organizationId: orgId, userId: ctx.userId },
       select: { id: true },
     });
-    if (doctor) doctorHref = `/dashboard/${orgId}/doctors/${doctor.id}/availability`;
+    if (doctor) {
+      doctorHref = `/dashboard/${orgId}/doctors/${doctor.id}/availability`;
+      doctorProfileHref = `/dashboard/${orgId}/doctors/${doctor.id}/profile`;
+    }
   }
 
   const items = NAV[ctx.org!.role] ?? [];
@@ -110,6 +115,14 @@ export default async function OrgLayout({
               {item.label}
             </Link>
           ))}
+          {doctorProfileHref && (
+            <Link
+              href={doctorProfileHref}
+              style={{ padding: "8px 10px", borderRadius: 8, fontSize: 14, textDecoration: "none", color: "var(--ink)" }}
+            >
+              My profile
+            </Link>
+          )}
           {doctorHref && (
             <Link
               href={doctorHref}
