@@ -33,24 +33,30 @@ No Redis, no container orchestration, no multi-region in MVP (spec §37).
 ```bash
 cd platform
 cp .env.example .env            # fill in real values (never commit)
-npm install                     # includes prisma@^6, @prisma/client@^6
-npx prisma generate
-npx prisma migrate dev --name init          # dev only
+pnpm install                    # includes prisma@^6, @prisma/client@^6
+pnpm exec prisma generate
+pnpm exec prisma migrate dev --name init    # dev only
 # apply the EXCLUDE constraint (see prisma/sql/0001_appointment_no_overlap.sql):
 #  - paste it into the generated migration, OR
 #  - run it as its own follow-up migration
-npx prisma db seed              # dev only — demo clinic, clearly marked
-npm run dev
+pnpm exec prisma db seed        # dev only — demo clinic, clearly marked
+pnpm dev
 ```
+
+> Package manager: **pnpm**, pinned via the `packageManager` field in
+> `package.json`. Install with `corepack enable` (Node 20+ ships corepack)
+> so every environment — local, CI, Docker — resolves the same version
+> automatically; `corepack pnpm <cmd>` forces that resolution explicitly if
+> a different global pnpm is also installed.
 
 ## Migrations (spec §27)
 
 | Situation | Command |
 |---|---|
-| Develop a schema change | `npx prisma migrate dev --name <change>` |
-| Create migration without applying | `npx prisma migrate dev --create-only` (then hand-edit for raw SQL like the EXCLUDE constraint) |
-| Deploy to preview/production | `npx prisma migrate deploy` |
-| Inspect drift | `npx prisma migrate status` |
+| Develop a schema change | `pnpm exec prisma migrate dev --name <change>` |
+| Create migration without applying | `pnpm exec prisma migrate dev --create-only` (then hand-edit for raw SQL like the EXCLUDE constraint) |
+| Deploy to preview/production | `pnpm exec prisma migrate deploy` (or `pnpm migrate:deploy`) |
+| Inspect drift | `pnpm exec prisma migrate status` |
 
 Rules:
 - **Never** hand-edit a production DB schema outside a tracked migration.
@@ -63,10 +69,11 @@ Rules:
 
 ## Release procedure
 
-1. CI: `prisma validate`, `prisma format --check`, typecheck, `npm test`
-   (must include the tenant-isolation + double-booking suites — see TESTING.md).
+1. CI: `pnpm install --frozen-lockfile`, `prisma validate`, `prisma format --check`,
+   `pnpm typecheck`, `pnpm test` (must include the tenant-isolation +
+   double-booking suites — see TESTING.md).
 2. Tag / promote the build.
-3. `prisma migrate deploy` against the target DB (using `DIRECT_URL`).
+3. `pnpm exec prisma migrate deploy` against the target DB (using `DIRECT_URL`).
 4. Deploy the app.
 5. Smoke test: `GET /api/health`, a login, a booking, a cross-tenant 404 probe.
 6. Watch error rate / logs for the first N minutes.
@@ -131,6 +138,65 @@ The one recurring job in MVP. Full mechanism in
 
 `GET /api/health` → `{ status, db: "ok"|"down", time }`. Unauthenticated,
 rate-limited, no tenant data.
+
+## Performance troubleshooting (findings from a live audit, 2026-09-16)
+
+Measured against the production deployment
+(`https://remind-me-indol.vercel.app`): the static homepage responds in
+~300ms (fine), but `/api/health` took **1.5–2.8s** and a full login took a
+**consistent ~4.8s across repeated calls** (not a one-off cold start). Root
+cause: the login path makes several *sequential* Postgres round trips
+(user lookup → `lastLoginAt` update → an access-claims re-lookup → a
+refresh-token insert), and each round trip appears to be paying far more
+than normal query latency. One redundant round trip (the access-claims
+re-lookup — `tokenVersion` was already available from the first query) was
+removed in the app code; the rest is almost certainly **infrastructure**,
+not application code, and needs checking directly in the Vercel/Neon
+dashboards (not verifiable from a local checkout):
+
+1. **Confirm `DATABASE_URL` on Vercel is Neon's *pooled* connection string**
+   (hostname contains `-pooler`, plus `?pgbouncer=true&connection_limit=…`) —
+   ENVIRONMENT.md already documents this as required, but a production env
+   var can silently drift from what a doc says. Using the *direct* (non-pooled)
+   URL in a serverless environment pays a fresh Postgres connection
+   handshake on every cold invocation and can also exhaust Neon's direct
+   connection limit under concurrent load.
+2. **Align the Vercel function region with Neon's region.** This project's
+   Neon database is in `ap-southeast-1` (Singapore); if the Vercel project
+   is deploying functions to its default region (commonly US-based) every
+   single one of those sequential DB round trips pays a full cross-Pacific
+   hop. Vercel → Project → Settings → Functions → Region — pin it to the
+   region nearest Neon's (Singapore, or Mumbai if that's measurably closer
+   for your primary users; matching Neon usually dominates over matching
+   end users, since a function↔DB hop happens multiple times per request
+   while the user↔function hop happens once). Region pinning availability
+   depends on the Vercel plan — check what your plan allows.
+3. **Neon compute size / auto-suspend.** On Neon's free tier, compute
+   auto-suspends after 5 minutes idle; the next query pays a cold-start
+   (can be multi-second). If traffic is bursty/low-volume, this alone
+   could explain intermittently slow *first* requests — a paid Neon plan
+   with "always on" compute (or a longer suspend timeout) removes this.
+4. If 1–3 are already correct and it's still slow, consider **Prisma
+   Accelerate** (managed connection pooling + optional caching at the edge)
+   as the next lever — a bigger architectural change, not a quick check.
+
+None of items 1–3 can be verified or changed from this repository — they're
+dashboard configuration, not code.
+
+## Scheduled jobs — is the dispatcher actually running?
+
+**Check this first if reminders/missed-dose alerts don't seem to be firing
+in production.** The dispatcher code has existed since Phase 2, but as of
+2026-09-16 **no scheduler was ever wired up** for it — confirmed by the live
+endpoint responding `404` to every request (the guard's intended behavior
+when unauthenticated, but also consistent with nothing having ever called
+it on a schedule) and by the total absence of a `vercel.json` or any
+`.github/workflows/` in the repo before that date. A GitHub Actions
+workflow (`.github/workflows/notifications-dispatch.yml`, added
+2026-09-16) now curls the endpoint every 5 minutes, but it does nothing
+until two manual, dashboard-only steps are done — see that file's header
+comment for the exact steps (set `NOTIFICATIONS_CRON_SECRET` in Vercel,
+mirror it as a GitHub Actions repo secret).
 
 ## Flutter / client config
 

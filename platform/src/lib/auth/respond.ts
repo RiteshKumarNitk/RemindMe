@@ -19,9 +19,17 @@ export async function authSuccessResponse(
   userId: string,
   meta: { ip: string | null; userAgent: string | null },
   status = 200,
+  /**
+   * Pass this when the caller already has the user's current tokenVersion
+   * (e.g. `loginUser` selects it in its own lookup) — skips a redundant
+   * `accessClaimsFor` round trip that was previously always re-fetching
+   * what the caller usually already had (perf pass, 2026-09-16).
+   */
+  knownTokenVersion?: number,
 ): Promise<Response> {
   if (clientKind(req) === "app") {
-    const { tokenVersion } = await accessClaimsFor(userId);
+    const { tokenVersion } =
+      knownTokenVersion !== undefined ? { tokenVersion: knownTokenVersion } : await accessClaimsFor(userId);
     const accessToken = await signAccessToken({ userId, tokenVersion });
     const refresh = await issueRefreshToken(userId, meta);
     return json(

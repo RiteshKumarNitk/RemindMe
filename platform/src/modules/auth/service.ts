@@ -23,11 +23,11 @@ export async function registerUser(input: RegisterInput): Promise<{ userId: stri
   return { userId: user.id };
 }
 
-export async function loginUser(input: LoginInput): Promise<{ userId: string }> {
+export async function loginUser(input: LoginInput): Promise<{ userId: string; tokenVersion: number }> {
   const email = normEmail(input.email);
   const user = await db.user.findUnique({
     where: { email },
-    select: { id: true, passwordHash: true },
+    select: { id: true, passwordHash: true, tokenVersion: true },
   });
   // Constant-ish response: always run a hash verify to blunt timing signals.
   const hash =
@@ -42,7 +42,7 @@ export async function loginUser(input: LoginInput): Promise<{ userId: string }> 
     await db.user.update({ where: { id: user.id }, data: { passwordHash: fresh } });
   }
   await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-  return { userId: user.id };
+  return { userId: user.id, tokenVersion: user.tokenVersion };
 }
 
 export async function accessClaimsFor(userId: string): Promise<{ tokenVersion: number }> {

@@ -11,6 +11,13 @@ caregiver view adherence and receive missed-dose push alerts.
 > recommend medicines, change dosages, or give medical advice. Always follow
 > the doctor's instructions.
 
+<!-- 
+Purpose	Email	Password
+Tenant dashboard (CLINIC_ADMIN)	admin@demo.dosewise.test	DemoPassw0rd!
+Tenant dashboard (DOCTOR)	doctor@demo.dosewise.test	DemoPassw0rd!
+Tenant dashboard (RECEPTIONIST)	reception@demo.dosewise.test	DemoPassw0rd!
+Admin panel (/admin)	admin@demo.dosewise.test	DemoPassw0rd! -->
+
 ---
 
 ## 1. Features
@@ -46,6 +53,15 @@ caregiver view adherence and receive missed-dose push alerts.
   truth; `updatedAt`-based conflict resolution; tombstones for deletions). A
   caregiver can join the household by code and get **push alerts when a dose is
   missed** (via Cloud Function).
+
+
+
+Purpose	Email	Password
+Tenant dashboard (CLINIC_ADMIN)	admin@demo.dosewise.test	DemoPassw0rd!
+Tenant dashboard (DOCTOR)	doctor@demo.dosewise.test	DemoPassw0rd!
+Tenant dashboard (RECEPTIONIST)	reception@demo.dosewise.test	DemoPassw0rd!
+Admin panel (/admin)	admin@demo.dosewise.test	DemoPassw0rd!
+
 
 ## 2. Technology
 

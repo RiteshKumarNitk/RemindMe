@@ -62,7 +62,7 @@ Design → Backend → Web → Flutter integration" (spec §41).
 - `MembershipCapability` grant currently allows an admin to grant clinical
   caps to a *second* admin who then self-manages — the SoD rule blocks
   self-grant only; document/train around single-admin clinics.
-- `npm test` TRUNCATEs the shared dev DB; re-run `npm run db:seed` afterward.
+- `pnpm test` TRUNCATEs the shared dev DB; re-run `pnpm db:seed` afterward.
 - ESLint not configured (`eslint.ignoreDuringBuilds`); `tsc` is the type gate.
 
 ## Phase 2 — Scheduling core  ✅ DONE (2026-09-11)

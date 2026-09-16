@@ -18,11 +18,11 @@ and is built in Phase 1 alongside the modules it exercises.
 
 ```bash
 cd platform
-npm install
+pnpm install
 createdb dosewise_test           # or a Neon test branch
-DATABASE_URL=... DIRECT_URL=... npx prisma migrate deploy
+DATABASE_URL=... DIRECT_URL=... pnpm exec prisma migrate deploy
 # ensure prisma/sql/0001_appointment_no_overlap.sql is part of the init migration
-npx vitest run tests/double-booking.constraint.test.ts
+pnpm exec vitest run tests/double-booking.constraint.test.ts
 ```
 
 Never point these at a non-test database. `prisma migrate reset` / `db push

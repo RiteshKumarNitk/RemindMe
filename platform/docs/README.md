@@ -14,18 +14,22 @@ root is **not** modified.
 
 ## Quickstart (dev)
 
+> Package manager: **pnpm** (`packageManager` field pins the exact version —
+> see `package.json`). Install it with `corepack enable` (ships with Node
+> 20+) so the pinned version is used automatically, or `npm i -g pnpm`.
+
 ```bash
 cd platform
 cp .env.example .env            # fill DATABASE_URL + DIRECT_URL + secrets
-npm install
-npx prisma migrate deploy       # or: migrate dev
-npm run db:seed                 # demo clinic (synthetic data)
-npm run dev                     # http://localhost:3000/api/health
-npm test                        # 51 tests (needs ALLOW_DB_TESTS=1 + a dev DB)
+pnpm install
+pnpm exec prisma migrate deploy # or: pnpm migrate:dev
+pnpm db:seed                    # demo clinic (synthetic data)
+pnpm dev                        # http://localhost:3000/api/health
+pnpm test                       # needs ALLOW_DB_TESTS=1 + a dev DB
 ```
 
-`npm test` TRUNCATEs the target DB's app tables — never point it at anything
-real; re-run `npm run db:seed` afterward.
+`pnpm test` TRUNCATEs the target DB's app tables — never point it at anything
+real; re-run `pnpm db:seed` afterward.
 
 ## Why `platform/` and not `docs/`
 
