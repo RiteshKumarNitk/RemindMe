@@ -189,7 +189,18 @@ export function EmptyState({ children }: { children: ReactNode }) {
   );
 }
 
-export const table: CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 14 };
+export const table: CSSProperties = { width: "100%", minWidth: 560, borderCollapse: "collapse", fontSize: 14 };
+
+/** Wraps `table` in a horizontally-scrolling container so a wide table degrades
+ * to a scroll on a narrow screen instead of clipping columns or breaking the
+ * page layout. */
+export function Table({ children }: { children: ReactNode }) {
+  return (
+    <div className="table-scroll">
+      <table style={table}>{children}</table>
+    </div>
+  );
+}
 export const th: CSSProperties = {
   textAlign: "left",
   padding: "8px 10px",

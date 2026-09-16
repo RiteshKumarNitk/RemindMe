@@ -3,7 +3,8 @@ import { db } from "@/lib/db.js";
 import { listAppointments } from "@/modules/appointments/service.js";
 import { listDoctors } from "@/modules/doctors/service.js";
 import { listPatients } from "@/modules/patients/service.js";
-import { Badge, Button, Card, EmptyState, ErrorNote, SectionTitle, table, td, th } from "../../ui.js";
+import { listMyAccess } from "@/modules/family/service.js";
+import { Badge, Button, Card, EmptyState, ErrorNote, SectionTitle, Table, td, th } from "../../ui.js";
 import { BookForm } from "./BookForm.js";
 import {
   bookAppointmentAction,
@@ -40,10 +41,28 @@ export default async function AppointmentsPage({
   const { error, booked } = await searchParams;
 
   const doctors = await listDoctors(ctx);
-  const patients =
-    role === "RECEPTIONIST" || role === "CLINIC_ADMIN" || role === "DOCTOR"
-      ? (await listPatients(ctx, { limit: 100 })).data
-      : undefined;
+  let patients: Array<{ id: string; firstName: string; lastName: string }> | undefined;
+  if (role === "RECEPTIONIST" || role === "CLINIC_ADMIN" || role === "DOCTOR") {
+    patients = (await listPatients(ctx, { limit: 100 })).data;
+  } else if (role === "PATIENT") {
+    // A patient books for themselves by default; if they also manage any
+    // dependents' appointments (family access grant), offer a picker
+    // instead of silently assuming "myself" (PRODUCT_EVOLUTION_PLAN.md
+    // Phase 11).
+    const [own, myAccess] = await Promise.all([
+      db.patient.findFirst({
+        where: { organizationId: orgId, ownerUserId: ctx.userId },
+        select: { id: true, firstName: true, lastName: true },
+      }),
+      listMyAccess(ctx),
+    ]);
+    const dependents = myAccess.data
+      .filter((g) => g.permissions.includes("MANAGE_APPOINTMENTS"))
+      .map((g) => g.patient);
+    if (dependents.length > 0) {
+      patients = own ? [{ ...own, firstName: `${own.firstName} (Myself)` }, ...dependents] : dependents;
+    }
+  }
 
   let myDoctorId: string | null = null;
   if (role === "DOCTOR") {
@@ -85,7 +104,7 @@ export default async function AppointmentsPage({
         {appointments.length === 0 ? (
           <EmptyState>No appointments yet.</EmptyState>
         ) : (
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>When</th>
@@ -167,7 +186,7 @@ export default async function AppointmentsPage({
                 );
               })}
             </tbody>
-          </table>
+          </Table>
         )}
       </Card>
 

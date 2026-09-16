@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { listAuditLog } from "@/modules/audit/service.js";
-import { Card, EmptyState, SectionTitle, table, td, th } from "../../ui.js";
+import { Card, EmptyState, SectionTitle, Table, td, th } from "../../ui.js";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,7 @@ export default async function AuditPage({ params }: { params: Promise<{ orgId: s
         {rows.length === 0 ? (
           <EmptyState>Nothing recorded yet.</EmptyState>
         ) : (
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>When</th>
@@ -42,7 +42,7 @@ export default async function AuditPage({ params }: { params: Promise<{ orgId: s
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
       </Card>
     </div>

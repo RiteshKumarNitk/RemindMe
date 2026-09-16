@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { listStaff } from "@/modules/staff/service.js";
 import { db } from "@/lib/db.js";
-import { Button, Card, EmptyState, ErrorNote, Field, SectionTitle, table, td, th } from "../../ui.js";
+import { Button, Card, EmptyState, ErrorNote, Field, SectionTitle, Table, td, th } from "../../ui.js";
 import { createStaffAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ export default async function StaffPage({
         {staff.length === 0 ? (
           <EmptyState>No staff members yet.</EmptyState>
         ) : (
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>Name</th>
@@ -50,7 +50,7 @@ export default async function StaffPage({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
       </Card>
 

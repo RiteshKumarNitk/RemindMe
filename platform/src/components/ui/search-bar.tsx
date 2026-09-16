@@ -18,7 +18,8 @@ export function SearchBar({
         <path d="m17 17-3.5-3.5" strokeLinecap="round" />
       </svg>
       <input
-        className="h-12 w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
+        type="search"
+        className="h-12 w-full bg-transparent text-sm text-ink placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         {...rest}
       />
     </div>

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { getSettings, listLocations } from "@/modules/clinics/service.js";
 import { listAppointmentTypes } from "@/modules/appointments/service.js";
-import { Button, Card, EmptyState, ErrorNote, Field, SectionTitle, table, td, th } from "../../ui.js";
+import { Button, Card, EmptyState, ErrorNote, Field, SectionTitle, Table, td, th } from "../../ui.js";
 import { addAppointmentTypeAction, addLocationAction, saveSettingsAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +69,7 @@ export default async function SettingsPage({
         {locations.length === 0 ? (
           <EmptyState>No locations yet.</EmptyState>
         ) : (
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>Name</th>
@@ -84,7 +84,7 @@ export default async function SettingsPage({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
         <form action={addLocationAction.bind(null, orgId)} style={{ marginTop: 14, maxWidth: 360 }}>
           <Field label="Location name" name="name" required placeholder="Main Branch" />
@@ -98,7 +98,7 @@ export default async function SettingsPage({
         {types.length === 0 ? (
           <EmptyState>No appointment types yet — booking uses the clinic default duration.</EmptyState>
         ) : (
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>Name</th>
@@ -113,7 +113,7 @@ export default async function SettingsPage({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
         <form action={addAppointmentTypeAction.bind(null, orgId)} style={{ marginTop: 14, maxWidth: 360 }}>
           <Field label="Type name" name="name" required placeholder="Consultation" />

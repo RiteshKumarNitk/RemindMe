@@ -2,7 +2,7 @@ import { AppError } from "@/lib/errors.js";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { getPatient } from "@/modules/patients/service.js";
 import { listAccessGrants } from "@/modules/family/service.js";
-import { Badge, Button, Card, EmptyState, ErrorNote, Field, SectionTitle, Select, table, td, th } from "../../../ui.js";
+import { Badge, Button, Card, EmptyState, ErrorNote, Field, SectionTitle, Select, Table, td, th } from "../../../ui.js";
 import { createAccessGrantAction, revokeAccessGrantAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -64,7 +64,7 @@ export default async function PatientDetailPage({
           {grants.length === 0 ? (
             <EmptyState>No one else has access to this record yet.</EmptyState>
           ) : (
-            <table style={table}>
+            <Table>
               <thead>
                 <tr>
                   <th style={th}>Grantee</th>
@@ -102,7 +102,7 @@ export default async function PatientDetailPage({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           )}
 
           <div style={{ marginTop: 16 }}>

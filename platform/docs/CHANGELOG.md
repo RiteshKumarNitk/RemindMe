@@ -4,6 +4,60 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-09-16 — Phase 12: responsive + accessibility pass (uncommitted)
+
+Fixed one launch-blocking bug and several systemic smaller ones across everything built in
+Phases 2–11. **Biggest fix**: both sidebar layouts (dashboard and admin) used a fixed 220px
+sidebar with zero media queries — the entire dashboard was unusable on a phone. Now a single CSS
+media query in `globals.css` collapses the sidebar into a wrapping top bar below 768px, no new
+client JS. Also: a global, unlayered `:focus-visible` rule guarantees a visible keyboard focus
+ring everywhere, including the older inline-styled dashboard kit that couldn't express one itself;
+a new `LinkButton` component replaces 11 instances of an invalid `<button>` nested inside an
+`<a>` across the four role dashboards; a new `Table` wrapper gives all 15 pages using data tables
+a horizontal-scroll fallback instead of squeezing columns unreadably; the queue page's filter
+inputs and the verification queue's action column got accessible names; nav links now carry
+`aria-current="page"` on the active route; two pages' heading hierarchy (h1→h3, skipping h2) was
+fixed. Verified live against the real database — rendered actual dashboard pages via a minted
+session and confirmed every new class/attribute in the served HTML, not just build-checked. See
+ADR-014. `pnpm typecheck`/`pnpm build`/`pnpm test:unit` (34/34) clean. **Not yet committed.**
+
+## 2026-09-16 — Phase 11: dependent/family booking (uncommitted)
+
+The last phase touching the booking transaction. A guardian with a `PatientAccessGrant`
+(`MANAGE_APPOINTMENTS`) on a dependent `Patient` record can now book, view, reschedule, and
+cancel that dependent's appointments — previously only the patient's own `ownerUserId` could.
+Extended `bookAppointment` (checked inside the same SERIALIZABLE transaction, not a separate
+out-of-transaction check), `getAppointment`, `listAppointments`, `cancelAppointment`, and
+`rescheduleAppointment` in `appointments/service.ts` to also accept a live family grant alongside
+direct ownership — no new authorization system, reuses the existing `PatientAccessGrant`/
+`hasFamilyAccess` primitive built for the family module. Web: the booking form offers a patient
+picker ("(Myself)" plus any managed dependent) only when the caller actually has a grant; the
+appointment-detail page's Reschedule/Cancel buttons now also show for a family manager. Verified
+live end to end: dependent with no owner, a separate guardian account granted access, booking
+blocked (403) before the grant and succeeding after, guardian can read the appointment directly
+and via their own list, cancel correctly hits the same cancellation-window rule the owner path
+uses (not a bypass), reschedule succeeds, and a third unrelated in-tenant patient account gets
+404/403/excluded-from-list on every attempt — then all test data deleted. See ADR-013.
+`pnpm typecheck`/`pnpm build` clean. **Not yet committed.**
+
+## 2026-09-16 — Phase 10: clinic-admin dashboard + the platform verification queue (uncommitted)
+
+Two things. First, the last org-scoped role still on the plain stat grid — `AdminOverview.tsx`
+gives CLINIC_ADMIN the same "what's next" treatment doctors/reception got in Phases 8–9 (doctor/
+staff counts, today's totals split by status, a schedule list, quick actions), plus a "Verified"/
+"Listed, not verified"/"Not listed" badge. Second, closed a real gap: `Organization.verificationStatus`
+has existed since Phase 3 but nothing could ever move it out of `DRAFT`. New
+`POST /api/orgs/:orgId/request-verification` (CLINIC_ADMIN, gated on the same profile-readiness
+check publishing already uses) and `PUT /api/admin/organizations/:targetOrgId/verification`
+(SUPER_ADMIN, approve/reject) — mirrors the existing suspend/reactivate pattern exactly, no new
+subsystem. New `/admin/verification` queue page + Approve/Reject buttons on the existing org
+detail page; a "Request verification" button + status message on the clinic's own profile page.
+Verified live end to end: real profile → request → listed in a real superadmin's queue → approved
+→ the "Verified" badge correctly appeared on the public hospital page, the clinic's own profile
+page, and the new admin dashboard — plus confirmed both request-while-pending and approve-while-
+not-pending correctly reject with 409. See ADR-012. `pnpm typecheck`/`pnpm build` clean. **Not
+yet committed.**
+
 ## 2026-09-16 — Phase 9: a real reception "what's next" workspace (uncommitted)
 
 Reception's `/dashboard/:orgId` landing page now shows today's clinic-wide numbers (total,

@@ -28,7 +28,14 @@ export async function bookAppointmentAction(orgId: string, formData: FormData) {
   const ctx = await requireOrgContext(orgId);
 
   let patientId = String(formData.get("patientId") ?? "");
-  if (ctx.org!.role === "PATIENT") {
+  // A patient with no dependents to manage never sees the picker (no
+  // `patientId` field is rendered) — resolve their own record automatically,
+  // exactly as before. A patient who submitted an explicit choice (self or a
+  // managed dependent, PRODUCT_EVOLUTION_PLAN.md Phase 11) is trusted only as
+  // far as `bookAppointment`'s own ownership/family-grant check allows —
+  // this action never decides authorization, it just passes the value
+  // through.
+  if (ctx.org!.role === "PATIENT" && !patientId) {
     const own = await db.patient.findFirst({
       where: { organizationId: orgId, ownerUserId: ctx.userId },
       select: { id: true },

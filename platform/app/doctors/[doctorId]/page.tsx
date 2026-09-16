@@ -80,7 +80,7 @@ export default async function DoctorDetailPage({
         <Card className="mt-8">
           <CardSubtitle>Practices at</CardSubtitle>
           <Link href={`/hospitals/${doctor.organization.slug}`} className="mt-1 block no-underline">
-            <CardTitle>{doctor.organization.name}</CardTitle>
+            <CardTitle as="p">{doctor.organization.name}</CardTitle>
           </Link>
           {doctor.organization.locations.length > 0 ? (
             <div className="mt-3 flex flex-col gap-1 text-sm text-ink-muted">

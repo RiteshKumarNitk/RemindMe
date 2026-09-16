@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { listDoctors } from "@/modules/doctors/service.js";
-import { Button, Card, EmptyState, ErrorNote, Field, SectionTitle, table, td, th } from "../../ui.js";
+import { Button, Card, EmptyState, ErrorNote, Field, SectionTitle, Table, td, th } from "../../ui.js";
 import { createDoctorAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export default async function DoctorsPage({
         {doctors.length === 0 ? (
           <EmptyState>No doctors yet.</EmptyState>
         ) : (
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>Name</th>
@@ -51,7 +51,7 @@ export default async function DoctorsPage({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
       </Card>
 

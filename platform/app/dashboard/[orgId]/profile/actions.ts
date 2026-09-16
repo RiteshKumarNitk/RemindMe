@@ -5,7 +5,12 @@ import { revalidatePath } from "next/cache";
 import { AppError } from "@/lib/errors.js";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { updateOrgSchema } from "@/modules/clinics/schema.js";
-import { publishOrganization, unpublishOrganization, updateOrganization } from "@/modules/clinics/service.js";
+import {
+  publishOrganization,
+  requestVerification,
+  unpublishOrganization,
+  updateOrganization,
+} from "@/modules/clinics/service.js";
 
 function textOrNull(formData: FormData, key: string): string | null {
   const value = String(formData.get(key) ?? "").trim();
@@ -59,6 +64,18 @@ export async function publishAction(orgId: string) {
 export async function unpublishAction(orgId: string) {
   const ctx = await requireOrgContext(orgId);
   await unpublishOrganization(ctx);
+  revalidatePath(`/dashboard/${orgId}/profile`);
+  redirect(`/dashboard/${orgId}/profile?saved=1`);
+}
+
+export async function requestVerificationAction(orgId: string) {
+  const ctx = await requireOrgContext(orgId);
+  try {
+    await requestVerification(ctx);
+  } catch (err) {
+    const message = err instanceof AppError ? err.message : "Could not request verification.";
+    redirect(`/dashboard/${orgId}/profile?error=${encodeURIComponent(message)}`);
+  }
   revalidatePath(`/dashboard/${orgId}/profile`);
   redirect(`/dashboard/${orgId}/profile?saved=1`);
 }

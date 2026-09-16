@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { RequestContext } from "@/lib/context.js";
 import { getBoard } from "@/modules/queue/service.js";
 import { listAppointments } from "@/modules/appointments/service.js";
-import { Badge, Button, Card, CardSubtitle, CardTitle, EmptyState } from "@/components/ui/index.js";
+import { Badge, Card, CardSubtitle, CardTitle, EmptyState, LinkButton } from "@/components/ui/index.js";
 
 const STATUS_TONE: Record<string, "indigo" | "ok" | "down" | "neutral"> = {
   REQUESTED: "neutral",
@@ -46,13 +46,13 @@ export async function DoctorOverview({
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-ink">
           {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
         </h1>
-        <Link href={`/dashboard/${orgId}/queue`}>
-          <Button variant="secondary">Open queue board</Button>
-        </Link>
+        <LinkButton variant="secondary" href={`/dashboard/${orgId}/queue`}>
+          Open queue board
+        </LinkButton>
       </div>
 
       {inConsultation ? (
@@ -66,9 +66,9 @@ export async function DoctorOverview({
           </div>
           {inConsultation.appointmentId ? (
             <div className="mt-4">
-              <Link href={`/dashboard/${orgId}/appointments/${inConsultation.appointmentId}/consultation`}>
-                <Button>Continue consultation</Button>
-              </Link>
+              <LinkButton href={`/dashboard/${orgId}/appointments/${inConsultation.appointmentId}/consultation`}>
+                Continue consultation
+              </LinkButton>
             </div>
           ) : null}
         </Card>
@@ -83,9 +83,7 @@ export async function DoctorOverview({
           </div>
           {nextAppointmentId ? (
             <div className="mt-4">
-              <Link href={`/dashboard/${orgId}/appointments/${nextAppointmentId}`}>
-                <Button>View appointment</Button>
-              </Link>
+              <LinkButton href={`/dashboard/${orgId}/appointments/${nextAppointmentId}`}>View appointment</LinkButton>
             </div>
           ) : null}
         </Card>

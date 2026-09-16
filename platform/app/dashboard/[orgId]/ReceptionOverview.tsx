@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { RequestContext } from "@/lib/context.js";
 import { listAppointments } from "@/modules/appointments/service.js";
-import { Badge, Button, Card, EmptyState } from "@/components/ui/index.js";
+import { Badge, Card, EmptyState, LinkButton } from "@/components/ui/index.js";
 
 const STATUS_TONE: Record<string, "indigo" | "ok" | "down" | "neutral"> = {
   REQUESTED: "neutral",
@@ -36,17 +36,15 @@ export async function ReceptionOverview({ ctx, orgId }: { ctx: RequestContext; o
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-ink">
           {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
         </h1>
-        <div className="flex gap-2">
-          <Link href={`/dashboard/${orgId}/patients`}>
-            <Button variant="secondary">Search patient</Button>
-          </Link>
-          <Link href={`/dashboard/${orgId}/queue`}>
-            <Button>Open queue board</Button>
-          </Link>
+        <div className="flex flex-wrap gap-2">
+          <LinkButton variant="secondary" href={`/dashboard/${orgId}/patients`}>
+            Search patient
+          </LinkButton>
+          <LinkButton href={`/dashboard/${orgId}/queue`}>Open queue board</LinkButton>
         </div>
       </div>
 
@@ -84,9 +82,9 @@ export async function ReceptionOverview({ ctx, orgId }: { ctx: RequestContext; o
         )}
       </div>
 
-      <Link href={`/dashboard/${orgId}/appointments`}>
-        <Button variant="secondary">+ New appointment</Button>
-      </Link>
+      <LinkButton variant="secondary" href={`/dashboard/${orgId}/appointments`} className="self-start">
+        + New appointment
+      </LinkButton>
     </div>
   );
 }

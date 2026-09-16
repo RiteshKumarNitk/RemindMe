@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { listMyAccess } from "@/modules/family/service.js";
-import { Badge, Card, EmptyState, SectionTitle, table, td, th } from "../../ui.js";
+import { Badge, Card, EmptyState, SectionTitle, Table, td, th } from "../../ui.js";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ export default async function FamilyAccessPage({ params }: { params: Promise<{ o
         {grants.length === 0 ? (
           <EmptyState>No one has shared a patient record with you yet.</EmptyState>
         ) : (
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>Patient</th>
@@ -44,7 +44,7 @@ export default async function FamilyAccessPage({ params }: { params: Promise<{ o
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
       </Card>
     </div>

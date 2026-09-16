@@ -41,6 +41,10 @@ foundation underneath both.
 | **A real patient dashboard** | After logging in, a patient sees a greeting and their next appointment front and center (doctor, time, queue token if checked in) — not a plain staff-style table. Every appointment now also has its own detail page, with view/cancel/reschedule in one place. |
 | **A real doctor "what's next" view** | A doctor logging in sees who's currently being seen or next in line, today's full schedule, and quick counts (waiting / completed / no-shows) — instead of a single generic number. Verified live: correctly updates the moment a patient is actually checked in. |
 | **A real reception "what's next" view** | The front desk logging in sees today's clinic-wide numbers (checked-in, waiting, in-consultation, no-shows) and an at-a-glance "up next" list across every doctor — plus quick links to the existing queue board, patient search, and new-appointment form. Verified live with real data. |
+| **A real clinic-admin dashboard** | The clinic owner/admin now sees the same kind of "what's next" view (doctor/staff counts, today's numbers by status, quick add-doctor/add-staff actions) instead of the old generic grid. |
+| **Verification review** | A clinic admin can now formally request that DoseWise review and verify their clinic; we (the platform) have a real queue to approve or reject those requests, and the "Verified" badge shown to patients only ever reflects a real decision — never faked. Verified live end to end. |
+| **Dependent / family booking** | A guardian who has been given access to a dependent's record (a child, an elderly parent, etc.) can now book, view, reschedule, and cancel that dependent's appointments — with the exact same rules and limits the patient themself would have, no more and no less. Verified live end to end, including confirming an unrelated patient at the same clinic still cannot see or touch that dependent's appointment. |
+| **Works on a phone, and with a keyboard/screen reader** | Fixed the biggest gap: the dashboard was previously unusable on a phone screen (the side menu didn't adapt at all). Also added a visible outline for keyboard users tabbing through the site, fixed some invalid button/link markup, and made data tables scroll sideways on a narrow screen instead of squeezing unreadably. |
 | **Doctor scheduling** | Doctors set weekly availability + exceptions (holidays, leave); the system calculates real open slots automatically. |
 | **Booking a real appointment** | A patient/staff can book, confirm, cancel, reschedule, or no-show an appointment — double-booking the same doctor at the same time is physically impossible (enforced at the database level, not just in app code). |
 | **Front-desk queue** | Check-in issues a token, a live board shows who's waiting, staff can call/recall/skip, and starting/completing a visit is restricted to the assigned doctor. |
@@ -66,8 +70,7 @@ and the doctor/clinic onboarding wizard.
 
 | Area | Notes |
 |---|---|
-| **Clinic-admin "what's next" view** | The clinic-admin dashboard still shows the original plain stat-card grid — patient, doctor, and reception views have all been redone; admin is next. |
-| **Visual design pass** | Current UI is clean but generic — not yet matching DoseWise's actual brand look (the new public/booking/patient/doctor pages use a real component system now; settings/patients/doctors-list/queue-board screens still don't). |
+| **Visual design pass** | Current UI is clean but generic — not yet matching DoseWise's actual brand look (the new public/booking/dashboard pages use a real component system now; a handful of older screens — settings, patients list, queue board — still don't). This is a look-and-feel gap, separate from the phone-usability fix above. |
 | **Mobile-app integration (Flutter)** | The existing DoseWise app and this new backend aren't connected yet — planned as the final phase, deliberately last so the web product is solid first. |
 | Document uploads, SMS/WhatsApp notifications, right-to-erasure workflow | Explicitly deferred, not required for MVP. |
 
@@ -79,20 +82,21 @@ A detailed, phase-by-phase plan for turning this from a clinic-operations tool i
 patient-facing product (public hospital/doctor discovery, self-service booking, guided
 onboarding for clinics and doctors) now exists at
 [`PRODUCT_EVOLUTION_PLAN.md`](../PRODUCT_EVOLUTION_PLAN.md), based on an audit of the actual
-current code. **Phases 2–9 are done** — design system, organization & doctor public profiles,
-public discovery pages, patient self-service booking, and role-specific "what's next" views for
-patients, doctors, and now reception. A stranger can find a doctor, see real availability, log
-in, book, and land on a real dashboard; staff logging in immediately see what needs attention.
-All verified live against the real database, not just build-checked. Phase 10 (clinic-admin
-dashboard + a platform verification queue) is next.
+current code. **Phases 2–12 are done** — design system, organization & doctor public profiles,
+public discovery pages, patient self-service booking, role-specific "what's next" views for
+every staff role, a real platform verification queue, dependent/family booking, and a responsive/
+accessibility pass. A stranger can find a doctor, see real availability, log in, book, and land on
+a real dashboard; staff logging in immediately see what needs attention; a clinic can request a
+"Verified" badge and the platform can actually grant one; a guardian can manage a dependent's
+appointments with the same rules as the patient themself; and the whole thing now actually works
+on a phone screen and with a keyboard. All verified live against the real database, not just
+build-checked. One phase remains.
 
 ## Recommended next milestone
 
-**Clinic-admin dashboard + verification queue (Phase 10)** — the admin view is the last role
-still on the original generic stat grid. This phase also adds the platform-side review queue for
-`PENDING_VERIFICATION` clinics (the "Verified" badge Phase 3 already built the data model for,
-but nothing reviews yet). Also worth finally fixing the test-stability issue flagged above — the
-codebase now has several new, real integration tests written but never run because of it.
+**Full regression pass (Phase 13)** — the last phase in the plan. Worth using this pass to also
+finally resolve the test-stability issue flagged above, since Phase 13 is explicitly about
+strengthening the safety net, not just adding to what already works.
 
 ---
 

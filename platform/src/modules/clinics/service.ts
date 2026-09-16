@@ -144,6 +144,66 @@ export async function unpublishOrganization(ctx: RequestContext) {
   return updated;
 }
 
+/**
+ * Ask the platform to review this clinic's profile for a "Verified" badge
+ * (PRODUCT_EVOLUTION_PLAN.md §15 Phase 10). Reuses the exact same readiness
+ * bar as publishing (`canPublishOrganization`) — a clinic incomplete enough
+ * that it can't be listed publicly has nothing for a reviewer to verify
+ * either. Only valid from `DRAFT` or `REJECTED`; a request already
+ * `PENDING_VERIFICATION` or already `VERIFIED` is a no-op-with-a-clear-error,
+ * not a silent reset.
+ */
+export async function requestVerification(ctx: RequestContext) {
+  assertRole(ctx, "CLINIC_ADMIN");
+  const t = tenantDb(ctx);
+  const org = await t.organization.findFirstOrThrow({
+    where: { id: ctx.org!.id },
+    select: {
+      name: true,
+      orgType: true,
+      tagline: true,
+      about: true,
+      publicPhone: true,
+      publicEmail: true,
+      verificationStatus: true,
+      _count: { select: { locations: { where: { isActive: true } } } },
+    },
+  });
+
+  if (org.verificationStatus === "PENDING_VERIFICATION") {
+    throw new AppError("CONFLICT", "Verification is already pending review.");
+  }
+  if (org.verificationStatus === "VERIFIED") {
+    throw new AppError("CONFLICT", "This clinic is already verified.");
+  }
+
+  const readiness = canPublishOrganization({
+    name: org.name,
+    orgType: org.orgType,
+    tagline: org.tagline,
+    about: org.about,
+    publicPhone: org.publicPhone,
+    publicEmail: org.publicEmail,
+    activeLocationCount: org._count.locations,
+  });
+  if (!readiness.ready) {
+    throw new AppError("VALIDATION_FAILED", readiness.reasons.join(" "));
+  }
+
+  const updated = await t.organization.update({
+    where: { id: ctx.org!.id },
+    data: { verificationStatus: "PENDING_VERIFICATION" },
+    select: PUBLIC_PROFILE_SELECT,
+  });
+  await writeAudit(ctx, {
+    action: "ORGANIZATION_VERIFICATION_REQUESTED",
+    entityType: "Organization",
+    entityId: updated.id,
+    after: { verificationStatus: "PENDING_VERIFICATION" },
+  });
+  return updated;
+}
+
 export async function getSettings(ctx: RequestContext) {
   assertRole(ctx, "CLINIC_ADMIN");
   const t = tenantDb(ctx);

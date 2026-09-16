@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import type { ElementType, HTMLAttributes } from "react";
 
 export function Card({ className = "", ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
@@ -9,8 +9,12 @@ export function Card({ className = "", ...rest }: HTMLAttributes<HTMLDivElement>
   );
 }
 
-export function CardTitle({ className = "", ...rest }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={`text-base font-semibold text-ink ${className}`} {...rest} />;
+export function CardTitle({
+  as: Tag = "h3",
+  className = "",
+  ...rest
+}: HTMLAttributes<HTMLHeadingElement> & { as?: ElementType }) {
+  return <Tag className={`text-base font-semibold text-ink ${className}`} {...rest} />;
 }
 
 export function CardSubtitle({ className = "", ...rest }: HTMLAttributes<HTMLParagraphElement>) {

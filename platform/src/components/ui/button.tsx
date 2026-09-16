@@ -1,4 +1,5 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import Link, { type LinkProps } from "next/link";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "sm" | "md" | "lg";
@@ -16,6 +17,10 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
   lg: "h-12 px-6 text-base",
 };
 
+function buttonClasses(variant: ButtonVariant, size: ButtonSize, className: string): string {
+  return `inline-flex items-center justify-center gap-2 rounded-control font-medium no-underline transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]} ${className}`;
+}
+
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -30,11 +35,36 @@ export function Button({
   ...rest
 }: ButtonProps) {
   return (
-    <button
-      className={`inline-flex items-center justify-center gap-2 rounded-control font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]} ${className}`}
-      {...rest}
-    >
+    <button className={buttonClasses(variant, size, className)} {...rest}>
       {children}
     </button>
+  );
+}
+
+export interface LinkButtonProps
+  extends LinkProps,
+    Omit<AnchorHTMLAttributes<HTMLAnchorElement>, keyof LinkProps> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  children: ReactNode;
+}
+
+/**
+ * A navigation link styled identically to `Button`. Use this instead of wrapping
+ * a `<Button>` in a `<Link>` — nesting a real `<button>` inside an `<a>` is invalid
+ * HTML and gives keyboard/screen-reader users two confusing, overlapping tab stops
+ * for what is really one navigation action.
+ */
+export function LinkButton({
+  variant = "primary",
+  size = "md",
+  className = "",
+  children,
+  ...rest
+}: LinkButtonProps) {
+  return (
+    <Link className={buttonClasses(variant, size, className)} {...rest}>
+      {children}
+    </Link>
   );
 }

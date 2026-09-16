@@ -322,3 +322,160 @@ state.
 - **Consequences.** No schema/API change. Verified live: invited a real RECEPTIONIST member,
   booked a same-day appointment, confirmed the overview's stat tiles and "Up next" list rendered
   correctly with real data — then deleted the test data. `pnpm typecheck`/`pnpm build` clean.
+
+## ADR-012: Verification review queue — a request/decision pair mirroring the existing suspend/reactivate pattern, gated on the same readiness check as publishing
+
+- **Context.** `Organization.verificationStatus` has existed since ADR-006 (Phase 3), defaulting
+  `DRAFT`, but nothing ever transitioned it — there was no way for a clinic to ask for review and
+  no way for a superadmin to decide. `PRODUCT_EVOLUTION_PLAN.md` Phase 10 asks for exactly this,
+  explicitly modeled on the existing suspend/reactivate action rather than a new subsystem.
+- **Decision.** Two new functions, one per side, both deliberately small:
+  - `clinics.requestVerification(ctx)` (CLINIC_ADMIN) — `DRAFT|REJECTED → PENDING_VERIFICATION`,
+    gated on the *exact same* `canPublishOrganization()` readiness check `publishOrganization`
+    already uses (ADR-006) — a profile too incomplete to publish has nothing for a reviewer to
+    verify either, so reusing the gate is correct, not a shortcut. Deliberately independent of
+    `isPubliclyListed` — a clinic can request verification before or after publishing, or without
+    ever publishing at all.
+  - `superadmin.setOrganizationVerification(ctx, orgId, {status})` (SUPER_ADMIN) — only valid
+    from `PENDING_VERIFICATION`; approving sets `VERIFIED`, rejecting sets `REJECTED` (which the
+    clinic can then request again from, after fixing whatever prompted the rejection). Follows
+    ADR-001's pattern exactly: unscoped `db`, `assertSuperAdmin` re-checked inside the function,
+    `writeAudit` with an explicit `organizationId`.
+  - `listOrganizations`' existing query schema gained one more independent filter
+    (`verification: "pending"`, alongside the existing `status` filter) rather than a whole new
+    list endpoint — backs a new `/admin/verification` queue page, which links into the *existing*
+    `/admin/organizations/:orgId` detail page for the actual Approve/Reject decision (added there
+    as two new buttons, visible only while `PENDING_VERIFICATION`) rather than building a second
+    detail page.
+  - Also shipped the CLINIC_ADMIN dashboard (`AdminOverview.tsx`) this same pass — the last
+    org-scoped role still on the original plain stat grid (Phases 7–9 already covered
+    PATIENT/DOCTOR/RECEPTIONIST). Same pattern as those: pure composition over
+    `appointments.listAppointments()`, no new queries.
+- **Consequences.** No schema migration — `verificationStatus` and its enum already existed. No
+  route trusts a client-supplied "verified" claim anywhere; every place that shows a badge
+  (public hospital profile, the clinic's own profile page, the new admin overview) reads the
+  same DB column. Verified live end to end: filled a real profile, called
+  `request-verification` (rejects a duplicate call while already pending, confirmed), listed it
+  in a real superadmin's verification queue, approved it (rejects a duplicate approve once no
+  longer pending, confirmed), and confirmed the "Verified" badge then appeared correctly in all
+  three places that read it — then deleted the test data. `pnpm typecheck`/`pnpm build` clean.
+
+## ADR-013: Dependent/family booking wired into the SERIALIZABLE booking path via the existing `PatientAccessGrant` primitive, not a new authorization system
+
+- **Context.** `PRODUCT_EVOLUTION_PLAN.md` Phase 11 is the last item touching the appointment
+  booking transaction — the single highest-risk piece of code in the whole plan (SERIALIZABLE
+  isolation, the `Appointment_org_doctor_no_overlap` EXCLUDE constraint). A guardian/family
+  member managing a dependent's care (e.g. a parent booking for a child `Patient` record with no
+  `ownerUserId`) had no way to book, view, reschedule, or cancel that dependent's appointments —
+  `bookAppointment`'s PATIENT gate only ever checked `patient.ownerUserId === ctx.userId`. The
+  authorization primitive already existed and was already used elsewhere: `PatientAccessGrant`
+  (`AccessPermission` enum — `VIEW_APPOINTMENTS`, `MANAGE_APPOINTMENTS`, etc.) and
+  `family.hasFamilyAccess(ctx, patientId, permission)`, but `appointments.service.ts` had never
+  been wired to consult it.
+- **Decision.** Extended every PATIENT-facing check in `appointments/service.ts` to also accept a
+  live, non-revoked, non-expired grant, instead of building a parallel "family booking" code path:
+  - `bookAppointment`'s self-booking gate (inside the `runSerializable` transaction) now allows a
+    PATIENT who isn't the owner through if a `tx.patientAccessGrant` row exists for them on that
+    patient with `MANAGE_APPOINTMENTS` — queried via `tx` directly (not the exported
+    `hasFamilyAccess` helper) specifically to stay inside the same transaction snapshot the
+    booking decision is being made under, matching the existing SERIALIZABLE discipline rather
+    than adding a second, out-of-transaction check that could race against a grant revocation.
+  - `getAppointment`/`listAppointments` extended to also match on `VIEW_APPOINTMENTS` grants (via
+    the ordinary `hasFamilyAccess` helper / a `patientAccessGrant.findMany` respectively, both
+    outside a transaction since these are plain reads).
+  - `cancelAppointment`/`rescheduleAppointment` gained a shared `isFamilyManager(ctx, appt)`
+    helper (checks `MANAGE_APPOINTMENTS`) used alongside the existing `isPatientOwner` check in
+    both the authorization gate and, for cancellation, the same cancellation-window business rule
+    the owner path already enforces — a family manager gets exactly the same rights and the same
+    limits as the owner, not a superset or a separate ruleset.
+  - Web UI: the appointments-list booking form now offers a patient picker ("(Myself)" plus any
+    dependent with a `MANAGE_APPOINTMENTS` grant) only when the caller actually has at least one
+    such grant — a patient with no dependents sees the exact same no-picker form as before. The
+    appointment-detail page's Reschedule/Cancel buttons now also show for a `canManageAsFamily`
+    caller, but the service layer remains the real enforcement point either way — the UI condition
+    is purely a display decision, matching every other role's button-visibility pattern in that
+    file (ADR-010).
+- **Consequences.** No schema change — `PatientAccessGrant` and `hasFamilyAccess` already existed
+  (built for the family module, not this phase). No new authorization concept introduced; a
+  family manager's rights over an appointment are now defined as "identical to the owner's,
+  wherever the owner is checked" rather than a separately-maintained rule that could drift out of
+  sync. Verified live end to end against the real dev database: created a dependent `Patient` with
+  no owner, granted a separate guardian account `VIEW_APPOINTMENTS`+`MANAGE_APPOINTMENTS`,
+  confirmed booking for the dependent is `403` before the grant exists and succeeds after,
+  confirmed the guardian can `GET` the appointment directly and see it in their own
+  `listAppointments`, confirmed a cancel attempt correctly hits the ordinary
+  `OUTSIDE_CANCELLATION_WINDOW` business rule (proving it passed the authorization gate and
+  reached the same logic the owner path uses, not a bypass), confirmed a reschedule succeeds,
+  and confirmed a *third*, unrelated in-tenant patient account (its own real membership, no grant)
+  gets `404` on a direct `GET`, is excluded from its own `listAppointments`, and gets `403` on a
+  book attempt for the dependent — then deleted all test data. `pnpm typecheck`/`pnpm build` clean
+  throughout.
+
+## ADR-014: Responsive/accessibility pass — a CSS-only mobile shell, not a client-side hamburger; global unlayered `:focus-visible`; one shared `Table`/`LinkButton` fix instead of per-page patches
+
+- **Context.** `PRODUCT_EVOLUTION_PLAN.md` Phase 12 covers everything built in Phases 2–11. An
+  audit found one launch-blocking bug and several smaller, systemic ones: (1) both sidebar
+  layouts (`app/dashboard/:orgId/layout.tsx`, `app/admin/layout.tsx`) used a fixed 220px `<aside>`
+  with zero media queries — on any phone-width viewport the dashboard was genuinely unusable, not
+  just ugly; (2) `app/globals.css` had exactly one media query in the whole file
+  (`prefers-color-scheme: dark`) — no responsive breakpoints existed anywhere; (3) the Tailwind
+  kit's `Input`/`SearchBar` used `outline-none` with only a 1px border-color shift on focus — a
+  weak-to-invisible keyboard focus indicator; (4) four dashboard overview components
+  (`Patient`/`Doctor`/`Reception`/`AdminOverview.tsx`) nested a real `<button>` inside an `<a>`
+  eleven times total (`<Link><Button>...</Button></Link>`) — invalid HTML, duplicate/confusing tab
+  stops; (5) 15 pages still on the older `app/dashboard/ui.tsx` kit render data tables with
+  `width: 100%` and no scroll fallback, which squeezes columns unreadably on a narrow screen
+  instead of scrolling; (6) the queue page's doctor/date filter inputs and the verification
+  queue's action column had no accessible name.
+- **Decision 1 — CSS-only responsive shell, no new client JS.** Both sidebar layouts are Server
+  Components with zero client-side state today; rather than convert them to add a hamburger
+  toggle (a real feature, out of scope for a polish pass), added `.dashboard-shell`/
+  `-sidebar`/`-nav`/`-main` classes to `globals.css` with one `@media (max-width: 768px)` block
+  that stacks the shell vertically and lets the nav wrap horizontally — the sidebar becomes a top
+  bar instead of disappearing or clipping. Zero new interactivity, pure layout.
+- **Decision 2 — one global, unlayered `:focus-visible` rule, not per-component overrides.**
+  Tailwind v4's `@import "tailwindcss"` places all its generated utilities (including
+  `outline-none`) inside `@layer utilities`; a plain, unlayered CSS rule always wins the cascade
+  over anything in a `@layer` regardless of source order, so a single `:focus-visible { outline: 2px
+  solid var(--focus-ring); outline-offset: 2px; }` at the bottom of `globals.css` guarantees a
+  visible keyboard focus ring on *every* interactive element in the app — including the older
+  `app/dashboard/ui.tsx` kit, which styles everything via inline `style` objects and structurally
+  cannot express `:focus-visible` itself. Also gave `Input`/`Select`/`SearchBar` an explicit
+  `focus-visible:outline-focus` (a new `--color-focus` token) for a branded ring rather than
+  relying solely on the cascade-layer fallback, since relying only on implicit layer-ordering
+  behavior for a load-bearing a11y guarantee is fragile to reason about later.
+- **Decision 3 — `LinkButton` (shares `Button`'s exact class-generation logic) replaces every
+  `<Link><Button></Button></Link>`, not a one-off fix per file.** Extracted `buttonClasses()` in
+  `button.tsx` and added `LinkButton` (a `next/link` styled identically to `Button`) so a
+  navigation action renders as one real `<a>`, never a `<button>` nested inside one. Swapped all
+  11 occurrences across the four overview components.
+- **Decision 4 — a shared `Table` component wraps the old kit's `table`/`th`/`td` exports in a
+  scrolling container, applied to all 15 pages that use them, not just the highest-traffic ones.**
+  `app/dashboard/ui.tsx` exports `Table` (renders `<div className="table-scroll"><table
+  style={table}>{children}</table></div>`); the `table` constant itself gained `minWidth: 560` so
+  columns keep a readable width and the wrapper scrolls horizontally on a narrow screen instead of
+  squeezing text unreadably. Every one of the 15 call sites (appointments, queue, patients,
+  settings ×2, staff, doctors, availability ×2, consultation, family, audit ×2, admin
+  organizations ×2, admin verification) was mechanically swapped from `<table style={table}>` to
+  `<Table>` — a single component fix, not 15 divergent patches.
+- **Decision 5 — a reusable `.sr-only` class, and `NavLink` (a small client component) for
+  `aria-current`.** Added `.sr-only` to `globals.css` for controls with no visible label (the
+  queue page's doctor/date filter, the verification queue's action column) instead of inlining the
+  clip-rect hack per callsite. Added `src/components/nav-link.tsx` (`"use client"`, wraps
+  `next/link` with `usePathname()`) so both sidebar layouts' nav links get a real `aria-current="page"`
+  on the active route — the layouts themselves stay Server Components; only the leaf link needed
+  client-side route awareness.
+- **Decision 6 — `CardTitle` gained an `as` prop instead of forcing every usage to be an `<h3>`.**
+  Two pages (`doctors/:id`, `doctors/:id/book`) put a `CardTitle` directly under an `<h1>` with no
+  intervening `<h2>`, and in both cases the title wasn't really a page-outline heading at all — a
+  link label / summary line inside a card. Rather than renumber the whole page's heading levels,
+  changed both call sites to `<CardTitle as="p">`, since demoting to a non-heading element is the
+  actually-correct fix when the text was never a section heading to begin with.
+- **Consequences.** No schema/API changes — this phase touched only presentation. Verified live
+  against the real dev database (not just build-checked): rendered the dashboard/queue/appointments
+  pages via a minted cookie session and confirmed in the actual served HTML that
+  `.dashboard-shell`/`.skip-link`/`.table-scroll`/`.sr-only` all appear, that the active nav link
+  carries `aria-current="page"`, and that the queue filter's `sr-only` labels render — then
+  deleted all test data. `pnpm typecheck`, `pnpm build` (every route generates clean), and
+  `pnpm test:unit` (34/34) all clean. The DB-truncating integration suite was not run, per the
+  project's standing caution (see `STATUS.md`'s still-open test-stability item).

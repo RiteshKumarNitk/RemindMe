@@ -1,6 +1,6 @@
 import { requireSuperAdmin } from "@/lib/web-context.js";
 import { listPlatformAuditLog } from "@/modules/superadmin/service.js";
-import { Badge, Card, EmptyState, SectionTitle, table, td, th } from "../../dashboard/ui.js";
+import { Badge, Card, EmptyState, SectionTitle, Table, td, th } from "../../dashboard/ui.js";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export default async function AdminAuditPage() {
         {rows.length === 0 ? (
           <EmptyState>No audit events yet.</EmptyState>
         ) : (
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>When</th>
@@ -40,7 +40,7 @@ export default async function AdminAuditPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
       </Card>
     </div>

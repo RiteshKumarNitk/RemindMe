@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { db } from "@/lib/db.js";
 import { getAppointment } from "@/modules/appointments/service.js";
+import { hasFamilyAccess } from "@/modules/family/service.js";
 import { Badge, Button, Card, CardSubtitle, CardTitle } from "@/components/ui/index.js";
 import {
   cancelAppointmentAction,
@@ -48,6 +49,12 @@ export default async function AppointmentDetailPage({
   }
   const isStaff = role === "RECEPTIONIST" || role === "CLINIC_ADMIN";
   const isMyPatient = role === "PATIENT" && appt.patient.ownerUserId === ctx.userId;
+  // A guardian managing a dependent's appointments (PRODUCT_EVOLUTION_PLAN.md
+  // Phase 11) gets the same reschedule/cancel affordances as the patient
+  // themself — the service layer is the real authority either way.
+  const canManageAsFamily =
+    role === "PATIENT" && !isMyPatient && (await hasFamilyAccess(ctx, appt.patient.id, "MANAGE_APPOINTMENTS"));
+  const canActAsPatient = isMyPatient || canManageAsFamily;
   const isMyAppointmentAsDoctor = role === "DOCTOR" && appt.doctorId === myDoctorId;
 
   return (
@@ -117,12 +124,12 @@ export default async function AppointmentDetailPage({
                 <Button variant="secondary">Consultation notes</Button>
               </Link>
             )}
-          {["REQUESTED", "CONFIRMED"].includes(appt.status) && (isStaff || isMyPatient) && (
+          {["REQUESTED", "CONFIRMED"].includes(appt.status) && (isStaff || canActAsPatient) && (
             <Link href={`/dashboard/${orgId}/appointments/${appt.id}/reschedule`}>
               <Button variant="secondary">Reschedule</Button>
             </Link>
           )}
-          {["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING"].includes(appt.status) && (isStaff || isMyPatient) && (
+          {["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING"].includes(appt.status) && (isStaff || canActAsPatient) && (
             <form action={cancelAppointmentAction.bind(null, orgId, appt.id)}>
               <input type="hidden" name="reason" value="Cancelled by patient" />
               <Button variant="danger">Cancel</Button>

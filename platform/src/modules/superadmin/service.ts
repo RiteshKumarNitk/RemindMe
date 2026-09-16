@@ -7,6 +7,7 @@ import type { RequestContext } from "@/lib/context.js";
 import type {
   listOrganizationsQuerySchema,
   listPlatformAuditQuerySchema,
+  setOrganizationVerificationSchema,
 } from "./schema.js";
 
 /**
@@ -35,6 +36,8 @@ const ORG_LIST_SELECT = {
   isActive: true,
   timezone: true,
   createdAt: true,
+  verificationStatus: true,
+  isPubliclyListed: true,
   _count: { select: { memberships: true, patients: true, appointments: true } },
 } satisfies Prisma.OrganizationSelect;
 
@@ -46,6 +49,7 @@ export async function listOrganizations(
   const where: Prisma.OrganizationWhereInput = {};
   if (q.status === "active") where.isActive = true;
   if (q.status === "suspended") where.isActive = false;
+  if (q.verification === "pending") where.verificationStatus = "PENDING_VERIFICATION";
   if (q.q) {
     const term = q.q.trim();
     where.OR = [
@@ -74,6 +78,11 @@ export async function getOrganizationDetail(ctx: RequestContext, orgId: string) 
       timezone: true,
       createdAt: true,
       updatedAt: true,
+      verificationStatus: true,
+      isPubliclyListed: true,
+      tagline: true,
+      about: true,
+      orgType: true,
       _count: {
         select: {
           memberships: true,
@@ -116,6 +125,45 @@ export async function setOrganizationActive(
     entityId: org.id,
     organizationId: org.id,
     after: { isActive },
+  });
+  return org;
+}
+
+/**
+ * Approve or reject a clinic's verification request. Only meaningful from
+ * `PENDING_VERIFICATION` (mirrors `clinics.requestVerification`'s own
+ * transition guard) — rejects a stray call against a clinic that never
+ * asked to be reviewed, or one already decided, with a clear error rather
+ * than silently overwriting an unrelated state.
+ */
+export async function setOrganizationVerification(
+  ctx: RequestContext,
+  orgId: string,
+  input: z.infer<typeof setOrganizationVerificationSchema>,
+) {
+  assertSuperAdmin(ctx);
+  const before = await db.organization.findUniqueOrThrow({
+    where: { id: orgId },
+    select: { verificationStatus: true },
+  });
+  if (before.verificationStatus !== "PENDING_VERIFICATION") {
+    throw new AppError(
+      "CONFLICT",
+      "This clinic isn't awaiting a verification decision.",
+    );
+  }
+  const org = await db.organization.update({
+    where: { id: orgId },
+    data: { verificationStatus: input.status },
+    select: { id: true, name: true, verificationStatus: true },
+  });
+  await writeAudit(ctx, {
+    action: input.status === "VERIFIED" ? "ORGANIZATION_VERIFIED" : "ORGANIZATION_VERIFICATION_REJECTED",
+    entityType: "Organization",
+    entityId: org.id,
+    organizationId: org.id,
+    before: { verificationStatus: before.verificationStatus },
+    after: { verificationStatus: org.verificationStatus, reason: input.reason },
   });
   return org;
 }

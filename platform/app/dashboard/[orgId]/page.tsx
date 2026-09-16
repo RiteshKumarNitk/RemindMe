@@ -5,6 +5,7 @@ import { Card, SectionTitle } from "../ui.js";
 import { PatientOverview } from "./PatientOverview";
 import { DoctorOverview } from "./DoctorOverview";
 import { ReceptionOverview } from "./ReceptionOverview";
+import { AdminOverview } from "./AdminOverview";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,10 @@ export default async function OrgOverview({
     return <ReceptionOverview ctx={ctx} orgId={orgId} />;
   }
 
+  if (role === "CLINIC_ADMIN") {
+    return <AdminOverview ctx={ctx} orgId={orgId} />;
+  }
+
   if (role === "DOCTOR") {
     const mine = await t.doctorProfile.findFirst({
       where: { organizationId: orgId, userId: ctx.userId },
@@ -39,28 +44,9 @@ export default async function OrgOverview({
     // plain stat view below rather than crash.
   }
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date(todayStart.getTime() + 86_400_000);
-
-  const stats: Array<{ label: string; value: number; href: string }> = [];
-
-  if (role === "CLINIC_ADMIN") {
-    const [doctors, patients, todayAppts] = await Promise.all([
-      t.doctorProfile.count({ where: { organizationId: orgId, isActive: true } }),
-      t.patient.count({ where: { organizationId: orgId, isActive: true } }),
-      t.appointment.count({
-        where: { organizationId: orgId, scheduledStart: { gte: todayStart, lt: todayEnd } },
-      }),
-    ]);
-    stats.push(
-      { label: "Doctors", value: doctors, href: `/dashboard/${orgId}/doctors` },
-      { label: "Patients", value: patients, href: `/dashboard/${orgId}/patients` },
-      { label: "Today's appointments", value: todayAppts, href: `/dashboard/${orgId}/appointments` },
-    );
-  } else if (role === "DOCTOR") {
-    stats.push({ label: "Today's appointments", value: 0, href: `/dashboard/${orgId}/appointments` });
-  }
+  const stats: Array<{ label: string; value: number; href: string }> = [
+    { label: "Today's appointments", value: 0, href: `/dashboard/${orgId}/appointments` },
+  ];
 
   return (
     <div>

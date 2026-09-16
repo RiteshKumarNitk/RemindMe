@@ -1,8 +1,15 @@
 import type { ReactNode } from "react";
 import { requireSuperAdmin } from "@/lib/web-context.js";
 import { getOrganizationDetail } from "@/modules/superadmin/service.js";
-import { Badge, Button, Card, ErrorNote, SectionTitle, table, td, th } from "../../../dashboard/ui.js";
-import { setOrganizationActiveAction } from "./actions.js";
+import { Badge, Button, Card, ErrorNote, SectionTitle, Table, td, th } from "../../../dashboard/ui.js";
+import { setOrganizationActiveAction, setOrganizationVerificationAction } from "./actions.js";
+
+const VERIFICATION_TONE: Record<string, "ok" | "coral" | "indigo" | "muted"> = {
+  DRAFT: "muted",
+  PENDING_VERIFICATION: "coral",
+  VERIFIED: "ok",
+  REJECTED: "coral",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +35,11 @@ export default async function AdminOrganizationDetailPage({
         <Row label="Slug" value={org.slug} />
         <Row label="Timezone" value={org.timezone} />
         <Row label="Status" value={<Badge tone={org.isActive ? "ok" : "coral"}>{org.isActive ? "Active" : "Suspended"}</Badge>} />
+        <Row
+          label="Verification"
+          value={<Badge tone={VERIFICATION_TONE[org.verificationStatus] ?? "muted"}>{org.verificationStatus}</Badge>}
+        />
+        <Row label="Publicly listed" value={org.isPubliclyListed ? "Yes" : "No"} />
         <Row label="Created" value={new Date(org.createdAt).toLocaleString()} />
         <Row label="Members" value={String(org._count.memberships)} />
         <Row label="Doctors" value={String(org._count.doctorProfiles)} />
@@ -40,11 +52,22 @@ export default async function AdminOrganizationDetailPage({
             {org.isActive ? "Suspend this clinic" : "Reactivate this clinic"}
           </Button>
         </form>
+
+        {org.verificationStatus === "PENDING_VERIFICATION" ? (
+          <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+            <form action={setOrganizationVerificationAction.bind(null, orgId, "VERIFIED")}>
+              <Button>Approve verification</Button>
+            </form>
+            <form action={setOrganizationVerificationAction.bind(null, orgId, "REJECTED")}>
+              <Button variant="danger">Reject</Button>
+            </form>
+          </div>
+        ) : null}
       </Card>
 
       <Card style={{ maxWidth: 640 }}>
         <SectionTitle>Members</SectionTitle>
-        <table style={table}>
+        <Table>
           <thead>
             <tr>
               <th style={th}>Name</th>
@@ -65,7 +88,7 @@ export default async function AdminOrganizationDetailPage({
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       </Card>
     </div>
   );

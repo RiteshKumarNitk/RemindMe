@@ -291,10 +291,24 @@ incrementally, page by page, not deleted and replaced in one commit.
   `queue.getBoard()`/`appointments.listAppointments()` unmodified.
 - **Phase 9 — reception workspace polish.** Done. Clinic-wide today's numbers + an "up next"
   list across every doctor, reusing `appointments.listAppointments()` unmodified.
-- **Phase 10 — admin workspace + verification queue.** Next.
-- **Phase 11 — dependent/family booking.** Not started. Deliberately last among the functional
-  phases — the only one that touches the SERIALIZABLE booking transaction.
-- **Phase 12 — responsive + accessibility pass.** Not started.
+- **Phase 10 — admin workspace + verification queue.** Done. `AdminOverview.tsx` for
+  CLINIC_ADMIN; a real `DRAFT → PENDING_VERIFICATION → VERIFIED|REJECTED` flow (request
+  button on the clinic's profile page, a superadmin review queue + approve/reject), mirroring
+  the existing suspend/reactivate pattern.
+- **Phase 11 — dependent/family booking.** Done, and the last functional phase. Extended
+  `bookAppointment`/`getAppointment`/`listAppointments`/`cancelAppointment`/`rescheduleAppointment`
+  to also accept a live `PatientAccessGrant` (`MANAGE_APPOINTMENTS`/`VIEW_APPOINTMENTS`) alongside
+  direct patient ownership — no new authorization system, reuses the existing family-module
+  primitive. Verified live end-to-end, including the negative cases (see `DECISIONS.md` ADR-013),
+  not just build-checked.
+- **Phase 12 — responsive + accessibility pass.** Done. Fixed the fixed-width, no-breakpoint
+  dashboard/admin sidebar (the launch-blocking issue — the dashboard was unusable on a phone), a
+  global `:focus-visible` ring covering every interactive element including the older inline-style
+  kit, a new `LinkButton` replacing 11 invalid button-in-anchor instances, a new `Table` wrapper
+  giving all 15 table-using pages a horizontal-scroll fallback, accessible names for the queue
+  filter and verification action column, `aria-current` on active nav links, and two heading-
+  hierarchy skips. Verified live against the real database (not just build-checked) — see
+  `DECISIONS.md` ADR-014.
 - **Phase 13 — security + regression pass.** Partially ongoing — every phase so far has been
   typecheck/build-verified and several have been live-verified against the real database, but a
   dedicated full-suite regression pass hasn't happened (see `STATUS.md`'s open test-stability

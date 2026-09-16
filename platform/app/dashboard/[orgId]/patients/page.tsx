@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { listPatients } from "@/modules/patients/service.js";
-import { Button, Card, EmptyState, ErrorNote, Field, SectionTitle, table, td, th } from "../../ui.js";
+import { Button, Card, EmptyState, ErrorNote, Field, SectionTitle, Table, td, th } from "../../ui.js";
 import { createPatientAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ export default async function PatientsPage({
         {patients.length === 0 ? (
           <EmptyState>No patients found.</EmptyState>
         ) : (
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>Name</th>
@@ -53,7 +53,7 @@ export default async function PatientsPage({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
       </Card>
 

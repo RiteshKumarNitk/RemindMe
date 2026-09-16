@@ -3,7 +3,7 @@ import { requireOrgContext } from "@/lib/web-context.js";
 import { getOrganization } from "@/modules/clinics/service.js";
 import { canPublishOrganization } from "@/modules/clinics/publish.js";
 import { Badge, Button, Card, CardSubtitle, CardTitle, Field, Input, Select } from "@/components/ui/index.js";
-import { publishAction, saveProfileAction, unpublishAction } from "./actions.js";
+import { publishAction, requestVerificationAction, saveProfileAction, unpublishAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +125,36 @@ export default async function OrganizationProfilePage({
             </form>
           )}
         </div>
+      </Card>
+
+      {/* Verification */}
+      <Card>
+        <CardTitle>Verification</CardTitle>
+        {org.verificationStatus === "VERIFIED" ? (
+          <p className="mt-2 text-sm text-ink-muted">
+            This clinic is verified. Patients will see a &ldquo;Verified&rdquo; badge on your public
+            profile.
+          </p>
+        ) : org.verificationStatus === "PENDING_VERIFICATION" ? (
+          <p className="mt-2 text-sm text-ink-muted">
+            Your verification request is with the DoseWise team for review.
+          </p>
+        ) : (
+          <>
+            <p className="mt-2 text-sm text-ink-muted">
+              {org.verificationStatus === "REJECTED"
+                ? "Your last request wasn't approved. Update your profile and try again."
+                : "Ask the DoseWise team to review and verify your clinic's profile."}
+            </p>
+            <div className="mt-4">
+              <form action={requestVerificationAction.bind(null, orgId)}>
+                <Button variant="secondary" disabled={!readiness.ready}>
+                  Request verification
+                </Button>
+              </form>
+            </div>
+          </>
+        )}
       </Card>
 
       {/* Edit form */}

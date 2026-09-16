@@ -1,7 +1,7 @@
 import { requireOrgContext } from "@/lib/web-context.js";
 import { getAppointment } from "@/modules/appointments/service.js";
 import { getConsultation } from "@/modules/consultations/service.js";
-import { Badge, Button, Card, EmptyState, ErrorNote, Field, SectionTitle, table, td, th } from "../../../../ui.js";
+import { Badge, Button, Card, EmptyState, ErrorNote, Field, SectionTitle, Table, td, th } from "../../../../ui.js";
 import {
   addPrescriptionItemAction,
   removePrescriptionItemAction,
@@ -91,7 +91,7 @@ export default async function ConsultationPage({
         {items.length === 0 ? (
           <EmptyState>No medicines added yet.</EmptyState>
         ) : (
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>Drug</th>
@@ -120,7 +120,7 @@ export default async function ConsultationPage({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
 
         {!signed && canWrite && (

@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { db } from "@/lib/db.js";
-import { Badge, Button, Card, CardSubtitle, CardTitle } from "@/components/ui/index.js";
+import { Badge, Card, CardSubtitle, CardTitle, LinkButton } from "@/components/ui/index.js";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -72,9 +71,9 @@ export async function PatientOverview({ orgId, userId }: { orgId: string; userId
             {next.queueEntry ? <Badge tone="ok">Token {next.queueEntry.tokenNumber}</Badge> : null}
           </div>
           <div className="mt-4">
-            <Link href={`/dashboard/${orgId}/appointments/${next.id}`}>
-              <Button variant="secondary">View appointment</Button>
-            </Link>
+            <LinkButton variant="secondary" href={`/dashboard/${orgId}/appointments/${next.id}`}>
+              View appointment
+            </LinkButton>
           </div>
         </Card>
       ) : (
@@ -84,18 +83,14 @@ export async function PatientOverview({ orgId, userId }: { orgId: string; userId
         </Card>
       )}
 
-      <div className="flex gap-3">
-        <Link href={`/dashboard/${orgId}/appointments`}>
-          <Button>Book an appointment</Button>
-        </Link>
-        <Link href={`/dashboard/${orgId}/appointments`}>
-          <Button variant="secondary">
-            {upcomingCount > 0 ? `All appointments (${upcomingCount} upcoming)` : "All appointments"}
-          </Button>
-        </Link>
-        <Link href={`/dashboard/${orgId}/family`}>
-          <Button variant="ghost">Family access</Button>
-        </Link>
+      <div className="flex flex-wrap gap-3">
+        <LinkButton href={`/dashboard/${orgId}/appointments`}>Book an appointment</LinkButton>
+        <LinkButton variant="secondary" href={`/dashboard/${orgId}/appointments`}>
+          {upcomingCount > 0 ? `All appointments (${upcomingCount} upcoming)` : "All appointments"}
+        </LinkButton>
+        <LinkButton variant="ghost" href={`/dashboard/${orgId}/family`}>
+          Family access
+        </LinkButton>
       </div>
     </div>
   );

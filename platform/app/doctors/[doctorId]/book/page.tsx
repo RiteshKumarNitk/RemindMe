@@ -44,7 +44,7 @@ export default async function BookAppointmentPage({
 
         <Card className="mt-4">
           <CardSubtitle>Appointment with</CardSubtitle>
-          <CardTitle className="mt-1">{doctor.displayName}</CardTitle>
+          <CardTitle as="p" className="mt-1">{doctor.displayName}</CardTitle>
           <p className="text-sm text-ink-muted">{doctor.specialty ?? "General practice"}</p>
           <p className="mt-3 text-sm text-ink">{doctor.organization.name}</p>
           <p className="mt-3 text-sm font-medium text-ink">

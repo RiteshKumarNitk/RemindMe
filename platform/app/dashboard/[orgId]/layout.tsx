@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { db } from "@/lib/db.js";
 import { requireOrgContext } from "@/lib/web-context.js";
+import { NavLink } from "@/components/nav-link.js";
 import { Badge, Button } from "../ui.js";
 import { logoutAction } from "../../login/actions.js";
 
@@ -67,18 +68,20 @@ export default async function OrgLayout({
 
   const items = NAV[ctx.org!.role] ?? [];
 
+  const navLinkStyle = {
+    padding: "8px 10px",
+    borderRadius: 8,
+    fontSize: 14,
+    textDecoration: "none",
+    color: "var(--ink)",
+  };
+
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <aside
-        style={{
-          width: 220,
-          flexShrink: 0,
-          borderRight: "1px solid var(--border)",
-          padding: "24px 16px",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
+    <div className="dashboard-shell">
+      <a href="#main-content" className="skip-link">
+        Skip to content
+      </a>
+      <aside className="dashboard-sidebar">
         <Link href="/dashboard" style={{ textDecoration: "none", color: "inherit", marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span
@@ -99,37 +102,26 @@ export default async function OrgLayout({
           <Badge tone={ctx.org!.role === "CLINIC_ADMIN" ? "coral" : "indigo"}>{ctx.org!.role}</Badge>
         </div>
 
-        <nav style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
+        <nav className="dashboard-nav" aria-label="Dashboard">
           {items.map((item) => (
-            <Link
+            <NavLink
               key={item.label}
               href={`/dashboard/${orgId}${item.href}`}
-              style={{
-                padding: "8px 10px",
-                borderRadius: 8,
-                fontSize: 14,
-                textDecoration: "none",
-                color: "var(--ink)",
-              }}
+              exact={item.href === ""}
+              style={navLinkStyle}
             >
               {item.label}
-            </Link>
+            </NavLink>
           ))}
           {doctorProfileHref && (
-            <Link
-              href={doctorProfileHref}
-              style={{ padding: "8px 10px", borderRadius: 8, fontSize: 14, textDecoration: "none", color: "var(--ink)" }}
-            >
+            <NavLink href={doctorProfileHref} style={navLinkStyle}>
               My profile
-            </Link>
+            </NavLink>
           )}
           {doctorHref && (
-            <Link
-              href={doctorHref}
-              style={{ padding: "8px 10px", borderRadius: 8, fontSize: 14, textDecoration: "none", color: "var(--ink)" }}
-            >
+            <NavLink href={doctorHref} style={navLinkStyle}>
               My availability
-            </Link>
+            </NavLink>
           )}
         </nav>
 
@@ -139,7 +131,9 @@ export default async function OrgLayout({
           </Button>
         </form>
       </aside>
-      <main style={{ flex: 1, padding: "32px 40px", maxWidth: 980 }}>{children}</main>
+      <main id="main-content" className="dashboard-main">
+        {children}
+      </main>
     </div>
   );
 }

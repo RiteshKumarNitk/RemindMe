@@ -1,7 +1,7 @@
 import { requireOrgContext } from "@/lib/web-context.js";
 import { getDoctor } from "@/modules/doctors/service.js";
 import { getRules, listExceptions } from "@/modules/availability/service.js";
-import { Button, Card, EmptyState, ErrorNote, Field, Select, SectionTitle, table, td, th } from "../../../../ui.js";
+import { Button, Card, EmptyState, ErrorNote, Field, Select, SectionTitle, Table, td, th } from "../../../../ui.js";
 import { addExceptionAction, deleteExceptionAction, saveAvailabilityAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +48,7 @@ export default async function AvailabilityPage({
 
       <Card style={{ marginBottom: 20 }}>
         <form action={saveAvailabilityAction.bind(null, orgId, doctorId)}>
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>Day</th>
@@ -87,7 +87,7 @@ export default async function AvailabilityPage({
                 );
               })}
             </tbody>
-          </table>
+          </Table>
           <div style={{ marginTop: 14 }}>
             <Button>Save weekly schedule</Button>
           </div>
@@ -99,7 +99,7 @@ export default async function AvailabilityPage({
         {exceptions.length === 0 ? (
           <EmptyState>No exceptions.</EmptyState>
         ) : (
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>Kind</th>
@@ -126,7 +126,7 @@ export default async function AvailabilityPage({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
       </Card>
 

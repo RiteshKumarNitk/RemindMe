@@ -10,6 +10,7 @@ import { runSerializable } from "@/lib/serializable.js";
 import { notify } from "@/lib/notifications/notify.js";
 import { assertWithinAvailability } from "@/modules/availability/service.js";
 import { createEntryForCheckIn } from "@/modules/queue/service.js";
+import { hasFamilyAccess } from "@/modules/family/service.js";
 import type { RequestContext } from "@/lib/context.js";
 import { nextStatus, type AppointmentAction } from "./state-machine.js";
 import type {
@@ -126,10 +127,31 @@ export async function bookAppointment(
     });
     if (!doctor) throw new AppError("NOT_FOUND", "Doctor not found.");
 
-    // Patient self-booking gate.
+    // Patient self-booking gate — also allows a guardian with an active
+    // MANAGE_APPOINTMENTS grant on this patient to book on their behalf
+    // (PRODUCT_EVOLUTION_PLAN.md Phase 11). Checked via `tx` directly, not
+    // the exported `hasFamilyAccess` helper (which opens its own client) —
+    // stays inside this transaction's snapshot, consistent with every other
+    // check in this function.
     if (role === "PATIENT") {
       if (patient.ownerUserId !== ctx.userId) {
-        throw new AppError("FORBIDDEN", "You can only book for your own record.");
+        const grant = await tx.patientAccessGrant.findFirst({
+          where: {
+            patientId: patient.id,
+            organizationId: orgId,
+            granteeUserId: ctx.userId,
+            revokedAt: null,
+            permissions: { has: "MANAGE_APPOINTMENTS" },
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          },
+          select: { id: true },
+        });
+        if (!grant) {
+          throw new AppError(
+            "FORBIDDEN",
+            "You can only book for your own record or a dependent you manage.",
+          );
+        }
       }
       if (!settings.allowPatientSelfBooking) {
         throw new AppError("FORBIDDEN", "This clinic does not allow patient self-booking.");
@@ -287,15 +309,18 @@ export async function getAppointment(ctx: RequestContext, id: string) {
       doctor: { select: { id: true, displayName: true } },
     },
   });
-  // A PATIENT may only read their own appointment — `listAppointments`
-  // already filters this way; this direct-by-id lookup previously didn't,
-  // which would have let a patient enumerate another patient's appointment
-  // by UUID within the same clinic (low-severity — UUIDs aren't guessable —
-  // but a real gap, closed here since this is the first real caller of a
-  // single-appointment read from the PATIENT side, PRODUCT_EVOLUTION_PLAN.md
-  // Phase 6).
+  // A PATIENT may only read their own appointment, or a dependent's if they
+  // hold an active VIEW_APPOINTMENTS grant (PRODUCT_EVOLUTION_PLAN.md
+  // Phase 11) — `listAppointments` already filters this way; this
+  // direct-by-id lookup previously didn't, which would have let a patient
+  // enumerate another patient's appointment by UUID within the same clinic
+  // (low-severity — UUIDs aren't guessable — but a real gap, closed in
+  // Phase 6 for ownership and extended here for family access).
   if (ctx.org!.role === "PATIENT" && appt.patient.ownerUserId !== ctx.userId) {
-    throw new AppError("NOT_FOUND", "Not found.");
+    const canView = await hasFamilyAccess(ctx, appt.patient.id, "VIEW_APPOINTMENTS");
+    if (!canView) {
+      throw new AppError("NOT_FOUND", "Not found.");
+    }
   }
   return appt;
 }
@@ -315,9 +340,24 @@ export async function listAppointments(
     if (q.to) range.lte = new Date(q.to);
     where.scheduledStart = range;
   }
-  // A PATIENT only ever sees their own appointments.
+  // A PATIENT only ever sees their own appointments, plus any dependent's
+  // they hold an active VIEW_APPOINTMENTS grant for (PRODUCT_EVOLUTION_PLAN.md
+  // Phase 11).
   if (ctx.org!.role === "PATIENT") {
-    where.patient = { ownerUserId: ctx.userId };
+    const familyGrants = await t.patientAccessGrant.findMany({
+      where: {
+        organizationId: ctx.org!.id,
+        granteeUserId: ctx.userId,
+        revokedAt: null,
+        permissions: { has: "VIEW_APPOINTMENTS" },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      select: { patientId: true },
+    });
+    const familyPatientIds = familyGrants.map((g) => g.patientId);
+    where.patient = familyPatientIds.length
+      ? { OR: [{ ownerUserId: ctx.userId }, { id: { in: familyPatientIds } }] }
+      : { ownerUserId: ctx.userId };
   }
   const data = await t.appointment.findMany({
     where,
@@ -377,6 +417,11 @@ function isAssignedDoctor(ctx: RequestContext, a: LoadedAppt) {
 function isPatientOwner(ctx: RequestContext, a: LoadedAppt) {
   return ctx.org!.role === "PATIENT" && a.patientOwnerUserId === ctx.userId;
 }
+/** A guardian with an active MANAGE_APPOINTMENTS grant on this appointment's patient (PRODUCT_EVOLUTION_PLAN.md Phase 11). */
+async function isFamilyManager(ctx: RequestContext, a: LoadedAppt): Promise<boolean> {
+  if (ctx.org!.role !== "PATIENT" || a.patientOwnerUserId === ctx.userId) return false;
+  return hasFamilyAccess(ctx, a.patientId, "MANAGE_APPOINTMENTS");
+}
 
 export async function confirmAppointment(ctx: RequestContext, id: string) {
   assertRole(ctx, "RECEPTIONIST", "CLINIC_ADMIN");
@@ -426,10 +471,11 @@ export async function cancelAppointment(
 ) {
   const a = await loadForTransition(ctx, id);
   const staff = ["RECEPTIONIST", "CLINIC_ADMIN"].includes(ctx.org!.role);
-  if (!staff && !isAssignedDoctor(ctx, a) && !isPatientOwner(ctx, a)) {
+  const isPatientActor = isPatientOwner(ctx, a) || (await isFamilyManager(ctx, a));
+  if (!staff && !isAssignedDoctor(ctx, a) && !isPatientActor) {
     throw new AppError("FORBIDDEN", "You cannot cancel this appointment.");
   }
-  if (isPatientOwner(ctx, a) && !staff) {
+  if (isPatientActor && !staff) {
     const settings = await tenantDb(ctx).clinicSettings.findFirstOrThrow({
       where: { organizationId: ctx.org!.id },
     });
@@ -562,7 +608,7 @@ export async function rescheduleAppointment(
 ) {
   const a = await loadForTransition(ctx, id);
   const staff = ["RECEPTIONIST", "CLINIC_ADMIN"].includes(ctx.org!.role);
-  if (!staff && !isAssignedDoctor(ctx, a) && !isPatientOwner(ctx, a)) {
+  if (!staff && !isAssignedDoctor(ctx, a) && !isPatientOwner(ctx, a) && !(await isFamilyManager(ctx, a))) {
     throw new AppError("FORBIDDEN", "You cannot reschedule this appointment.");
   }
   nextStatus(a.status, "RESCHEDULE"); // validates the source state

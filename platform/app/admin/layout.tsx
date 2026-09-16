@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/web-context.js";
+import { NavLink } from "@/components/nav-link.js";
 import { Badge, Button } from "../dashboard/ui.js";
 import { logoutAction } from "../login/actions.js";
 
@@ -9,24 +10,21 @@ export const dynamic = "force-dynamic";
 const NAV = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/organizations", label: "Clinics" },
+  { href: "/admin/verification", label: "Verification" },
   { href: "/admin/audit", label: "Audit log" },
 ];
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   await requireSuperAdmin();
 
+  const navLinkStyle = { padding: "8px 10px", borderRadius: 8, fontSize: 14, textDecoration: "none", color: "var(--ink)" };
+
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <aside
-        style={{
-          width: 220,
-          flexShrink: 0,
-          borderRight: "1px solid var(--border)",
-          padding: "24px 16px",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
+    <div className="dashboard-shell">
+      <a href="#main-content" className="skip-link">
+        Skip to content
+      </a>
+      <aside className="dashboard-sidebar">
         <Link href="/admin" style={{ textDecoration: "none", color: "inherit", marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span
@@ -46,15 +44,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <Badge tone="coral">SUPER_ADMIN</Badge>
         </div>
 
-        <nav style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
+        <nav className="dashboard-nav" aria-label="Admin">
           {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{ padding: "8px 10px", borderRadius: 8, fontSize: 14, textDecoration: "none", color: "var(--ink)" }}
-            >
+            <NavLink key={item.href} href={item.href} exact={item.href === "/admin"} style={navLinkStyle}>
               {item.label}
-            </Link>
+            </NavLink>
           ))}
           <Link
             href="/dashboard"
@@ -70,7 +64,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </Button>
         </form>
       </aside>
-      <main style={{ flex: 1, padding: "32px 40px", maxWidth: 980 }}>{children}</main>
+      <main id="main-content" className="dashboard-main">
+        {children}
+      </main>
     </div>
   );
 }

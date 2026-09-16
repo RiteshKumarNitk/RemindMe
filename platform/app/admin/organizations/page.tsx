@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/web-context.js";
 import { listOrganizations } from "@/modules/superadmin/service.js";
-import { Badge, Button, Card, EmptyState, Field, SectionTitle, Select, table, td, th } from "../../dashboard/ui.js";
+import { Badge, Button, Card, EmptyState, Field, SectionTitle, Select, Table, td, th } from "../../dashboard/ui.js";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +39,7 @@ export default async function AdminOrganizationsPage({
         {orgs.length === 0 ? (
           <EmptyState>No clinics found.</EmptyState>
         ) : (
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>Name</th>
@@ -70,7 +70,7 @@ export default async function AdminOrganizationsPage({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
       </Card>
     </div>

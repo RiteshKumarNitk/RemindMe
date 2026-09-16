@@ -3,7 +3,7 @@ import { requireOrgContext } from "@/lib/web-context.js";
 import { listDoctors } from "@/modules/doctors/service.js";
 import { getBoard } from "@/modules/queue/service.js";
 import { AutoRefresh } from "../../AutoRefresh.js";
-import { Badge, Button, Card, EmptyState, ErrorNote, SectionTitle, table, td, th } from "../../ui.js";
+import { Badge, Button, Card, EmptyState, ErrorNote, SectionTitle, Table, td, th } from "../../ui.js";
 import { queueAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -57,15 +57,30 @@ export default async function QueuePage({
       <SectionTitle>Queue — {board.queueDate}</SectionTitle>
       <ErrorNote message={sp.error} />
 
-      <form style={{ display: "flex", gap: 10, marginBottom: 16, maxWidth: 420 }}>
-        <select name="doctorId" defaultValue={doctorId} style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: "1px solid var(--border)" }}>
-          {doctors.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.displayName}
-            </option>
-          ))}
-        </select>
-        <input type="date" name="date" defaultValue={sp.date} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid var(--border)" }} />
+      <form style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, maxWidth: 420 }}>
+        <label style={{ flex: 1, minWidth: 160 }}>
+          <span className="sr-only">Doctor</span>
+          <select
+            name="doctorId"
+            defaultValue={doctorId}
+            style={{ width: "100%", padding: "8px 10px", borderRadius: 10, border: "1px solid var(--border)" }}
+          >
+            {doctors.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.displayName}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span className="sr-only">Date</span>
+          <input
+            type="date"
+            name="date"
+            defaultValue={sp.date}
+            style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid var(--border)" }}
+          />
+        </label>
         <Button variant="ghost" type="submit">
           View
         </Button>
@@ -78,7 +93,7 @@ export default async function QueuePage({
         {board.entries.length === 0 ? (
           <EmptyState>No one checked in yet for this day.</EmptyState>
         ) : (
-          <table style={table}>
+          <Table>
             <thead>
               <tr>
                 <th style={th}>Token</th>
@@ -131,7 +146,7 @@ export default async function QueuePage({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
       </Card>
     </div>
