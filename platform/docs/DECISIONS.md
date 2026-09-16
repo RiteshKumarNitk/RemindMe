@@ -276,3 +276,49 @@ state.
   (`tests/integration/patient-booking.test.ts`) covering the same scenarios for whenever that
   suite's separate, already-flagged flakiness issue (see `STATUS.md`) is resolved. `pnpm typecheck`
   and `pnpm build` both clean throughout.
+
+## ADR-010: Phases 7–8 (patient dashboard, doctor workspace) are role-specific overview components, not new backend
+
+- **Context.** `PRODUCT_EVOLUTION_PLAN.md` Phase 7 and Phase 8 both call for turning the generic
+  `/dashboard/:orgId` stat-card grid (identical layout for every role, just different numbers)
+  into something that actually answers "what should I do next," per-role — for a patient, their
+  next appointment; for a doctor, who's waiting right now. Both are explicitly scoped as
+  presentation work in the plan ("no new backend").
+- **Decision.** New `PatientOverview.tsx`/`DoctorOverview.tsx`, swapped in by role at the top of
+  `/dashboard/:orgId/page.tsx` (the CLINIC_ADMIN/RECEPTIONIST stat-grid view is untouched — out
+  of scope for these two phases). Both are pure composition over existing, unmodified service
+  functions — `DoctorOverview` calls `queue.getBoard()` (already orders by queue position, already
+  distinguishes `IN_CONSULTATION`/`WAITING`) and `appointments.listAppointments()`; neither
+  required a new query, a new field, or a new authorization rule. A DOCTOR-role membership with
+  no linked `DoctorProfile` yet (an edge case — an invited account that hasn't completed setup)
+  falls back to the old plain stat view rather than crashing, since `DoctorOverview` genuinely
+  needs a `doctorId` to query against.
+  - Also added the single-appointment detail page that was missing for *every* role
+    (`/dashboard/:orgId/appointments/:appointmentId`) — reuses `getAppointment` (the function
+    ADR-009 already made ownership-safe for PATIENT) and the *exact same* action functions the
+    appointments list page already uses (`confirmAppointmentAction`, `cancelAppointmentAction`,
+    etc.) — no duplicated business logic, just a second place to reach them from.
+- **Consequences.** Zero schema/API changes for either phase. Verified live against the real
+  database (not just build-clean): minted real cookie sessions for a patient and a doctor
+  account, confirmed the patient overview correctly shows/hides the "next appointment" card,
+  confirmed the appointment detail page renders and its actions are reachable, and confirmed the
+  doctor overview correctly transitions from "nobody waiting" to "next patient" (with the real
+  queue token) the moment a real check-in happens via the existing check-in endpoint — then
+  deleted all of it. `pnpm typecheck`/`pnpm build` clean.
+
+## ADR-011: Phase 9 (reception workspace) reuses `listAppointments` clinic-wide instead of per-doctor
+
+- **Context.** `PRODUCT_EVOLUTION_PLAN.md` Phase 9 wants reception's landing view to answer
+  "what does the front desk need to know right now" — across *every* doctor in the clinic, unlike
+  Phase 8's doctor view which is inherently one doctor's own queue.
+- **Decision.** `ReceptionOverview.tsx` calls the same `appointments.listAppointments()` Phase 8
+  uses, just without a `doctorId` filter — every existing tenant-isolation/role guarantee in that
+  function applies unchanged. Counts (checked-in / waiting / in-consultation / no-shows) and an
+  "Up next" list (soonest 8 non-terminal appointments across all doctors, each showing which
+  doctor) are derived in the component, not a new query shape. The existing, already-functional
+  live queue board (`/dashboard/:orgId/queue` — call/recall/skip/complete, auto-refresh) is
+  deliberately left untouched and just linked to via an "Open queue board" button — Phase 9 is
+  explicitly a landing-page improvement, not a rebuild of a tool that already works well.
+- **Consequences.** No schema/API change. Verified live: invited a real RECEPTIONIST member,
+  booked a same-day appointment, confirmed the overview's stat tiles and "Up next" list rendered
+  correctly with real data — then deleted the test data. `pnpm typecheck`/`pnpm build` clean.

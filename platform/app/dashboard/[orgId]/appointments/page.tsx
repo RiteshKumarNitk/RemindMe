@@ -117,6 +117,12 @@ export default async function AppointmentsPage({
                     </td>
                     <td style={td}>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <a
+                          href={`/dashboard/${orgId}/appointments/${a.id}`}
+                          style={{ fontSize: 13, fontWeight: 700, alignSelf: "center" }}
+                        >
+                          View
+                        </a>
                         {isStaff && a.status === "REQUESTED" && (
                           <form action={confirmAppointmentAction.bind(null, orgId, a.id)}>
                             <Button variant="ghost">Confirm</Button>

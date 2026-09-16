@@ -4,6 +4,35 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-09-16 — Phase 9: a real reception "what's next" workspace (uncommitted)
+
+Reception's `/dashboard/:orgId` landing page now shows today's clinic-wide numbers (total,
+checked-in, waiting, in-consultation, no-shows) and an "up next" list across every doctor —
+instead of a single generic stat card. Built on `appointments.listAppointments()` unmodified
+(same function Phase 8 uses, just without the per-doctor filter); the existing, already-working
+live queue board is untouched, just linked to. Verified live: invited a real receptionist
+account, booked a same-day appointment, confirmed the stats and "up next" list rendered
+correctly with real data, then deleted the test data. See ADR-011. `pnpm typecheck`/`pnpm build`
+clean. **Not yet committed.**
+
+## 2026-09-16 — Phases 7–8: a real patient dashboard and a real doctor "what's next" workspace (uncommitted)
+
+Replaced the generic, identical-for-everyone stat-card grid on `/dashboard/:orgId` with two
+role-specific views, built entirely on existing, unmodified service functions — no schema or API
+changes. **Patient**: a greeting, their next appointment (doctor, time, status, queue token if
+checked in) with a "View appointment" link, and quick actions (book / see all / family access).
+**Doctor**: today's date, who's currently in consultation or next in the queue (reusing
+`queue.getBoard()`'s existing ordering), stat tiles (waiting / today's total / completed /
+no-shows), and a chronological list of today's schedule. Also added the single-appointment
+detail page that didn't exist for *any* role before (`/dashboard/:orgId/appointments/:id`) —
+reachable from both new overviews and from the existing appointments list, reusing the exact
+same action functions (confirm/check-in/no-show/cancel/reschedule-link/consultation-link) the
+list page already has. Verified live: minted real sessions for a patient and a doctor account,
+confirmed the patient view correctly shows/hides the next-appointment card, and confirmed the
+doctor view correctly moves from "nobody waiting" to "next patient" with the real token the
+moment a check-in happens — then deleted the test data. See ADR-010. `pnpm typecheck`/`pnpm
+build` clean. **Not yet committed.**
+
 ## 2026-09-16 — Phase 6: patient self-service booking — find a doctor, pick a real slot, book it yourself (uncommitted)
 
 The core loop the last few phases were building toward: a logged-in stranger with zero prior

@@ -284,9 +284,21 @@ incrementally, page by page, not deleted and replaced in one commit.
   `/api/public/doctors/:id/slots` + `POST /api/patient/appointments`, reusing the existing
   `computeSlots`/`bookAppointment` logic unmodified. Verified live end-to-end (see
   `DECISIONS.md` ADR-009), not just build-checked.
-- **Phase 7 — patient dashboard.** Next. Today a patient lands on the existing plain
-  appointments list after booking; this phase gives them a dedicated view (upcoming appointment
-  front and center, history, cancel/reschedule).
+- **Phase 7 — patient dashboard.** Done. A real greeting + next-appointment hero on
+  `/dashboard/:orgId`, plus the single-appointment detail page that didn't exist for any role.
+- **Phase 8 — doctor workspace polish.** Done. `/dashboard/:orgId` for a DOCTOR now shows who's
+  in consultation or next in the queue, today's full schedule, and quick counts — reusing
+  `queue.getBoard()`/`appointments.listAppointments()` unmodified.
+- **Phase 9 — reception workspace polish.** Done. Clinic-wide today's numbers + an "up next"
+  list across every doctor, reusing `appointments.listAppointments()` unmodified.
+- **Phase 10 — admin workspace + verification queue.** Next.
+- **Phase 11 — dependent/family booking.** Not started. Deliberately last among the functional
+  phases — the only one that touches the SERIALIZABLE booking transaction.
+- **Phase 12 — responsive + accessibility pass.** Not started.
+- **Phase 13 — security + regression pass.** Partially ongoing — every phase so far has been
+  typecheck/build-verified and several have been live-verified against the real database, but a
+  dedicated full-suite regression pass hasn't happened (see `STATUS.md`'s open test-stability
+  item).
 
 See `docs/STATUS.md` for the plain-English version and `docs/CHANGELOG.md`/`docs/DECISIONS.md`
 for the dated log and the reasoning behind each non-obvious call. Every phase above got its own

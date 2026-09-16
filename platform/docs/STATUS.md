@@ -38,6 +38,9 @@ foundation underneath both.
 | **Organization & doctor public profiles** | A clinic admin can fill in a real public-facing clinic profile (type, description, branding, contact info) and publish/unpublish it; each doctor can fill in their own professional profile (photo, qualifications, experience, languages, fee) and choose to be listed. |
 | **Public hospital & doctor search** | Anyone — no login needed — can search for hospitals and doctors and view their public profiles at `dosewise.example/hospitals` and `/doctors`. Nothing shows up in production yet simply because no clinic has clicked "Publish" — the pages themselves work, verified against the real database. |
 | **Patient self-service booking** | A patient can find a doctor, pick a real available time slot, log in (or sign up), and book — with no clinic staff involved. Verified end-to-end against the real database: booking, double-booking prevention, and a patient only ever being able to see their own appointment all confirmed working for real. |
+| **A real patient dashboard** | After logging in, a patient sees a greeting and their next appointment front and center (doctor, time, queue token if checked in) — not a plain staff-style table. Every appointment now also has its own detail page, with view/cancel/reschedule in one place. |
+| **A real doctor "what's next" view** | A doctor logging in sees who's currently being seen or next in line, today's full schedule, and quick counts (waiting / completed / no-shows) — instead of a single generic number. Verified live: correctly updates the moment a patient is actually checked in. |
+| **A real reception "what's next" view** | The front desk logging in sees today's clinic-wide numbers (checked-in, waiting, in-consultation, no-shows) and an at-a-glance "up next" list across every doctor — plus quick links to the existing queue board, patient search, and new-appointment form. Verified live with real data. |
 | **Doctor scheduling** | Doctors set weekly availability + exceptions (holidays, leave); the system calculates real open slots automatically. |
 | **Booking a real appointment** | A patient/staff can book, confirm, cancel, reschedule, or no-show an appointment — double-booking the same doctor at the same time is physically impossible (enforced at the database level, not just in app code). |
 | **Front-desk queue** | Check-in issues a token, a live board shows who's waiting, staff can call/recall/skip, and starting/completing a visit is restricted to the assigned doctor. |
@@ -63,8 +66,8 @@ and the doctor/clinic onboarding wizard.
 
 | Area | Notes |
 |---|---|
-| **A real patient dashboard** | After booking, a patient lands on the existing (functional, plain) staff-style appointments list rather than a dedicated "my appointments" view with upcoming/history/cancel/reschedule in one place. This is the next piece of work. |
-| **Visual design pass** | Current UI is clean but generic — not yet matching DoseWise's actual brand look (the new public/booking pages use a real component system now; the older dashboard screens still don't). |
+| **Clinic-admin "what's next" view** | The clinic-admin dashboard still shows the original plain stat-card grid — patient, doctor, and reception views have all been redone; admin is next. |
+| **Visual design pass** | Current UI is clean but generic — not yet matching DoseWise's actual brand look (the new public/booking/patient/doctor pages use a real component system now; settings/patients/doctors-list/queue-board screens still don't). |
 | **Mobile-app integration (Flutter)** | The existing DoseWise app and this new backend aren't connected yet — planned as the final phase, deliberately last so the web product is solid first. |
 | Document uploads, SMS/WhatsApp notifications, right-to-erasure workflow | Explicitly deferred, not required for MVP. |
 
@@ -76,20 +79,20 @@ A detailed, phase-by-phase plan for turning this from a clinic-operations tool i
 patient-facing product (public hospital/doctor discovery, self-service booking, guided
 onboarding for clinics and doctors) now exists at
 [`PRODUCT_EVOLUTION_PLAN.md`](../PRODUCT_EVOLUTION_PLAN.md), based on an audit of the actual
-current code. **Phases 2–6 are done** — design system, organization & doctor public profiles,
-public discovery pages, and now real patient self-service booking. A stranger can find a doctor,
-see real availability, log in, and book — verified live end-to-end against the real database,
-not just build-checked. Phase 7 (a proper patient dashboard — upcoming appointment, history,
-cancel/reschedule from one place) is next; today a patient lands on the existing, functional but
-plain, appointments list after booking.
+current code. **Phases 2–9 are done** — design system, organization & doctor public profiles,
+public discovery pages, patient self-service booking, and role-specific "what's next" views for
+patients, doctors, and now reception. A stranger can find a doctor, see real availability, log
+in, book, and land on a real dashboard; staff logging in immediately see what needs attention.
+All verified live against the real database, not just build-checked. Phase 10 (clinic-admin
+dashboard + a platform verification queue) is next.
 
 ## Recommended next milestone
 
-**A real patient dashboard (Phase 7)** — right now, after booking, a patient sees the same plain
-appointments table staff use. Worth building a proper "my appointments" view (upcoming visit
-front and center, history, cancel/reschedule) now that booking itself works end-to-end. Also
-worth finally fixing the test-stability issue flagged above — the codebase now has several new,
-real integration tests written but never run because of it.
+**Clinic-admin dashboard + verification queue (Phase 10)** — the admin view is the last role
+still on the original generic stat grid. This phase also adds the platform-side review queue for
+`PENDING_VERIFICATION` clinics (the "Verified" badge Phase 3 already built the data model for,
+but nothing reviews yet). Also worth finally fixing the test-stability issue flagged above — the
+codebase now has several new, real integration tests written but never run because of it.
 
 ---
 
