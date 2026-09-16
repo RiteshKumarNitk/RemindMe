@@ -1,0 +1,18 @@
+import type { HTMLAttributes } from "react";
+
+export function Card({ className = "", ...rest }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`rounded-[var(--radius-card)] border border-border bg-card p-5 ${className}`}
+      {...rest}
+    />
+  );
+}
+
+export function CardTitle({ className = "", ...rest }: HTMLAttributes<HTMLHeadingElement>) {
+  return <h3 className={`text-base font-semibold text-ink ${className}`} {...rest} />;
+}
+
+export function CardSubtitle({ className = "", ...rest }: HTMLAttributes<HTMLParagraphElement>) {
+  return <p className={`text-sm text-ink-muted ${className}`} {...rest} />;
+}

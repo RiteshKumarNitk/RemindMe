@@ -43,6 +43,9 @@ on the "must not modify" list.
 
 | File | What it covers |
 |---|---|
+| [STATUS.md](STATUS.md) | Plain-English, always-current progress summary — the one to show non-engineers |
+| [DECISIONS.md](DECISIONS.md) | Dated ADR log — why each non-obvious technical choice was made |
+| [CHANGELOG.md](CHANGELOG.md) | Dated log of what actually shipped, newest first |
 | [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md) | Problem, users, roles, workflows, MVP vs post-MVP, non-goals |
 | [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md) | Modular monolith, request lifecycle, module list, shared domain layer |
 | [MULTI_TENANCY.md](MULTI_TENANCY.md) | Tenant model, isolation enforcement, cross-tenant test contract |

@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   --indigo: #4f46e5;
   --indigo-dark: #3f37c9;
@@ -19,6 +21,31 @@
     --ink-muted: #a3a6c2;
     --border: #2b2d43;
   }
+}
+
+/*
+ * Design-system token layer (PRODUCT_EVOLUTION_PLAN.md §14). These map the existing
+ * dashboard color variables above into Tailwind utilities (bg-indigo, text-ink-muted, ...)
+ * so new public-facing pages share the same palette as the existing dashboard, without
+ * touching how any existing inline-styled page renders.
+ */
+@theme {
+  --color-indigo: var(--indigo);
+  --color-indigo-dark: var(--indigo-dark);
+  --color-coral: var(--coral);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-border: var(--border);
+  --color-ok: var(--ok);
+  --color-down: var(--down);
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --radius-card: 16px;
+  --radius-control: 10px;
 }
 
 * {

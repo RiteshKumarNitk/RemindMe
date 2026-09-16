@@ -1,0 +1,115 @@
+# DoseWise Platform — Architecture Decision Records
+
+Short, dated records of *why* a non-obvious technical choice was made — not what the code does
+(the code shows that), but the alternatives considered and the reasoning. Updated every time a
+real decision is made, not just when something breaks. See [CHANGELOG.md](CHANGELOG.md) for the
+dated log of what actually shipped, and [STATUS.md](STATUS.md) for the current plain-English
+state.
+
+## ADR-001: Superadmin console uses the unscoped Prisma client, not `tenantDb()`
+
+- **Context.** Every other module in this codebase reads/writes through `tenantDb(ctx)`, a
+  Prisma `$extends` wrapper that automatically scopes every query to the caller's own
+  organization (`MULTI_TENANCY.md`). A platform-wide superadmin console needs to list, inspect,
+  and act on *every* organization — the tenant scope itself is the thing being bypassed by design.
+- **Decision.** `src/modules/superadmin/service.ts` is the **one deliberate exception**: it uses
+  the base, unscoped `db` client directly, and every function re-asserts
+  `assertSuperAdmin(ctx)` internally, regardless of what the calling route already checked. This
+  means the safety property is "no unscoped query runs without its own superadmin check inside
+  the function," not "only trusted callers can reach this file."
+- **Consequences.** Any future contributor adding a new superadmin function must remember to call
+  `assertSuperAdmin` themselves — there's no route-level middleware doing it for them, by design,
+  so the check travels with the function even if it's called from somewhere unexpected later.
+  The admin API routes use a dynamic segment named `targetOrgId`, not `orgId`, specifically so
+  `withApi()`'s auto tenant-resolution (keyed on a literal `params.orgId`) doesn't try and fail to
+  find the admin's own membership in the org being inspected.
+
+## ADR-002: Login latency fix — remove the redundant `tokenVersion` re-fetch, don't defer writes with `after()`
+
+- **Context.** A live audit (curl timing against the production deployment) found login taking a
+  consistent ~4.8s, tracing to 4 sequential Postgres round trips in `loginUser`/`authSuccessResponse`:
+  user lookup → `lastLoginAt` update → an access-claims re-lookup (`accessClaimsFor`, fetching
+  `tokenVersion` again) → a refresh-token insert. The third one is pure waste — `tokenVersion` was
+  already returned by the first query.
+- **Decision.** `loginUser` now returns `{ userId, tokenVersion }` directly from its first query;
+  `authSuccessResponse` accepts an optional `knownTokenVersion` and skips its own re-fetch when
+  the caller already has it. Cuts 4 round trips to 3.
+- **Rejected alternative: defer `lastLoginAt`/token-version bookkeeping writes via Next's
+  `after()`.** This worked correctly under a real `next start` server (verified: `pnpm build &&
+  pnpm start`, curled register+login successfully) but broke the test suite outright —
+  `Error: 'after' was called outside a request scope` — because the vitest harness
+  (`tests/helpers/http.ts`) invokes exported route handlers directly, bypassing the real Next
+  request-context machinery `after()` needs. Reverted entirely rather than accept a permanently
+  broken/skipped test path for a login-latency optimization; kept only the zero-risk fix above.
+- **Consequences.** This closes 1 of 4 round trips. The dominant remaining suspects (Neon
+  connection pooling, Vercel↔Neon region mismatch, Neon auto-suspend cold starts) are
+  infrastructure/dashboard configuration, not something a code change can fix — see
+  `DEPLOYMENT.md`'s "Performance troubleshooting" section.
+
+## ADR-003: Notification dispatcher scheduled via GitHub Actions, not Vercel Cron
+
+- **Context.** The notification dispatcher (`POST /api/internal/notifications/dispatch`) has
+  existed since Phase 2 but was never actually invoked on a schedule in production — confirmed by
+  the endpoint 404ing to every unauthenticated probe and the total absence of a `vercel.json` or
+  `.github/workflows/` before this fix. No reminder or missed-dose alert had ever fired live.
+- **Decision.** A GitHub Actions workflow (`.github/workflows/notifications-dispatch.yml`) curls
+  the endpoint on `cron: "*/5 * * * *"` (every 5 minutes), authenticated via
+  `X-Cron-Key: ${{ secrets.NOTIFICATIONS_CRON_SECRET }}`. Vercel's Hobby tier caps cron jobs at
+  once-per-day, which is unusable for a dispatcher meant to run near-continuously; GitHub Actions
+  has no such cap on a public/private repo's own workflows.
+- **Consequences.** 5-minute granularity, not 60-second — a deliberate, disclosed tradeoff, not
+  an attempt to match the original 60s design. Needs two manual, one-time setup steps that only
+  the account owner can do: set `NOTIFICATIONS_CRON_SECRET` in Vercel's env vars, and mirror the
+  same value as a GitHub Actions repository secret of the same name. Until both are set, the
+  workflow runs and gets a clean 401/403, which is a harmless no-op, not a broken pipeline.
+
+## ADR-004: npm → pnpm migration — pinned via `packageManager`, no workspaces/monorepo, no dependency upgrades
+
+- **Context.** Requested migration of `platform/` from npm to pnpm for install/CI speed and
+  reproducibility. Explicit constraints: no Turborepo, no pnpm workspaces (this is a single
+  package, not a monorepo), no dependency version changes, no touching auth/security logic.
+- **Decision.** Added `"packageManager": "pnpm@10.34.5"` to `package.json` (exact version, not a
+  range) so `corepack` resolves the identical pnpm version in every environment — local, CI,
+  Docker — without relying on whatever pnpm happens to be globally installed. Deleted
+  `package-lock.json`; `pnpm-lock.yaml` was generated purely by running `pnpm install`, never
+  hand-edited. Added `pnpm.onlyBuiltDependencies: ["@prisma/client", "@prisma/engines", "esbuild",
+  "prisma"]` — pnpm 10 blocks dependency postinstall/preinstall scripts by default (npm doesn't),
+  and this field is the non-interactive, reproducible equivalent of manually running
+  `pnpm approve-builds` on every fresh clone.
+- **Consequences.** Every command in every doc/script changed from `npm`/`npx` to
+  `pnpm`/`pnpm exec`. No dependency version changed. `pnpm` does **not** make the deployed site
+  faster — it only affects install/CI speed, never claimed otherwise (see `STATUS.md`). Verified:
+  `pnpm install`, `pnpm install --frozen-lockfile`, `pnpm prisma:generate`, `pnpm typecheck`,
+  `pnpm test` (92/92 at the time), `pnpm build`, `pnpm start`, `pnpm dev` all run clean.
+- **Addendum (2026-09-16).** Installing a new dependency (`tailwindcss`, see ADR-005) surfaced a
+  pnpm warning: `pnpm@10.34.5` no longer reads `pnpm.onlyBuiltDependencies` from `package.json` —
+  it moved to a `pnpm-workspace.yaml` manifest. This had been silently inert since some point
+  after the original migration was verified (a lockfile-only regression — `pnpm install` still
+  worked, the setting just stopped doing anything). Fixed by creating `pnpm-workspace.yaml` with
+  the same `onlyBuiltDependencies` list and removing the now-dead `pnpm` field from
+  `package.json`. No workspace packages were declared — the file exists solely to hold this one
+  setting, which pnpm permits.
+
+## ADR-005: Design-system foundation is additive (Tailwind v4 + token layer), not a rewrite of existing pages
+
+- **Context.** `PRODUCT_EVOLUTION_PLAN.md` (Phase 2) calls for a real design system ahead of
+  building any public-facing (discovery/booking) pages. The existing dashboard/admin pages
+  (18+ screens) are functional, tested-against-indirectly (the app still needs to build and
+  serve them), and 100% inline-styled against CSS custom properties in `app/globals.css`
+  (`--indigo`, `--card`, `--ink`, etc.) with a small shared kit (`app/dashboard/ui.tsx`).
+- **Decision.** Added Tailwind v4 (`@tailwindcss/postcss`, CSS-first config — no
+  `tailwind.config.js`) via a `@theme` block in `app/globals.css` that maps Tailwind color
+  tokens (`--color-indigo`, `--color-ink`, ...) to the **existing** raw CSS variables
+  (`--color-indigo: var(--indigo);`), not new hardcoded values. This means: (1) the existing
+  dark-mode override block (`@media (prefers-color-scheme: dark) { :root { ... } }`) keeps
+  working unchanged and now also drives the new Tailwind utilities for free, and (2) no existing
+  page's inline `style={{ color: "var(--indigo)" }}` usage needed to change. New shared
+  components (`src/components/ui/*` — `Button`, `Card`, `Badge`, `Field`/`Input`/`Select`,
+  `EmptyState`/`ErrorState`/`Skeleton`, `SearchBar`) are Tailwind-based and additive; the
+  existing `app/dashboard/ui.tsx` kit is untouched.
+- **Consequences.** New public-facing pages (Phase 5+) get a real component system from day
+  one. Migrating the *existing* dashboard pages off inline styles onto the new components is
+  explicitly deferred to a separate, later, page-by-page pass — not bundled into this change,
+  to keep the diff reviewable and the risk near zero. Verified: `pnpm typecheck` clean,
+  `pnpm build` clean (every existing route — dashboard, admin, API — still generates with no
+  errors or warnings).
