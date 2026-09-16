@@ -278,15 +278,26 @@ async function cancelReminders(tx: Prisma.TransactionClient, appointmentId: stri
 
 export async function getAppointment(ctx: RequestContext, id: string) {
   const t = tenantDb(ctx);
-  return t.appointment.findFirstOrThrow({
+  const appt = await t.appointment.findFirstOrThrow({
     where: { id, organizationId: ctx.org!.id },
     include: {
       events: { orderBy: { at: "asc" } },
       queueEntry: true,
-      patient: { select: { id: true, firstName: true, lastName: true } },
+      patient: { select: { id: true, firstName: true, lastName: true, ownerUserId: true } },
       doctor: { select: { id: true, displayName: true } },
     },
   });
+  // A PATIENT may only read their own appointment — `listAppointments`
+  // already filters this way; this direct-by-id lookup previously didn't,
+  // which would have let a patient enumerate another patient's appointment
+  // by UUID within the same clinic (low-severity — UUIDs aren't guessable —
+  // but a real gap, closed here since this is the first real caller of a
+  // single-appointment read from the PATIENT side, PRODUCT_EVOLUTION_PLAN.md
+  // Phase 6).
+  if (ctx.org!.role === "PATIENT" && appt.patient.ownerUserId !== ctx.userId) {
+    throw new AppError("NOT_FOUND", "Not found.");
+  }
+  return appt;
 }
 
 export async function listAppointments(

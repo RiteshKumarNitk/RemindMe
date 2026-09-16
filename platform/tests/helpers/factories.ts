@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 import { POST as registerRoute } from "../../app/api/auth/register/route.js";
 import { POST as loginRoute } from "../../app/api/auth/login/route.js";
 import { POST as orgsRoute } from "../../app/api/orgs/route.js";
+import { PATCH as patchOrgRoute } from "../../app/api/orgs/[orgId]/route.js";
+import { POST as createLocationRoute } from "../../app/api/orgs/[orgId]/locations/route.js";
+import { POST as publishOrgRoute } from "../../app/api/orgs/[orgId]/publish/route.js";
 import { POST as createDoctorRoute } from "../../app/api/orgs/[orgId]/doctors/route.js";
+import { PATCH as patchDoctorRoute } from "../../app/api/orgs/[orgId]/doctors/[doctorId]/route.js";
 import { PUT as putAvailabilityRoute } from "../../app/api/orgs/[orgId]/doctors/[doctorId]/availability/route.js";
 import { GET as slotsRoute } from "../../app/api/orgs/[orgId]/doctors/[doctorId]/slots/route.js";
 import { db } from "./db.js";
@@ -108,6 +112,43 @@ export async function setWeeklyAvailability(
   });
   if (res.status !== 200) {
     throw new Error(`setAvailability failed: ${res.status} ${JSON.stringify(res.body)}`);
+  }
+}
+
+/** Fills the fields `canPublishOrganization` requires, adds a location, and publishes. */
+export async function publishOrgForDiscovery(adminToken: string, orgId: string): Promise<void> {
+  const patch = await call(patchOrgRoute, {
+    method: "PATCH",
+    bearer: adminToken,
+    params: { orgId },
+    body: { orgType: "CLINIC", tagline: "Test clinic for discovery", publicPhone: "+91 90000 00000" },
+  });
+  if (patch.status !== 200) {
+    throw new Error(`patchOrg failed: ${patch.status} ${JSON.stringify(patch.body)}`);
+  }
+  const loc = await call(createLocationRoute, {
+    bearer: adminToken,
+    params: { orgId },
+    body: { name: "Main", city: "Testville" },
+  });
+  if (loc.status !== 201) {
+    throw new Error(`createLocation failed: ${loc.status} ${JSON.stringify(loc.body)}`);
+  }
+  const pub = await call(publishOrgRoute, { method: "POST", bearer: adminToken, params: { orgId } });
+  if (pub.status !== 200) {
+    throw new Error(`publishOrg failed: ${pub.status} ${JSON.stringify(pub.body)}`);
+  }
+}
+
+export async function makeDoctorPublic(adminToken: string, orgId: string, doctorId: string): Promise<void> {
+  const res = await call(patchDoctorRoute, {
+    method: "PATCH",
+    bearer: adminToken,
+    params: { orgId, doctorId },
+    body: { isPubliclyListed: true },
+  });
+  if (res.status !== 200) {
+    throw new Error(`makeDoctorPublic failed: ${res.status} ${JSON.stringify(res.body)}`);
   }
 }
 

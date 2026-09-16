@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { optionalWebUser } from "@/lib/web-context.js";
+import { safeNextPath } from "@/lib/safe-redirect.js";
 import { Button, Card, ErrorNote, Field } from "../dashboard/ui.js";
 import { loginAction } from "./actions.js";
 
@@ -9,10 +10,10 @@ export const dynamic = "force-dynamic";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  if (await optionalWebUser()) redirect("/dashboard");
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
+  if (await optionalWebUser()) redirect(safeNextPath(next));
 
   return (
     <main style={{ maxWidth: 400, margin: "80px auto", padding: "0 20px" }}>
@@ -39,6 +40,7 @@ export default async function LoginPage({
         <h1 style={{ fontSize: 20, margin: "0 0 18px" }}>Sign in</h1>
         <ErrorNote message={error} />
         <form action={loginAction}>
+          {next ? <input type="hidden" name="next" value={next} /> : null}
           <Field label="Email" name="email" type="email" required />
           <Field label="Password" name="password" type="password" required />
           <div style={{ marginTop: 8 }}>
@@ -47,7 +49,10 @@ export default async function LoginPage({
         </form>
       </Card>
       <p style={{ marginTop: 16, fontSize: 13, color: "var(--ink-muted)" }}>
-        New here? <Link href="/register">Create an account</Link>
+        New here?{" "}
+        <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}>
+          Create an account
+        </Link>
       </p>
     </main>
   );

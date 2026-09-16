@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppError } from "@/lib/errors.js";
 import { getPublicDoctor } from "@/modules/public/service.js";
+import { getPublicDoctorSlots } from "@/modules/patient-booking/service.js";
 import { Badge, Card, CardSubtitle, CardTitle } from "@/components/ui/index.js";
 import { PublicHeader } from "../../public-header";
 
@@ -12,12 +13,28 @@ function formatFee(minor: number | null): string | null {
   return (minor / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function nextDays(n: number): Date[] {
+  const out: Date[] = [];
+  const now = new Date();
+  for (let i = 0; i < n; i++) {
+    out.push(new Date(now.getTime() + i * 86_400_000));
+  }
+  return out;
+}
+
 export default async function DoctorDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ doctorId: string }>;
+  searchParams: Promise<{ date?: string }>;
 }) {
   const { doctorId } = await params;
+  const { date: dateParam } = await searchParams;
 
   let doctor: Awaited<ReturnType<typeof getPublicDoctor>>;
   try {
@@ -26,6 +43,10 @@ export default async function DoctorDetailPage({
     if (err instanceof AppError && err.code === "NOT_FOUND") notFound();
     throw err;
   }
+
+  const days = nextDays(14);
+  const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : isoDate(days[0]!);
+  const { slots, timezone } = await getPublicDoctorSlots(doctorId, { date: selectedDate });
 
   const fee = formatFee(doctor.consultationFeeMinor);
 
@@ -73,10 +94,44 @@ export default async function DoctorDetailPage({
           ) : null}
         </Card>
 
-        <div className="mt-8 rounded-[var(--radius-card)] border border-dashed border-border p-5 text-sm text-ink-muted">
-          Online booking isn&rsquo;t live yet — this is next on the roadmap. In the meantime,
-          contact {doctor.organization.name} directly to book an appointment.
+        <h2 className="mt-10 text-lg font-semibold text-ink">Available appointments</h2>
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
+          {days.map((d) => {
+            const iso = isoDate(d);
+            const active = iso === selectedDate;
+            return (
+              <Link
+                key={iso}
+                href={`/doctors/${doctorId}?date=${iso}`}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-sm no-underline ${
+                  active ? "border-indigo bg-indigo text-white" : "border-border bg-card text-ink hover:border-indigo"
+                }`}
+              >
+                {d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+              </Link>
+            );
+          })}
         </div>
+
+        {slots.length === 0 ? (
+          <p className="mt-6 text-sm text-ink-muted">No open slots on this day — try another date.</p>
+        ) : (
+          <div className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+            {slots.map((slot) => (
+              <Link
+                key={slot.start}
+                href={`/doctors/${doctorId}/book?slot=${encodeURIComponent(slot.start)}`}
+                className="rounded-control border border-border bg-card px-2 py-2 text-center text-sm text-ink no-underline hover:border-indigo hover:text-indigo"
+              >
+                {new Date(slot.start).toLocaleTimeString(undefined, {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  timeZone: timezone,
+                })}
+              </Link>
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );

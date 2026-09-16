@@ -36,7 +36,8 @@ foundation underneath both.
 | **Roles & permissions** | Admin / Doctor / Receptionist / Patient each see only what their role should — including a rule that no admin can grant themselves extra medical-record access (must be a second admin). |
 | **Clinic setup** | A clinic admin can register their organization, add locations, add doctors and staff. |
 | **Organization & doctor public profiles** | A clinic admin can fill in a real public-facing clinic profile (type, description, branding, contact info) and publish/unpublish it; each doctor can fill in their own professional profile (photo, qualifications, experience, languages, fee) and choose to be listed. |
-| **Public hospital & doctor search** | Anyone — no login needed — can search for hospitals and doctors and view their public profiles at `dosewise.example/hospitals` and `/doctors`. Nothing shows up yet simply because no clinic has clicked "Publish" — the pages themselves work, verified against the real database. |
+| **Public hospital & doctor search** | Anyone — no login needed — can search for hospitals and doctors and view their public profiles at `dosewise.example/hospitals` and `/doctors`. Nothing shows up in production yet simply because no clinic has clicked "Publish" — the pages themselves work, verified against the real database. |
+| **Patient self-service booking** | A patient can find a doctor, pick a real available time slot, log in (or sign up), and book — with no clinic staff involved. Verified end-to-end against the real database: booking, double-booking prevention, and a patient only ever being able to see their own appointment all confirmed working for real. |
 | **Doctor scheduling** | Doctors set weekly availability + exceptions (holidays, leave); the system calculates real open slots automatically. |
 | **Booking a real appointment** | A patient/staff can book, confirm, cancel, reschedule, or no-show an appointment — double-booking the same doctor at the same time is physically impossible (enforced at the database level, not just in app code). |
 | **Front-desk queue** | Check-in issues a token, a live board shows who's waiting, staff can call/recall/skip, and starting/completing a visit is restricted to the assigned doctor. |
@@ -62,8 +63,8 @@ and the doctor/clinic onboarding wizard.
 
 | Area | Notes |
 |---|---|
-| **Patient self-service booking** | A patient can find a doctor publicly but can't yet book an appointment from there — today, booking still requires staff inside the clinic's own dashboard. This is the next piece of work. |
-| **Visual design pass** | Current UI is clean but generic — not yet matching DoseWise's actual brand look (the new public pages use a real component system now; the older dashboard screens still don't). |
+| **A real patient dashboard** | After booking, a patient lands on the existing (functional, plain) staff-style appointments list rather than a dedicated "my appointments" view with upcoming/history/cancel/reschedule in one place. This is the next piece of work. |
+| **Visual design pass** | Current UI is clean but generic — not yet matching DoseWise's actual brand look (the new public/booking pages use a real component system now; the older dashboard screens still don't). |
 | **Mobile-app integration (Flutter)** | The existing DoseWise app and this new backend aren't connected yet — planned as the final phase, deliberately last so the web product is solid first. |
 | Document uploads, SMS/WhatsApp notifications, right-to-erasure workflow | Explicitly deferred, not required for MVP. |
 
@@ -75,18 +76,20 @@ A detailed, phase-by-phase plan for turning this from a clinic-operations tool i
 patient-facing product (public hospital/doctor discovery, self-service booking, guided
 onboarding for clinics and doctors) now exists at
 [`PRODUCT_EVOLUTION_PLAN.md`](../PRODUCT_EVOLUTION_PLAN.md), based on an audit of the actual
-current code. **Phases 2–5 are done** — design system, organization & doctor public profiles,
-and now real public discovery pages (homepage, hospital search + profile, doctor search +
-profile). Nothing is visible there yet because no clinic has actually published its profile in
-this database — that's expected, this feature only shipped today. Phase 6 (patient booking from
-discovery) is next.
+current code. **Phases 2–6 are done** — design system, organization & doctor public profiles,
+public discovery pages, and now real patient self-service booking. A stranger can find a doctor,
+see real availability, log in, and book — verified live end-to-end against the real database,
+not just build-checked. Phase 7 (a proper patient dashboard — upcoming appointment, history,
+cancel/reschedule from one place) is next; today a patient lands on the existing, functional but
+plain, appointments list after booking.
 
 ## Recommended next milestone
 
-**Patient self-service booking (Phase 6)** — let a patient book directly from a doctor's public
-profile instead of needing clinic staff to do it, closing the loop on "find → view → book" that
-the last few days of work have been building toward. Worth fixing the test-stability issue above
-first so this is built on solid ground.
+**A real patient dashboard (Phase 7)** — right now, after booking, a patient sees the same plain
+appointments table staff use. Worth building a proper "my appointments" view (upcoming visit
+front and center, history, cancel/reschedule) now that booking itself works end-to-end. Also
+worth finally fixing the test-stability issue flagged above — the codebase now has several new,
+real integration tests written but never run because of it.
 
 ---
 

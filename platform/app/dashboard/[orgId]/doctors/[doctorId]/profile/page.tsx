@@ -33,12 +33,12 @@ export default async function DoctorProfilePage({
       </div>
 
       {error ? (
-        <div className="rounded-[var(--radius-control)] border border-down/30 bg-down/5 px-4 py-3 text-sm text-down">
+        <div className="rounded-control border border-down/30 bg-down/5 px-4 py-3 text-sm text-down">
           {error}
         </div>
       ) : null}
       {saved ? (
-        <div className="rounded-[var(--radius-control)] border border-ok/30 bg-ok/5 px-4 py-3 text-sm text-ok">
+        <div className="rounded-control border border-ok/30 bg-ok/5 px-4 py-3 text-sm text-ok">
           Saved.
         </div>
       ) : null}
@@ -94,7 +94,7 @@ export default async function DoctorProfilePage({
               maxLength={2000}
               defaultValue={doctor.bio ?? ""}
               rows={4}
-              className="rounded-[var(--radius-control)] border border-border bg-card px-3 py-2 text-sm text-ink outline-none focus:border-indigo"
+              className="rounded-control border border-border bg-card px-3 py-2 text-sm text-ink outline-none focus:border-indigo"
               placeholder="Tell patients about your practice…"
             />
           </Field>

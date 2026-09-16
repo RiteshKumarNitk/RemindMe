@@ -18,7 +18,7 @@ export function Field({
 export function Input({ className = "", ...rest }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={`h-10 rounded-[var(--radius-control)] border border-border bg-card px-3 text-sm text-ink outline-none placeholder:text-ink-muted focus:border-indigo ${className}`}
+      className={`h-10 rounded-control border border-border bg-card px-3 text-sm text-ink outline-none placeholder:text-ink-muted focus:border-indigo ${className}`}
       {...rest}
     />
   );
@@ -27,7 +27,7 @@ export function Input({ className = "", ...rest }: InputHTMLAttributes<HTMLInput
 export function Select({ className = "", ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={`h-10 rounded-[var(--radius-control)] border border-border bg-card px-3 text-sm text-ink outline-none focus:border-indigo ${className}`}
+      className={`h-10 rounded-control border border-border bg-card px-3 text-sm text-ink outline-none focus:border-indigo ${className}`}
       {...rest}
     />
   );

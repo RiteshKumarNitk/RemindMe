@@ -4,6 +4,38 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-09-16 — Phase 6: patient self-service booking — find a doctor, pick a real slot, book it yourself (uncommitted)
+
+The core loop the last few phases were building toward: a logged-in stranger with zero prior
+relationship to a clinic can now book a real appointment from a doctor's public profile. New
+`src/modules/patient-booking/` orchestrates two existing, unmodified pieces — `computeSlots`
+(availability module) and `bookAppointment` (appointments module) — rather than reimplementing
+either; its only new logic is turning "an authenticated User" into "a PATIENT member with a
+Patient record" for a clinic that has opted into public listing, via a real `@@unique` constraint
+(migration `20260916062902_patient_owner_unique_per_org`) so a double-submitted booking can't
+create duplicate patient rows. New routes: `GET /api/public/doctors/:id/slots` (public, reuses
+the authoritative slot math), `POST /api/patient/appointments` (authenticated, self-registers +
+books in one call), plus `POST /api/orgs/:orgId/{publish,unpublish}` (API parity for the Phase 3
+web-only publish action). New pages: a real date/slot picker on `/doctors/:id`, a review +
+confirm page at `/doctors/:id/book` with a login gate exactly at the confirm step (never
+before), and a `?next=` redirect-back-after-login flow on `/login`/`/register` (new, guarded
+against open-redirect by `safeNextPath`). Found and fixed a real, if low-severity, pre-existing
+gap while building this: `getAppointment` didn't check patient ownership on a direct-by-id
+lookup, unlike `listAppointments` — closed to match. See ADR-009 for the full design reasoning
+and the corrected-mid-draft bug (a first attempt referenced a `Membership.patientProfile`
+relation that doesn't exist — caught by `tsc`, never shipped).
+
+**Verified live against the real dev database**, not just build-clean: registered two real
+accounts through the actual API, created and published a real clinic + doctor, set real weekly
+availability, fetched real public slots, self-booked twice as the same new patient (confirmed
+the identical `patientId` both times — no duplicate), confirmed a same-slot double-booking
+correctly 409s, confirmed booking against an unpublished org 404s, and confirmed the ownership
+fix (a different patient gets 404 on someone else's appointment id, the owner gets 200) — then
+deleted every row the test created. `pnpm typecheck`/`pnpm build` clean. 13 new unit tests
+passing (`organization-publish`, `safe-redirect`); a full integration test file was written for
+this flow but deliberately not executed against the shared dev DB (truncation risk — see
+`STATUS.md`'s open test-suite item). **Not yet committed.**
+
 ## 2026-09-16 — Phase 5: public hospital & doctor discovery — the first pages a patient can actually use (uncommitted)
 
 The platform's first unauthenticated, cross-tenant read surface. New `src/modules/public/`

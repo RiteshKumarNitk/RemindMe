@@ -269,10 +269,26 @@ incrementally, page by page, not deleted and replaced in one commit.
 
 ---
 
-## Immediate next step
+## Progress
 
-Starting **Phase 2** now: Tailwind + design tokens + the first batch of shared components, scoped
-to not touch any existing page's rendering. Each subsequent phase will get its own verification
-(typecheck + build + existing test suite green) before moving to the next, the same way every
-other piece of work on this project has been done this session — not a single giant unreviewed
-change spanning all 13 phases at once.
+- **Phase 1 — this document.** Done.
+- **Phase 2 — design system.** Done. Tailwind + tokens + a shared component kit
+  (`src/components/ui/*`), additive only — no existing page's rendering was touched.
+- **Phase 3 — organization onboarding/profile.** Done. Schema fields, a
+  `canPublishOrganization()` readiness gate, `/dashboard/:orgId/profile`.
+- **Phase 4 — doctor profile.** Done. Schema fields, self-edit reusing existing authorization,
+  `/dashboard/:orgId/doctors/:id/profile`.
+- **Phase 5 — public discovery.** Done. `/`, `/hospitals(+/:slug)`, `/doctors(+/:id)`, backed by
+  `/api/public/*`, verified against the real database.
+- **Phase 6 — patient booking.** Done. Real slot picker → login gate → confirm, backed by
+  `/api/public/doctors/:id/slots` + `POST /api/patient/appointments`, reusing the existing
+  `computeSlots`/`bookAppointment` logic unmodified. Verified live end-to-end (see
+  `DECISIONS.md` ADR-009), not just build-checked.
+- **Phase 7 — patient dashboard.** Next. Today a patient lands on the existing plain
+  appointments list after booking; this phase gives them a dedicated view (upcoming appointment
+  front and center, history, cancel/reschedule).
+
+See `docs/STATUS.md` for the plain-English version and `docs/CHANGELOG.md`/`docs/DECISIONS.md`
+for the dated log and the reasoning behind each non-obvious call. Every phase above got its own
+`pnpm typecheck`/`pnpm build` pass before the next started — no single giant unreviewed change
+spanning multiple phases at once.

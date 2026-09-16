@@ -32,12 +32,12 @@ export default async function AppointmentsPage({
   searchParams,
 }: {
   params: Promise<{ orgId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; booked?: string }>;
 }) {
   const { orgId } = await params;
   const ctx = await requireOrgContext(orgId);
   const role = ctx.org!.role;
-  const { error } = await searchParams;
+  const { error, booked } = await searchParams;
 
   const doctors = await listDoctors(ctx);
   const patients =
@@ -64,6 +64,21 @@ export default async function AppointmentsPage({
   return (
     <div>
       <SectionTitle>Appointments</SectionTitle>
+      {booked ? (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: "10px 14px",
+            borderRadius: 10,
+            border: "1px solid var(--ok)",
+            background: "color-mix(in srgb, var(--ok) 10%, transparent)",
+            fontSize: 14,
+            color: "var(--ok)",
+          }}
+        >
+          Your appointment is booked.
+        </div>
+      ) : null}
       <ErrorNote message={error} />
 
       <Card style={{ marginBottom: 20 }}>

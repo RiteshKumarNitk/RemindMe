@@ -496,8 +496,13 @@ model Patient {
   queueEntries    QueueEntry[]
 
   @@unique([organizationId, mrn])
+  // At most one SELF-OWNED patient record per (org, user) — Postgres treats
+  // NULL as distinct across rows, so this never restricts the many
+  // clinic-registered dependents that have no ownerUserId at all. Backs the
+  // self-service "become a patient of this clinic" upsert
+  // (patient-booking/service.ts, PRODUCT_EVOLUTION_PLAN.md Phase 6).
+  @@unique([organizationId, ownerUserId])
   @@index([organizationId, lastName])
-  @@index([organizationId, ownerUserId])
 }
 
 model FamilyRelationship {

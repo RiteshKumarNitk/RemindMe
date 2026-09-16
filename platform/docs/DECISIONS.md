@@ -204,3 +204,75 @@ state.
   operationally. Also moved the old developer-facing homepage (API module status card) from `/`
   to `/status`, since `/` is now the patient-facing homepage — nothing was deleted, `/api/health`
   is unchanged and still linked from both.
+
+## ADR-009: Patient self-booking — a new `patient-booking` orchestration module, a real `@@unique` constraint for idempotent self-registration, and a closed `getAppointment` ownership gap
+
+- **Context.** `PRODUCT_EVOLUTION_PLAN.md` Phase 6 needs a stranger who found a doctor via public
+  discovery to book an appointment themselves. Investigating the existing `appointments.service.ts`
+  found `bookAppointment` already fully supports a PATIENT booking themselves (self-book gate,
+  `allowPatientSelfBooking`, `REQUESTED` vs `CONFIRMED` status) — it just has no caller that could
+  ever reach it as a brand-new, unaffiliated user, because every existing path to a `PATIENT`
+  role requires a `Membership` row, and the only thing that creates one for a patient is
+  `patients.createPatient`, which is `RECEPTIONIST`/`CLINIC_ADMIN`-only. There was no self-service
+  path from "logged-in stranger" to "PATIENT member with a Patient record" at all.
+- **Decision 1 — a thin orchestration module, not new booking logic.** `src/modules/patient-booking/`
+  sequences two existing things — `ensurePatientMembership` (new, find-or-create) then
+  `bookAppointment` (existing, unmodified) — via a synthetic `OrgContext` built the same way
+  `tenancy.createOrganization` already builds one for its own audit-log call (there's codebase
+  precedent for this, not a new pattern). It never reimplements slot math, lead-time rules,
+  double-booking protection, or the appointment state machine.
+  - `ensurePatientMembership` only ever operates on an org that is `isActive: true, isPubliclyListed: true`
+    — a caller can't use `organizationId` in the request body to quietly join a *private* clinic
+    whose UUID they happened to know. This is the one place in the codebase `organizationId` is
+    accepted from a request body at all (`MULTI_TENANCY.md`'s ":orgId path only" rule is about
+    *selecting* an existing membership; here it can only ever *create the caller's own* PATIENT
+    membership in a clinic that has explicitly opted into public visibility — never elevate,
+    never touch another user's data).
+  - Guest accounts are blocked, mirroring `createOrganization`'s own guest guard.
+- **Decision 2 — a real `@@unique([organizationId, ownerUserId])` on `Patient`, not a racy
+  find-then-create.** A first draft tried to look up an existing patient via a nonexistent
+  `Membership.patientProfile` relation (`Patient` only relates to `User` via `ownerUserId`, never
+  to `Membership` — caught by `tsc`, not shipped). The real fix: migration
+  `20260916062902_patient_owner_unique_per_org` adds a genuine unique index on
+  `(organizationId, ownerUserId)` — Postgres treats `NULL` as distinct per row, so this never
+  restricts the many clinic-registered dependents that have no `ownerUserId` at all, only a
+  genuine duplicate self-owned record for the same person at the same clinic. `ensurePatientMembership`
+  now does a real `upsert` against that constraint (plus the existing `Membership_userId_organizationId_role_key`
+  for the membership half), so a double-submitted booking request can't create two Patient rows
+  — Postgres's `ON CONFLICT` serializes it, the same category of guarantee the appointment
+  `EXCLUDE` constraint already gives booking itself. A cheap `findFirst`/`findUnique` pre-check
+  skips the write (and the audit log entry) entirely on the overwhelmingly common repeat-visit
+  case. **Applied via `prisma migrate deploy` on a hand-authored migration file, not `migrate
+  dev`** — this environment's non-interactive shell can't answer `migrate dev`'s confirmation
+  prompt for a unique-constraint-could-fail warning; matches the existing documented pattern for
+  hand-written migrations (`DEPLOYMENT.md`, the original `EXCLUDE` constraint).
+- **Decision 3 — closed a real, if low-severity, pre-existing gap in `getAppointment`.** Found
+  while building the first real PATIENT-facing single-appointment read: `getAppointment` (used by
+  every role) filtered only by `organizationId`, never by patient ownership — unlike
+  `listAppointments`, which already correctly scoped a PATIENT caller to `where: { patient: {
+  ownerUserId: ctx.userId } }`. A PATIENT could `GET` any appointment's detail within their own
+  org by guessing/knowing another patient's appointment UUID. Low severity (UUIDs aren't
+  guessable) but a real defense-in-depth gap, closed by mirroring `listAppointments`'s existing
+  rule: a PATIENT whose `ownerUserId` doesn't match gets `NOT_FOUND`, not `FORBIDDEN` (same
+  no-leak posture as every cross-tenant lookup elsewhere in the app). Verified live (see below) —
+  the owning patient reads their appointment fine, a different patient (with their own,
+  legitimate membership in the same clinic) gets a clean 404 on the same id.
+- **Decision 4 — `?next=` redirect support added to `/login`/`/register`, guarded against
+  open-redirect.** The booking flow's "log in to confirm" step needs to return the visitor to
+  their in-progress booking after auth, and neither page had ever supported a redirect target
+  before (both always landed on `/dashboard`). New `src/lib/safe-redirect.ts`'s `safeNextPath`
+  only accepts a same-app relative path — rejects protocol-relative `//host` and any absolute
+  URL — before it's ever passed to `redirect()`, so `?next=` can't be turned into an
+  open-redirect vector. 5 unit tests.
+- **Verification.** Live-tested end-to-end against the real dev database with disposable data
+  (registered two real accounts via the actual API, created and published a real org + doctor,
+  set real weekly availability, fetched real public slots, self-booked twice as the same brand-new
+  patient — confirmed the *same* `patientId` both times, not a duplicate — confirmed a third
+  concurrent-style double-booking attempt on the same slot correctly 409s, confirmed a booking
+  attempt against an unpublished org 404s, and confirmed the `getAppointment` ownership fix live)
+  — then deleted every row created for the test. Also wrote (but, per this project's standing
+  "never run the DB-truncating integration suite against the shared dev database without being
+  certain a disposable DB is configured" caution, did not execute) a full integration test file
+  (`tests/integration/patient-booking.test.ts`) covering the same scenarios for whenever that
+  suite's separate, already-flagged flakiness issue (see `STATUS.md`) is resolved. `pnpm typecheck`
+  and `pnpm build` both clean throughout.
