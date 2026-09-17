@@ -169,6 +169,33 @@ export async function listMyAccess(ctx: RequestContext) {
 }
 
 /**
+ * Same as `listMyAccess`, but callable *before* the caller has a `Membership`
+ * in `organizationId` — used by the public self-booking flow to offer a
+ * "book for myself / a dependent" picker on first visit to a clinic. Safe
+ * without tenant scoping because `granteeUserId` is always the authenticated
+ * caller's own id, never client-supplied — this can only ever return the
+ * caller's own grants, in any org, regardless of their membership there.
+ */
+export async function listMyAccessInOrg(userId: string, organizationId: string) {
+  const data = await db.patientAccessGrant.findMany({
+    where: {
+      organizationId,
+      granteeUserId: userId,
+      revokedAt: null,
+      permissions: { has: "MANAGE_APPOINTMENTS" },
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+    select: {
+      id: true,
+      permissions: true,
+      patient: { select: { id: true, firstName: true, lastName: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return data;
+}
+
+/**
  * Does the caller hold an active, non-expired grant on this patient covering
  * `permission`? Used by other modules (patients, consultations) as the 4th
  * access path in MEDICAL_DATA_SECURITY.md's access model. `VIEW_MEDICATIONS`

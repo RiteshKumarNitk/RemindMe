@@ -4,6 +4,27 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-09-17 — Patient discovery journey: audit found it mostly already built, three real gaps closed (uncommitted)
+
+A detailed brief asked for the full patient discovery→booking journey. Audit found it already
+shipped (Phases 5/6/11 earlier this project) — homepage, hospital/doctor discovery and profiles,
+availability, public self-booking, the login gate, specialty filtering, unpublished-org exclusion.
+Three genuine gaps closed, nothing rebuilt: (1) a real post-booking confirmation — the existing
+appointment detail page now shows a success banner + "Book another"/"Go to dashboard" actions via
+a `?justBooked=1` flag, instead of redirecting to a busy list; also fixed two pre-existing invalid
+`<Link><Button></Button></Link>` nestings found while in that file. (2) The public booking flow
+can now book for a dependent, not just yourself — a "Who is this appointment for?" picker appears
+only when the logged-in visitor actually holds a `MANAGE_APPOINTMENTS` grant at that specific
+clinic (new `listMyAccessInOrg`, deliberately not tenant-scoped since the caller may not be an org
+member yet); the submitted patient is trusted only as far as the existing booking authorization
+already allows. (3) Added SEO metadata (`generateMetadata`/`metadata`) to every public page,
+previously missing entirely. See ADR-019. Verified live: real clinic/doctor publish, per-page SEO
+titles confirmed, a guardian with a real access grant sees the dependent picker (a stranger
+doesn't), booking for an authorized dependent succeeds while a random/unauthorized patientId is
+rejected server-side, confirmation page renders correctly. `pnpm typecheck`/`pnpm build`/
+`pnpm test:unit` (40/40) clean; `pnpm test:integration` not re-run (no fresh confirmation for a
+truncating run this time).
+
 ## 2026-09-17 — Admin console migrated to the current design system (uncommitted)
 
 The last piece of the visual migration: the platform-owner-only `/admin` console (overview,

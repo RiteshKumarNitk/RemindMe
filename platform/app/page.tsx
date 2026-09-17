@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { listPublicDoctors, listPublicOrganizations } from "@/modules/public/service.js";
 import { Badge, Card, CardSubtitle, CardTitle, SearchBar } from "@/components/ui/index.js";
 import { PublicHeader } from "./public-header";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "DoseWise — Find a doctor and book an appointment",
+  description: "Search doctors and clinics, see real availability, and book an appointment online.",
+};
 
 export default async function HomePage() {
   const [hospitals, doctors] = await Promise.all([

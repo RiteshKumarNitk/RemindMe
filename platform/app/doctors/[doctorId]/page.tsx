@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppError } from "@/lib/errors.js";
@@ -7,6 +9,26 @@ import { Badge, Card, CardSubtitle, CardTitle } from "@/components/ui/index.js";
 import { PublicHeader } from "../../public-header";
 
 export const dynamic = "force-dynamic";
+
+// Shared per-request so generateMetadata and the page don't each hit the DB.
+const loadDoctor = cache(async (doctorId: string) => {
+  try {
+    return await getPublicDoctor(doctorId);
+  } catch (err) {
+    if (err instanceof AppError && err.code === "NOT_FOUND") return null;
+    throw err;
+  }
+});
+
+export async function generateMetadata({ params }: { params: Promise<{ doctorId: string }> }): Promise<Metadata> {
+  const { doctorId } = await params;
+  const doctor = await loadDoctor(doctorId);
+  if (!doctor) return { title: "Doctor not found | DoseWise" };
+  return {
+    title: `${doctor.displayName}${doctor.specialty ? ` — ${doctor.specialty}` : ""} | DoseWise`,
+    description: `Book an appointment with ${doctor.displayName}${doctor.specialty ? `, ${doctor.specialty}` : ""} at ${doctor.organization.name}.`,
+  };
+}
 
 function formatFee(minor: number | null): string | null {
   if (minor == null) return null;
@@ -36,13 +58,8 @@ export default async function DoctorDetailPage({
   const { doctorId } = await params;
   const { date: dateParam } = await searchParams;
 
-  let doctor: Awaited<ReturnType<typeof getPublicDoctor>>;
-  try {
-    doctor = await getPublicDoctor(doctorId);
-  } catch (err) {
-    if (err instanceof AppError && err.code === "NOT_FOUND") notFound();
-    throw err;
-  }
+  const doctor = await loadDoctor(doctorId);
+  if (!doctor) notFound();
 
   const days = nextDays(14);
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : isoDate(days[0]!);

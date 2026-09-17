@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { listPublicOrganizations } from "@/modules/public/service.js";
 import { Badge, Card, CardSubtitle, CardTitle, EmptyState, SearchBar } from "@/components/ui/index.js";
 import { PublicHeader } from "../public-header";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Find a hospital or clinic | DoseWise",
+  description: "Search hospitals and clinics, view their profiles, and book an appointment with a doctor.",
+};
 
 export default async function HospitalsPage({
   searchParams,

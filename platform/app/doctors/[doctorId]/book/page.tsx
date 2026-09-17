@@ -4,7 +4,8 @@ import { AppError } from "@/lib/errors.js";
 import { db } from "@/lib/db.js";
 import { optionalWebUser } from "@/lib/web-context.js";
 import { getPublicDoctor } from "@/modules/public/service.js";
-import { Badge, Button, Card, CardSubtitle, CardTitle, Field, Input } from "@/components/ui/index.js";
+import { listMyAccessInOrg } from "@/modules/family/service.js";
+import { Badge, Button, Card, CardSubtitle, CardTitle, Field, Input, Select } from "@/components/ui/index.js";
 import { PublicHeader } from "../../../public-header";
 import { confirmBookingAction } from "./actions.js";
 
@@ -106,7 +107,10 @@ async function BookingForm({
   organizationId: string;
   userId: string;
 }) {
-  const user = await db.user.findUnique({ where: { id: userId }, select: { fullName: true, phone: true } });
+  const [user, dependents] = await Promise.all([
+    db.user.findUnique({ where: { id: userId }, select: { fullName: true, phone: true } }),
+    listMyAccessInOrg(userId, organizationId),
+  ]);
   const [defaultFirst = "", ...restName] = (user?.fullName ?? "").trim().split(/\s+/);
   const defaultLast = restName.join(" ");
 
@@ -115,8 +119,20 @@ async function BookingForm({
       <CardSubtitle>Your details</CardSubtitle>
       <form action={confirmBookingAction.bind(null, doctorId, slot)} className="mt-3 flex flex-col gap-4">
         <input type="hidden" name="organizationId" value={organizationId} />
+        {dependents.length > 0 ? (
+          <Field label="Who is this appointment for?">
+            <Select name="patientId" className="w-full" defaultValue="">
+              <option value="">Myself</option>
+              {dependents.map((d) => (
+                <option key={d.patient.id} value={d.patient.id}>
+                  {d.patient.firstName} {d.patient.lastName}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        ) : null}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="First name">
+          <Field label="First name" hint="Your own details — used even when booking for a dependent above.">
             <Input name="firstName" required defaultValue={defaultFirst} />
           </Field>
           <Field label="Last name">

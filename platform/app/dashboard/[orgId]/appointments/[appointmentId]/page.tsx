@@ -3,7 +3,7 @@ import { requireOrgContext } from "@/lib/web-context.js";
 import { db } from "@/lib/db.js";
 import { getAppointment } from "@/modules/appointments/service.js";
 import { hasFamilyAccess } from "@/modules/family/service.js";
-import { Badge, Button, Card, CardSubtitle, CardTitle } from "@/components/ui/index.js";
+import { Badge, Button, Card, CardSubtitle, CardTitle, LinkButton, Notice } from "@/components/ui/index.js";
 import {
   cancelAppointmentAction,
   checkInAppointmentAction,
@@ -30,12 +30,12 @@ export default async function AppointmentDetailPage({
   searchParams,
 }: {
   params: Promise<{ orgId: string; appointmentId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; justBooked?: string }>;
 }) {
   const { orgId, appointmentId } = await params;
   const ctx = await requireOrgContext(orgId);
   const role = ctx.org!.role;
-  const { error } = await searchParams;
+  const { error, justBooked } = await searchParams;
 
   const appt = await getAppointment(ctx, appointmentId);
 
@@ -63,9 +63,8 @@ export default async function AppointmentDetailPage({
         ← All appointments
       </Link>
 
-      {error ? (
-        <div className="rounded-control border border-down/30 bg-down/5 px-4 py-3 text-sm text-down">{error}</div>
-      ) : null}
+      {justBooked ? <Notice tone="ok">Your appointment is booked.</Notice> : null}
+      {error ? <Notice tone="down">{error}</Notice> : null}
 
       <Card>
         <div className="flex items-start justify-between gap-4">
@@ -120,14 +119,14 @@ export default async function AppointmentDetailPage({
           )}
           {(isStaff || isMyAppointmentAsDoctor) &&
             ["CHECKED_IN", "WAITING", "IN_CONSULTATION", "COMPLETED"].includes(appt.status) && (
-              <Link href={`/dashboard/${orgId}/appointments/${appt.id}/consultation`}>
-                <Button variant="secondary">Consultation notes</Button>
-              </Link>
+              <LinkButton variant="secondary" href={`/dashboard/${orgId}/appointments/${appt.id}/consultation`}>
+                Consultation notes
+              </LinkButton>
             )}
           {["REQUESTED", "CONFIRMED"].includes(appt.status) && (isStaff || canActAsPatient) && (
-            <Link href={`/dashboard/${orgId}/appointments/${appt.id}/reschedule`}>
-              <Button variant="secondary">Reschedule</Button>
-            </Link>
+            <LinkButton variant="secondary" href={`/dashboard/${orgId}/appointments/${appt.id}/reschedule`}>
+              Reschedule
+            </LinkButton>
           )}
           {["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING"].includes(appt.status) && (isStaff || canActAsPatient) && (
             <form action={cancelAppointmentAction.bind(null, orgId, appt.id)}>
@@ -137,6 +136,15 @@ export default async function AppointmentDetailPage({
           )}
         </div>
       </Card>
+
+      {justBooked ? (
+        <div className="flex flex-wrap gap-2">
+          <LinkButton href={`/dashboard/${orgId}`}>Go to dashboard</LinkButton>
+          <LinkButton variant="secondary" href="/doctors">
+            Book another appointment
+          </LinkButton>
+        </div>
+      ) : null}
 
       {appt.events.length > 0 ? (
         <Card>

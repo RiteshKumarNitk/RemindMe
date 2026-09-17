@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppError } from "@/lib/errors.js";
@@ -7,6 +9,28 @@ import { PublicHeader } from "../../public-header";
 
 export const dynamic = "force-dynamic";
 
+// Cached per-request so generateMetadata and the page component share one
+// DB lookup instead of two (getPublicOrganization is a direct Prisma call,
+// not `fetch()`, so it isn't deduped automatically the way fetch() would be).
+const loadOrg = cache(async (slug: string) => {
+  try {
+    return await getPublicOrganization(slug);
+  } catch (err) {
+    if (err instanceof AppError && err.code === "NOT_FOUND") return null;
+    throw err;
+  }
+});
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const org = await loadOrg(slug);
+  if (!org) return { title: "Clinic not found | DoseWise" };
+  return {
+    title: `${org.name} | DoseWise`,
+    description: org.tagline ?? org.about ?? `${org.name} on DoseWise — view doctors and book an appointment.`,
+  };
+}
+
 export default async function HospitalDetailPage({
   params,
 }: {
@@ -14,13 +38,8 @@ export default async function HospitalDetailPage({
 }) {
   const { slug } = await params;
 
-  let org: Awaited<ReturnType<typeof getPublicOrganization>>;
-  try {
-    org = await getPublicOrganization(slug);
-  } catch (err) {
-    if (err instanceof AppError && err.code === "NOT_FOUND") notFound();
-    throw err;
-  }
+  const org = await loadOrg(slug);
+  if (!org) notFound();
 
   return (
     <div>

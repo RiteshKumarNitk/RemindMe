@@ -29,6 +29,11 @@ export const selfBookAppointmentSchema = z
     locationId: z.string().uuid().optional(),
     reason: z.string().max(1000).optional(),
     patient: selfPatientDetailsSchema,
+    // Book for a dependent instead of the caller themself — only honored if
+    // the caller actually holds a MANAGE_APPOINTMENTS grant on this patient
+    // (re-checked server-side inside the booking transaction; this being
+    // present is never itself an authorization decision).
+    patientId: z.string().uuid().optional(),
   })
   .strict();
 export type SelfBookAppointmentInput = z.infer<typeof selfBookAppointmentSchema>;

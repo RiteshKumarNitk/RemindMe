@@ -693,3 +693,67 @@ state.
   all test data. `pnpm typecheck`, `pnpm build` (every route), and `pnpm test:unit` (40/40) all
   clean. This closes the visual migration entirely — every screen in the app, clinic-side and
   platform-admin-side, now uses the current design system.
+
+## ADR-019: "Phase 14" patient discovery journey — an audit found it 90% already built (Phases 5/6/11); three genuine gaps closed, nothing rebuilt
+
+- **Context.** A detailed 26-section brief asked for "the missing patient-facing discovery
+  journey": hospital/doctor discovery, profiles, availability, multi-step booking, confirmation —
+  with an explicit, repeated instruction to inspect the existing codebase first and reuse rather
+  than rebuild. Inspection found the entire journey already shipped: `app/page.tsx`,
+  `app/hospitals(+/:slug)`, `app/doctors(+/:doctorId)`, `app/doctors/:doctorId/book` (Phase 5/6,
+  ADR-008/009), all backed by `src/modules/public/service.ts`'s safe projections and
+  `src/modules/patient-booking/service.ts`. Specialty filtering, the login gate with `?next=`,
+  slot-conflict handling, and unpublished-org exclusion all already existed and were already
+  live-verified. Three requirements in the brief were genuine gaps, not already covered by
+  anything in the app; only those were built.
+- **Gap 1 — no dedicated post-booking confirmation.** A successful public booking redirected to
+  the appointments *list* with a small banner — not the "doctor/org/date/time/patient/status"
+  confirmation view the brief asked for. Rather than build a new confirmation page (reuse-first),
+  the fix redirects to the *existing* appointment detail page
+  (`app/dashboard/:orgId/appointments/:appointmentId`) with a `?justBooked=1` flag, which now
+  shows a success `Notice` and "Go to dashboard"/"Book another appointment" actions — the page
+  already displays every field the brief asked for (doctor, date/time, patient, status, history).
+  While touching this file, also fixed two pre-existing instances of `<Link><Button></Button></Link>`
+  (invalid HTML — a button nested in an anchor) that had never been migrated to the `LinkButton`
+  component built for exactly this in the Phase-12 responsive/accessibility pass.
+- **Gap 2 — the public self-booking flow had no way to book for a dependent.** Phase 11 wired
+  `PatientAccessGrant`-based family booking into the *internal* dashboard's booking form, but never
+  touched the public `/doctors/:id/book` flow, which always resolved to the caller's own patient
+  record. Since `createAccessGrant` (family module) never required the grantee to already be an
+  org member, a guardian can hold a real grant at a clinic before ever visiting its public page —
+  so this is a real, reachable gap, not a hypothetical one. Fixed with the narrowest change that
+  closes it: `selfBookAppointmentSchema` gained an optional `patientId`; a new
+  `listMyAccessInOrg(userId, organizationId)` (`src/modules/family/service.ts`) — deliberately
+  *not* tenant-scoped via `tenantDb`, since the caller may have no `Membership` in that org yet —
+  lets the book page show a "Who is this appointment for?" picker only when the logged-in visitor
+  actually holds a `MANAGE_APPOINTMENTS` grant there. Safe without tenant scoping specifically
+  because `granteeUserId` is always the authenticated caller's own id, never client-supplied — it
+  can only ever return the caller's own grants. The submitted `patientId` is trusted only as far
+  as `bookAppointment`'s own existing grant check allows (unchanged from Phase 11); no new
+  authorization logic was written, only a UI path that reaches the existing check.
+- **Gap 3 — no SEO metadata anywhere in the public pages.** Added `generateMetadata`
+  (hospital/doctor detail — dynamic, per-record title/description) and static `metadata` exports
+  (homepage, hospitals list, doctors list). The two detail pages' existing inline
+  fetch-then-`notFound()` logic was refactored into a `cache()`-wrapped loader function (React's
+  per-request cache) so `generateMetadata` and the page component share one DB lookup instead of
+  issuing it twice — `getPublicOrganization`/`getPublicDoctor` are direct Prisma calls, not
+  `fetch()`, so they aren't deduped by Next's fetch cache the way route data normally would be.
+- **What was deliberately not touched.** Tenant isolation (`src/lib/tenant.ts`), the public
+  projection allowlists (`src/modules/public/service.ts`), RBAC/capability checks, the booking
+  transaction's double-booking protection, and every existing dashboard — none of these needed
+  any change for this brief, and none were modified, matching the brief's own "do not rebuild
+  working systems" instruction.
+- **Consequences.** No schema changes. Verified live against the real database: published a real
+  clinic + doctor, confirmed SEO titles render per-page with real data
+  (`<title>Dr. X — Specialty | DoseWise</title>`, etc.); registered a guardian with a real
+  `PatientAccessGrant` on a dependent at the clinic and confirmed the dependent picker appears
+  for them and *only* for them (an unrelated logged-in stranger sees no picker); called
+  `selfBookAppointment` directly against the real DB (curl cannot invoke a Next.js Server Action's
+  wire protocol, so this is the direct, actually-meaningful verification of the changed code) and
+  confirmed booking for the authorized dependent succeeds while booking for a random/unauthorized
+  patientId is rejected server-side with the same "Patient not found"/"only your own record"
+  errors the internal flow already used; confirmed the confirmation banner and quick actions
+  render on the real resulting appointment — then deleted all test data. `pnpm typecheck`,
+  `pnpm build` (every route), and `pnpm test:unit` (40/40) all clean. `pnpm test:integration` (the
+  DB-truncating suite) was **not** re-run — the confirmation given for Phase 13's run (ADR-015)
+  was scoped to that run, not standing approval, and it wasn't asked for again this time.

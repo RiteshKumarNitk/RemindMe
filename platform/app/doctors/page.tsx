@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { listPublicDoctors } from "@/modules/public/service.js";
 import { Card, CardSubtitle, CardTitle, EmptyState, SearchBar } from "@/components/ui/index.js";
 import { PublicHeader } from "../public-header";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Find a doctor | DoseWise",
+  description: "Search doctors by name or specialty, see real availability, and book an appointment.",
+};
 
 export default async function DoctorsPage({
   searchParams,

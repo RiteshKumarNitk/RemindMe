@@ -166,11 +166,14 @@ export async function selfBookAppointment(
   ctx: RequestContext,
   input: z.infer<typeof selfBookAppointmentSchema>,
 ) {
-  const { org, patientId } = await ensurePatientMembership(ctx, input.organizationId, input.patient);
+  const { org, patientId: selfPatientId } = await ensurePatientMembership(ctx, input.organizationId, input.patient);
   const orgCtx: RequestContext = { ...ctx, org };
 
+  // `input.patientId` (a dependent) is trusted only as far as `bookAppointment`'s
+  // own PatientAccessGrant check allows — a mismatched/tampered id just 403s,
+  // same as every other patientId this module never authorizes itself.
   return bookAppointment(orgCtx, {
-    patientId,
+    patientId: input.patientId ?? selfPatientId,
     doctorId: input.doctorId,
     scheduledStart: input.scheduledStart,
     appointmentTypeId: input.appointmentTypeId,

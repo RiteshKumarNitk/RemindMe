@@ -9,11 +9,14 @@ import { selfBookAppointment } from "@/modules/patient-booking/service.js";
 export async function confirmBookingAction(doctorId: string, slot: string, formData: FormData) {
   const ctx = await requireWebUser();
 
+  const patientId = String(formData.get("patientId") ?? "").trim() || undefined;
+
   const parsed = selfBookAppointmentSchema.safeParse({
     organizationId: String(formData.get("organizationId") ?? ""),
     doctorId,
     scheduledStart: slot,
     reason: String(formData.get("reason") ?? "").trim() || undefined,
+    patientId,
     patient: {
       firstName: String(formData.get("firstName") ?? "").trim(),
       lastName: String(formData.get("lastName") ?? "").trim(),
@@ -32,13 +35,15 @@ export async function confirmBookingAction(doctorId: string, slot: string, formD
   }
 
   let organizationId: string;
+  let appointmentId: string;
   try {
     const appt = await selfBookAppointment(ctx, parsed.data);
     organizationId = appt.organizationId;
+    appointmentId = appt.id;
   } catch (err) {
     const message = err instanceof AppError ? err.message : "Could not book that appointment.";
     redirect(`/doctors/${doctorId}/book?slot=${encodeURIComponent(slot)}&error=${encodeURIComponent(message)}`);
   }
 
-  redirect(`/dashboard/${organizationId}/appointments?booked=1`);
+  redirect(`/dashboard/${organizationId}/appointments/${appointmentId}?justBooked=1`);
 }
