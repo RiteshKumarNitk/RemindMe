@@ -1,6 +1,7 @@
 import { requireSuperAdmin } from "@/lib/web-context.js";
 import { platformStats } from "@/modules/superadmin/service.js";
-import { Card, SectionTitle } from "../dashboard/ui.js";
+import { StatTile } from "@/components/ui/index.js";
+import { BuildingIcon, CalendarIcon, CheckIcon, CloseIcon, UsersIcon } from "@/components/dashboard-icons.js";
 
 export const dynamic = "force-dynamic";
 
@@ -9,25 +10,21 @@ export default async function AdminOverviewPage() {
   const stats = await platformStats(ctx);
 
   return (
-    <div>
-      <SectionTitle>Platform overview</SectionTitle>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14 }}>
-        <StatCard label="Clinics" value={stats.organizations} />
-        <StatCard label="Active clinics" value={stats.activeOrganizations} />
-        <StatCard label="Suspended clinics" value={stats.organizations - stats.activeOrganizations} />
-        <StatCard label="Users" value={stats.users} />
-        <StatCard label="Patients" value={stats.patients} />
-        <StatCard label="Appointments" value={stats.appointments} />
+    <div className="flex flex-col gap-7">
+      <h1 className="font-display text-2xl font-bold text-ink">Platform overview</h1>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <StatTile icon={<BuildingIcon />} tone="indigo" label="Clinics" value={stats.organizations.toLocaleString()} />
+        <StatTile icon={<CheckIcon />} tone="ok" label="Active clinics" value={stats.activeOrganizations.toLocaleString()} />
+        <StatTile
+          icon={<CloseIcon />}
+          tone="danger"
+          label="Suspended clinics"
+          value={(stats.organizations - stats.activeOrganizations).toLocaleString()}
+        />
+        <StatTile icon={<UsersIcon />} tone="coral" label="Users" value={stats.users.toLocaleString()} />
+        <StatTile icon={<UsersIcon />} tone="warn" label="Patients" value={stats.patients.toLocaleString()} />
+        <StatTile icon={<CalendarIcon />} tone="neutral" label="Appointments" value={stats.appointments.toLocaleString()} />
       </div>
     </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: number }) {
-  return (
-    <Card>
-      <div style={{ fontSize: 28, fontWeight: 700 }}>{value.toLocaleString()}</div>
-      <div style={{ fontSize: 12, color: "var(--ink-muted)", marginTop: 4 }}>{label}</div>
-    </Card>
   );
 }

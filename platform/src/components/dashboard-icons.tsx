@@ -152,6 +152,8 @@ const NAV_ICONS: Record<string, (props: SVGProps<SVGSVGElement>) => React.JSX.El
   "Profile & branding": BuildingIcon,
   Settings: SettingsIcon,
   "Audit log": FileIcon,
+  Clinics: BuildingIcon,
+  Verification: CheckIcon,
 };
 
 /** Best-effort icon for a sidebar nav label; falls back to a plain grid mark. */

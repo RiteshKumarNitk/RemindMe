@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/web-context.js";
 import { listOrganizations } from "@/modules/superadmin/service.js";
-import { Badge, Card, EmptyState, SectionTitle, Table, td, th } from "../../dashboard/ui.js";
+import { Badge, Card, EmptyState, InitialsAvatar, LinkButton } from "@/components/ui/index.js";
 
 export const dynamic = "force-dynamic";
 
@@ -14,48 +13,36 @@ export default async function AdminVerificationQueuePage() {
   });
 
   return (
-    <div>
-      <SectionTitle>Verification queue ({orgs.length})</SectionTitle>
-      <p style={{ color: "var(--ink-muted)", fontSize: 14, marginBottom: 16 }}>
-        Clinics that have asked to be reviewed for a &ldquo;Verified&rdquo; badge on their public
-        profile.
-      </p>
-      <Card>
-        {orgs.length === 0 ? (
-          <EmptyState>Nothing awaiting review.</EmptyState>
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <th style={th}>Name</th>
-                <th style={th}>Slug</th>
-                <th style={th}>Listed publicly</th>
-                <th style={th}>Members</th>
-                <th style={th}>
-                  <span className="sr-only">Review</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {orgs.map((o) => (
-                <tr key={o.id}>
-                  <td style={td}>{o.name}</td>
-                  <td style={td}>{o.slug}</td>
-                  <td style={td}>
-                    <Badge tone={o.isPubliclyListed ? "ok" : "muted"}>{o.isPubliclyListed ? "Yes" : "No"}</Badge>
-                  </td>
-                  <td style={td}>{o._count.memberships}</td>
-                  <td style={td}>
-                    <Link href={`/admin/organizations/${o.id}`} style={{ color: "var(--indigo)", fontWeight: 700, fontSize: 13 }}>
-                      Review
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-      </Card>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="font-display text-2xl font-bold text-ink">Verification queue ({orgs.length})</h1>
+        <p className="mt-1 text-sm text-ink-muted">
+          Clinics that have asked to be reviewed for a &ldquo;Verified&rdquo; badge on their public profile.
+        </p>
+      </div>
+
+      {orgs.length === 0 ? (
+        <Card>
+          <EmptyState title="Nothing awaiting review." />
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {orgs.map((o) => (
+            <Card key={o.id} className="flex flex-wrap items-center gap-3 p-4!">
+              <InitialsAvatar name={o.name} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13.5px] font-semibold text-ink">{o.name}</div>
+                <div className="truncate text-[11.5px] text-ink-muted">{o.slug}</div>
+              </div>
+              <Badge tone={o.isPubliclyListed ? "ok" : "neutral"}>{o.isPubliclyListed ? "Listed" : "Not listed"}</Badge>
+              <span className="text-[11.5px] text-ink-faint">{o._count.memberships} members</span>
+              <LinkButton variant="secondary" size="sm" href={`/admin/organizations/${o.id}`}>
+                Review
+              </LinkButton>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/web-context.js";
 import { listOrganizations } from "@/modules/superadmin/service.js";
-import { Badge, Button, Card, EmptyState, Field, SectionTitle, Select, Table, td, th } from "../../dashboard/ui.js";
+import { Badge, Button, Card, EmptyState, Field, InitialsAvatar, Input, Select } from "@/components/ui/index.js";
 
 export const dynamic = "force-dynamic";
 
@@ -15,64 +15,59 @@ export default async function AdminOrganizationsPage({
   const { data: orgs } = await listOrganizations(ctx, { q, status: status ?? "all", limit: 100 });
 
   return (
-    <div>
-      <SectionTitle>Clinics ({orgs.length})</SectionTitle>
-      <Card style={{ marginBottom: 20 }}>
-        <form style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <div style={{ flex: "1 1 240px" }}>
-            <Field label="Search by name or slug" name="q" defaultValue={q} placeholder="Search…" />
-          </div>
-          <div style={{ flex: "0 1 180px" }}>
-            <Select label="Status" name="status" defaultValue={status ?? "all"}>
+    <div className="flex flex-col gap-7">
+      <h1 className="font-display text-2xl font-bold text-ink">Clinics ({orgs.length})</h1>
+
+      <form className="flex flex-wrap items-end gap-3">
+        <div className="min-w-60 flex-1">
+          <Field label="Search by name or slug">
+            <Input name="q" defaultValue={q} placeholder="Search…" className="w-full" />
+          </Field>
+        </div>
+        <div className="w-44">
+          <Field label="Status">
+            <Select name="status" defaultValue={status ?? "all"} className="w-full">
               <option value="all">All</option>
               <option value="active">Active</option>
               <option value="suspended">Suspended</option>
             </Select>
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <Button variant="ghost">Filter</Button>
-          </div>
-        </form>
-      </Card>
+          </Field>
+        </div>
+        <Button variant="secondary" type="submit">
+          Filter
+        </Button>
+      </form>
 
-      <Card>
-        {orgs.length === 0 ? (
-          <EmptyState>No clinics found.</EmptyState>
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <th style={th}>Name</th>
-                <th style={th}>Slug</th>
-                <th style={th}>Status</th>
-                <th style={th}>Members</th>
-                <th style={th}>Patients</th>
-                <th style={th}>Appointments</th>
-                <th style={th}>Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orgs.map((o) => (
-                <tr key={o.id}>
-                  <td style={td}>
-                    <Link href={`/admin/organizations/${o.id}`} style={{ color: "var(--indigo)" }}>
-                      {o.name}
-                    </Link>
-                  </td>
-                  <td style={td}>{o.slug}</td>
-                  <td style={td}>
-                    <Badge tone={o.isActive ? "ok" : "coral"}>{o.isActive ? "Active" : "Suspended"}</Badge>
-                  </td>
-                  <td style={td}>{o._count.memberships}</td>
-                  <td style={td}>{o._count.patients}</td>
-                  <td style={td}>{o._count.appointments}</td>
-                  <td style={td}>{new Date(o.createdAt).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-      </Card>
+      {orgs.length === 0 ? (
+        <Card>
+          <EmptyState title="No clinics found." />
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {orgs.map((o) => (
+            <Link
+              key={o.id}
+              href={`/admin/organizations/${o.id}`}
+              className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 no-underline transition-colors hover:border-indigo"
+            >
+              <InitialsAvatar name={o.name} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13.5px] font-semibold text-ink">{o.name}</div>
+                <div className="truncate text-[11.5px] text-ink-muted">{o.slug}</div>
+              </div>
+              <Badge tone={o.isActive ? "ok" : "coral"}>{o.isActive ? "Active" : "Suspended"}</Badge>
+              <div className="flex gap-3 text-[11.5px] tabular-nums text-ink-faint">
+                <span>{o._count.memberships} members</span>
+                <span>{o._count.patients} patients</span>
+                <span>{o._count.appointments} appts</span>
+              </div>
+              <span className="w-20 shrink-0 text-right text-[11px] text-ink-faint">
+                {new Date(o.createdAt).toLocaleDateString()}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

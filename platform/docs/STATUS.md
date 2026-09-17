@@ -31,7 +31,7 @@ foundation underneath both.
 
 | Area | What it means for the business |
 |---|---|
-| **A modern dashboard, and real notifications** | Every clinic screen — the four role dashboards, appointments, patients, doctors, staff, settings, and the queue board — has been visually rebuilt with a consistent design (hero cards, stat tiles, colored patient avatars), plus a working notification bell that shows real events (appointment booked, cancelled, rescheduled, reminders) and can be marked as read. The appointment booking screen is now a doctor/date/time picker with a live summary instead of a plain form. Verified live: a real booking creates a real notification, addressed to the right person, that clears when marked read; real forms (add doctor, add staff, add location) still work through the new design. |
+| **A modern design, top to bottom, and real notifications** | Every screen in the app — the four clinic role dashboards, appointments, patients, doctors, staff, settings, the queue board, and the separate platform-owner admin console — has been visually rebuilt with a consistent design (hero cards, stat tiles, colored patient avatars), plus a working notification bell that shows real events (appointment booked, cancelled, rescheduled, reminders) and can be marked as read. The appointment booking screen is now a doctor/date/time picker with a live summary instead of a plain form. Verified live: a real booking creates a real notification, addressed to the right person, that clears when marked read; real forms (add doctor, add staff, add location, suspend a clinic) still work through the new design. |
 | **Accounts & login** | Clinics and staff can register and log in securely (industry-standard password hashing, session handling). |
 | **Multi-clinic isolation** | One clinic can never see another clinic's data — tested and enforced, not just assumed. |
 | **Roles & permissions** | Admin / Doctor / Receptionist / Patient each see only what their role should — including a rule that no admin can grant themselves extra medical-record access (must be a second admin). |
@@ -54,7 +54,7 @@ foundation underneath both.
 | **Audit trail** | Every sensitive action (who changed what, when) is logged and reviewable by that clinic's admin. |
 | **Family access** | A patient can grant a family member read access to their own records; nothing is shared without an explicit grant. |
 | **Platform admin console** | We (the platform owner) have a super-admin panel to see all clinics, suspend/reactivate one if needed, and review a cross-clinic audit feed — without being able to silently self-grant medical-record access. |
-| **Web app (functional)** | All of the above is usable today through a working website — login, dashboards per role, booking, queue board, notes, admin console. Every screen in the clinic dashboard now has real visual design; only the separate platform-owner admin console still uses the earlier plain styling. |
+| **Web app (functional)** | All of the above is usable today through a working website — login, dashboards per role, booking, queue board, notes, admin console. Every screen in the entire app, including the separate platform-owner admin console, now has real visual design. |
 
 **In short: the operational core of "run a clinic's day-to-day" is built and
 working.** What's missing now is mostly the polished patient-facing experience
@@ -75,7 +75,6 @@ module passing, no crash. Whatever caused the earlier failure didn't reproduce.
 
 | Area | Notes |
 |---|---|
-| **Visual design pass on the platform admin console** | The public pages, every clinic-side dashboard screen (overview, appointments, patients, doctors, staff, settings, queue board), and the booking flow all now have real modern design. What's left: the separate `/admin` super-admin console (platform-owner only, not clinic staff) still uses the earlier plain styling. |
 | **Mobile-app integration (Flutter)** | The existing DoseWise app and this new backend aren't connected yet — planned as the final phase, deliberately last so the web product is solid first. |
 | Document uploads, SMS/WhatsApp notifications, right-to-erasure workflow | Explicitly deferred, not required for MVP. |
 
@@ -99,12 +98,10 @@ end to end. All verified live against the real database, not just build-checked.
 
 ## Recommended next milestone
 
-**The evolution plan is complete, and every clinic-facing screen now has real modern design.**
-What's left is outside the original 13 phases: a visual pass on the separate platform-admin
-console (lower priority — used only by the platform owner, not clinic staff), connecting the
-existing Flutter mobile app to this backend, and deciding when/how to commit and deploy this
-cycle's work — none of that is started yet and
-would need a fresh scoping conversation.
+**The evolution plan is complete, and every screen in the app now has real modern design.**
+What's left is outside the original 13 phases: connecting the existing Flutter mobile app to this
+backend, and deciding when/how to commit and deploy this cycle's work — neither is started yet
+and would need a fresh scoping conversation.
 
 ---
 

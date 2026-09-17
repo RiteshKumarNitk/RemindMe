@@ -660,3 +660,36 @@ state.
   With this, every screen in `app/dashboard/:orgId/*` uses the current design system except the
   separate `/admin` super-admin console, which remains an explicitly out-of-scope, separate piece
   of work.
+
+## ADR-018: Admin console migrated to the same design system — the one piece ADR-017 left out, plus one deliberate exception
+
+- **Context.** ADR-017 named the `/admin` super-admin console (platform-owner only, not clinic
+  staff) as the one remaining screen still on the old inline-style kit. The user asked to
+  continue, so this pass covers it: `admin/layout.tsx`, `admin/page.tsx` (platform overview),
+  `admin/organizations/page.tsx` (clinic list), `admin/organizations/:orgId/page.tsx` (clinic
+  detail), `admin/verification/page.tsx`, `admin/audit/page.tsx`.
+- **Decision 1 — the shell reuses the exact same `MobileNavProvider`/`MobileNavAside`/
+  `MobileNavButton` components ADR-016 built for the org dashboard, not a parallel admin-specific
+  shell.** Same mobile-drawer behavior, same icon-nav pattern (`navIconFor`, extended with two new
+  label mappings — "Clinics" → `BuildingIcon`, "Verification" → `CheckIcon`). No notification
+  bell here — there's no superadmin-relevant notification event defined anywhere in the system, so
+  adding one would be inventing a feature, not reusing an existing one. The admin topbar is
+  otherwise minimal (just the mobile menu button and a title on narrow screens); it doesn't need
+  the org dashboard's search bar either, since nothing on these pages is fielded to search yet.
+- **Decision 2 — the audit log stayed a real `<table>`, not a card-row list.** Every other list in
+  ADR-017 became a card-row list (`InitialsAvatar` + name/sub + trailing badge), but a 150-row
+  audit trail is genuinely tabular data meant to be scanned like a log, not a list of entities —
+  forcing it into the card pattern would make it harder to read, not more modern. Restyled with
+  current tokens (rounded card container, `Badge` for the action column, tabular alignment) rather
+  than reused as-is from the old kit.
+- **Decision 3 — `Badge`'s old `"muted"` tone (used throughout the pre-migration admin pages)
+  doesn't exist in the new kit; every occurrence became `"neutral"`,** the new kit's equivalent
+  (same visual role — a plain, low-emphasis tone for "not verified"/"draft"/"not listed" states).
+- **Consequences.** No schema/API changes. Verified live against the real database with a real
+  superadmin session: rendered all four admin pages, created a real clinic and confirmed it
+  appears correctly in the organizations list, the clinic detail page, and the audit log; then
+  exercised a real mutation through the actual API the detail page's "Suspend this clinic" button
+  calls and confirmed the page's badge/button state updates correctly on re-render — then deleted
+  all test data. `pnpm typecheck`, `pnpm build` (every route), and `pnpm test:unit` (40/40) all
+  clean. This closes the visual migration entirely — every screen in the app, clinic-side and
+  platform-admin-side, now uses the current design system.

@@ -4,6 +4,18 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-09-17 — Admin console migrated to the current design system (uncommitted)
+
+The last piece of the visual migration: the platform-owner-only `/admin` console (overview,
+clinics list, clinic detail, verification queue, audit log). Same shell as the org dashboard —
+reuses the mobile drawer and icon-nav components built for it, no parallel admin-specific shell.
+Every list became a card-row list except the audit log, which stayed a real table (150 rows of
+genuinely tabular data reads better as a table than a card list). See ADR-018. Verified live with
+a real superadmin session: created a real clinic, confirmed it renders correctly across all three
+admin pages, and exercised a real suspend-clinic mutation to confirm the page reflects it.
+`pnpm typecheck`/`pnpm build`/`pnpm test:unit` (40/40) clean. **Every screen in the app now uses
+the current design system.**
+
 ## 2026-09-17 — Finished the visual migration to the remaining older screens (uncommitted)
 
 Continuation of yesterday's dashboard redesign, onto the six pages it deliberately deferred:
