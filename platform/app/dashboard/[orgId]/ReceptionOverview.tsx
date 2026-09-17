@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { RequestContext } from "@/lib/context.js";
 import { listAppointments } from "@/modules/appointments/service.js";
-import { Badge, Card, EmptyState, LinkButton } from "@/components/ui/index.js";
+import { Badge, Card, EmptyState, InitialsAvatar, LinkButton, StatTile } from "@/components/ui/index.js";
+import { CalendarIcon, CheckIcon, ClockIcon, CloseIcon, UsersIcon } from "@/components/dashboard-icons.js";
 
 const STATUS_TONE: Record<string, "indigo" | "ok" | "down" | "neutral"> = {
   REQUESTED: "neutral",
@@ -35,9 +36,9 @@ export async function ReceptionOverview({ ctx, orgId }: { ctx: RequestContext; o
     .slice(0, 8);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-ink">
+        <h1 className="font-display text-2xl font-bold text-ink">
           {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
         </h1>
         <div className="flex flex-wrap gap-2">
@@ -48,37 +49,40 @@ export async function ReceptionOverview({ ctx, orgId }: { ctx: RequestContext; o
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <StatCard label="Today's total" value={todaysAppointments.length} />
-        <StatCard label="Checked in" value={checkedIn} />
-        <StatCard label="Waiting" value={waiting} />
-        <StatCard label="In consultation" value={inConsultation} />
-        <StatCard label="No-shows" value={noShows} />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <StatTile icon={<CalendarIcon />} tone="indigo" label="Today's total" value={todaysAppointments.length} />
+        <StatTile icon={<CheckIcon />} tone="ok" label="Checked in" value={checkedIn} />
+        <StatTile icon={<ClockIcon />} tone="warn" label="Waiting" value={waiting} />
+        <StatTile icon={<UsersIcon />} tone="coral" label="In consultation" value={inConsultation} />
+        <StatTile icon={<CloseIcon />} tone="danger" label="No-shows" value={noShows} />
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-ink">Up next</h2>
+        <h2 className="mb-3 font-display text-lg font-bold text-ink">Up next, all doctors</h2>
         {upNext.length === 0 ? (
           <EmptyState title="Nothing left on today's schedule" />
         ) : (
-          <div className="flex flex-col gap-2">
+          <Card className="p-2">
             {upNext.map((a) => (
-              <Link key={a.id} href={`/dashboard/${orgId}/appointments/${a.id}`} className="no-underline">
-                <Card className="flex flex-row items-center justify-between py-3">
-                  <div className="flex items-center gap-3">
-                    <span className="w-16 text-sm font-medium text-ink">
-                      {new Date(a.scheduledStart).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                    <span className="text-sm text-ink">
-                      {a.patient.firstName} {a.patient.lastName}
-                    </span>
-                    <span className="text-sm text-ink-muted">{a.doctor.displayName}</span>
+              <Link
+                key={a.id}
+                href={`/dashboard/${orgId}/appointments/${a.id}`}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 no-underline hover:bg-surface-2"
+              >
+                <InitialsAvatar name={`${a.patient.firstName} ${a.patient.lastName}`} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13px] font-semibold text-ink">
+                    {a.patient.firstName} {a.patient.lastName}
                   </div>
-                  <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>{a.status}</Badge>
-                </Card>
+                  <div className="truncate text-[11.5px] text-ink-muted">{a.doctor.displayName}</div>
+                </div>
+                <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>{a.status}</Badge>
+                <span className="w-14 shrink-0 text-right text-[11.5px] tabular-nums text-ink-faint">
+                  {new Date(a.scheduledStart).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                </span>
               </Link>
             ))}
-          </div>
+          </Card>
         )}
       </div>
 
@@ -86,14 +90,5 @@ export async function ReceptionOverview({ ctx, orgId }: { ctx: RequestContext; o
         + New appointment
       </LinkButton>
     </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: number }) {
-  return (
-    <Card className="py-4 text-center">
-      <div className="text-2xl font-bold text-ink">{value}</div>
-      <div className="mt-1 text-xs text-ink-muted">{label}</div>
-    </Card>
   );
 }

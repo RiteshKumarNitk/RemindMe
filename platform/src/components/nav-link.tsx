@@ -15,18 +15,20 @@ export function NavLink({
   href,
   exact = false,
   style,
+  className,
   children,
 }: {
   href: string;
   exact?: boolean;
   style?: CSSProperties;
+  className?: string;
   children: ReactNode;
 }) {
   const pathname = usePathname();
   const isActive = exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <Link href={href} aria-current={isActive ? "page" : undefined} style={style}>
+    <Link href={href} aria-current={isActive ? "page" : undefined} style={style} className={className}>
       {children}
     </Link>
   );

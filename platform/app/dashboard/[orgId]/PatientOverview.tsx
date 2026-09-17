@@ -1,5 +1,20 @@
-import { db } from "@/lib/db.js";
-import { Badge, Card, CardSubtitle, CardTitle, LinkButton } from "@/components/ui/index.js";
+import type { RequestContext } from "@/lib/context.js";
+import { tenantDb } from "@/lib/tenant.js";
+import { listMyAccess } from "@/modules/family/service.js";
+import {
+  Badge,
+  Card,
+  CardSubtitle,
+  Hero,
+  HeroActions,
+  HeroLabel,
+  HeroMain,
+  HeroSide,
+  LinkButton,
+  SideStat,
+  StatTile,
+} from "@/components/ui/index.js";
+import { CalendarIcon, CheckIcon, PillIcon, UsersIcon } from "@/components/dashboard-icons.js";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -16,72 +31,117 @@ const STATUS_LABEL: Record<string, string> = {
   IN_CONSULTATION: "In consultation",
 };
 
-export async function PatientOverview({ orgId, userId }: { orgId: string; userId: string }) {
-  const patient = await db.patient.findFirst({
-    where: { organizationId: orgId, ownerUserId: userId },
+export async function PatientOverview({ ctx, orgId }: { ctx: RequestContext; orgId: string }) {
+  const t = tenantDb(ctx);
+
+  const patient = await t.patient.findFirst({
+    where: { organizationId: orgId, ownerUserId: ctx.userId },
     select: { id: true, firstName: true },
   });
 
-  const next = patient
-    ? await db.appointment.findFirst({
-        where: {
-          organizationId: orgId,
-          patientId: patient.id,
-          status: { in: ["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING", "IN_CONSULTATION"] },
-        },
-        orderBy: { scheduledStart: "asc" },
-        include: {
-          doctor: { select: { displayName: true, specialty: true } },
-          queueEntry: { select: { tokenNumber: true, state: true } },
-        },
+  const [next, upcomingCount, pastVisitCount, activeMedications, myAccess] = await Promise.all([
+    patient
+      ? t.appointment.findFirst({
+          where: {
+            organizationId: orgId,
+            patientId: patient.id,
+            status: { in: ["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING", "IN_CONSULTATION"] },
+          },
+          orderBy: { scheduledStart: "asc" },
+          include: {
+            doctor: { select: { displayName: true, specialty: true } },
+            queueEntry: { select: { tokenNumber: true, state: true } },
+          },
+        })
+      : null,
+    patient
+      ? t.appointment.count({
+          where: {
+            organizationId: orgId,
+            patientId: patient.id,
+            scheduledStart: { gte: new Date() },
+            status: { notIn: ["CANCELLED", "NO_SHOW", "RESCHEDULED"] },
+          },
+        })
+      : 0,
+    patient
+      ? t.appointment.count({ where: { organizationId: orgId, patientId: patient.id, status: "COMPLETED" } })
+      : 0,
+    patient
+      ? t.medication.count({ where: { organizationId: orgId, patientId: patient.id, isActive: true } })
+      : 0,
+    listMyAccess(ctx),
+  ]);
+
+  const familyCount = myAccess.data.length;
+  const nextWhen = next
+    ? new Date(next.scheduledStart).toLocaleString(undefined, {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       })
     : null;
 
-  const upcomingCount = patient
-    ? await db.appointment.count({
-        where: {
-          organizationId: orgId,
-          patientId: patient.id,
-          scheduledStart: { gte: new Date() },
-          status: { notIn: ["CANCELLED", "NO_SHOW", "RESCHEDULED"] },
-        },
-      })
-    : 0;
-
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold text-ink">{greeting()}{patient?.firstName ? `, ${patient.firstName}` : ""}</h1>
+    <div className="flex flex-col gap-7">
+      <h1 className="font-display text-2xl font-bold text-ink">
+        {greeting()}
+        {patient?.firstName ? `, ${patient.firstName}` : ""}
+      </h1>
 
       {next ? (
-        <Card>
-          <CardSubtitle>Your next appointment</CardSubtitle>
-          <CardTitle className="mt-1 text-lg">{next.doctor.displayName}</CardTitle>
-          {next.doctor.specialty ? <p className="text-sm text-ink-muted">{next.doctor.specialty}</p> : null}
-          <p className="mt-3 text-sm font-medium text-ink">
-            {new Date(next.scheduledStart).toLocaleString(undefined, {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Badge tone="indigo">{STATUS_LABEL[next.status] ?? next.status}</Badge>
-            {next.queueEntry ? <Badge tone="ok">Token {next.queueEntry.tokenNumber}</Badge> : null}
-          </div>
-          <div className="mt-4">
-            <LinkButton variant="secondary" href={`/dashboard/${orgId}/appointments/${next.id}`}>
-              View appointment
-            </LinkButton>
-          </div>
-        </Card>
+        <Hero>
+          <HeroMain>
+            <div>
+              <HeroLabel>Next appointment</HeroLabel>
+              <h2 className="relative mt-1 font-display text-xl font-bold">{next.doctor.displayName}</h2>
+              {next.doctor.specialty ? <p className="relative text-sm text-white/85">{next.doctor.specialty}</p> : null}
+              <p className="relative mt-2 text-[13px] font-medium text-white/90">{nextWhen}</p>
+              <div className="relative mt-3 flex flex-wrap items-center gap-2">
+                <Badge tone="glass">{STATUS_LABEL[next.status] ?? next.status}</Badge>
+                {next.queueEntry ? <Badge tone="glass">Token {next.queueEntry.tokenNumber}</Badge> : null}
+              </div>
+            </div>
+            <HeroActions>
+              <LinkButton variant="light" href={`/dashboard/${orgId}/appointments/${next.id}`}>
+                View appointment
+              </LinkButton>
+              <LinkButton variant="glass" href={`/dashboard/${orgId}/appointments/${next.id}/reschedule`}>
+                Reschedule
+              </LinkButton>
+            </HeroActions>
+          </HeroMain>
+          <HeroSide>
+            <SideStat
+              value={next.queueEntry ? next.queueEntry.tokenNumber : "—"}
+              label={next.queueEntry ? "Your token" : "Not checked in yet"}
+              sub={next.queueEntry ? `Status: ${next.queueEntry.state.toLowerCase()}` : "Check in when you arrive"}
+            />
+            <Card className="flex flex-1 flex-col gap-3">
+              <CardSubtitle>Active prescriptions</CardSubtitle>
+              {activeMedications === 0 ? (
+                <p className="text-[13px] text-ink-muted">Nothing active right now.</p>
+              ) : (
+                <p className="font-display text-2xl font-bold text-ink">{activeMedications}</p>
+              )}
+            </Card>
+          </HeroSide>
+        </Hero>
       ) : (
         <Card>
           <CardSubtitle>You have no upcoming appointments</CardSubtitle>
           <p className="mt-2 text-sm text-ink-muted">Book one from a doctor&rsquo;s profile, or below.</p>
         </Card>
       )}
+
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatTile icon={<CalendarIcon />} tone="indigo" label="Upcoming" value={upcomingCount} />
+        <StatTile icon={<CheckIcon />} tone="ok" label="Past visits" value={pastVisitCount} />
+        <StatTile icon={<PillIcon />} tone="coral" label="Prescriptions" value={activeMedications} />
+        <StatTile icon={<UsersIcon />} tone="neutral" label="Family linked" value={familyCount} />
+      </div>
 
       <div className="flex flex-wrap gap-3">
         <LinkButton href={`/dashboard/${orgId}/appointments`}>Book an appointment</LinkButton>

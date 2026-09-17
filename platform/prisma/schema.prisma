@@ -946,9 +946,14 @@ model Notification {
   error         String?
   createdAt     DateTime  @default(now())
 
+  // Read state for the in-app notification center (separate from `status`,
+  // which tracks delivery/retry, not whether the recipient has seen it).
+  readAt DateTime?
+
   @@index([status, scheduledFor])
   @@index([status, nextAttemptAt])
   @@index([userId])
+  @@index([userId, channel, readAt])
 }
 
 model AuditLog {

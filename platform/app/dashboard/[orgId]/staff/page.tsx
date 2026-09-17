@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { listStaff } from "@/modules/staff/service.js";
 import { db } from "@/lib/db.js";
-import { Button, Card, EmptyState, ErrorNote, Field, SectionTitle, Table, td, th } from "../../ui.js";
+import { Badge, Button, Card, CardSubtitle, EmptyState, Field, InitialsAvatar, Input, Notice } from "@/components/ui/index.js";
 import { createStaffAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -27,43 +27,46 @@ export default async function StaffPage({
   const nameOf = (userId: string) => users.find((u) => u.id === userId)?.fullName ?? "—";
 
   return (
-    <div>
-      <SectionTitle>Staff</SectionTitle>
-      <Card style={{ marginBottom: 20 }}>
-        {staff.length === 0 ? (
-          <EmptyState>No staff members yet.</EmptyState>
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <th style={th}>Name</th>
-                <th style={th}>Title</th>
-                <th style={th}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {staff.map((s) => (
-                <tr key={s.id}>
-                  <td style={td}>{nameOf(s.userId)}</td>
-                  <td style={td}>{s.jobTitle ?? "—"}</td>
-                  <td style={td}>{s.isActive ? "Active" : "Inactive"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-      </Card>
+    <div className="flex flex-col gap-7">
+      <h1 className="font-display text-2xl font-bold text-ink">Staff</h1>
 
-      <Card style={{ maxWidth: 420 }}>
-        <SectionTitle>Add staff</SectionTitle>
-        <ErrorNote message={error} />
-        <form action={createStaffAction.bind(null, orgId)}>
-          <Field label="Full name" name="fullName" required />
-          <Field label="Email" name="email" type="email" required />
-          <Field label="Job title" name="jobTitle" placeholder="Front Desk" />
-          <div style={{ marginTop: 8 }}>
-            <Button>Add staff</Button>
+      {staff.length === 0 ? (
+        <Card>
+          <EmptyState title="No staff members yet." />
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {staff.map((s) => (
+            <Card key={s.id} className="flex items-center gap-3 p-4!">
+              <InitialsAvatar name={nameOf(s.userId)} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13.5px] font-semibold text-ink">{nameOf(s.userId)}</div>
+                <div className="truncate text-[11.5px] text-ink-muted">{s.jobTitle ?? "No title set"}</div>
+              </div>
+              <Badge tone={s.isActive ? "ok" : "neutral"}>{s.isActive ? "Active" : "Inactive"}</Badge>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Card>
+        <CardSubtitle>Add staff</CardSubtitle>
+        {error ? (
+          <div className="mt-3">
+            <Notice tone="down">{error}</Notice>
           </div>
+        ) : null}
+        <form action={createStaffAction.bind(null, orgId)} className="mt-4 flex max-w-md flex-col gap-4">
+          <Field label="Full name">
+            <Input name="fullName" required className="w-full" />
+          </Field>
+          <Field label="Email">
+            <Input name="email" type="email" required className="w-full" />
+          </Field>
+          <Field label="Job title">
+            <Input name="jobTitle" placeholder="Front Desk" className="w-full" />
+          </Field>
+          <Button className="self-start">Add staff</Button>
         </form>
       </Card>
     </div>

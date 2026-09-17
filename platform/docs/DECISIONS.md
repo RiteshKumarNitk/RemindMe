@@ -539,3 +539,124 @@ state.
   inferred), `pnpm typecheck`, `pnpm build` (every route), and `pnpm test:unit` (40/40, including
   the 6 new tests) all clean. This closes the plan's final phase — all 13 phases of
   `PRODUCT_EVOLUTION_PLAN.md` are now done.
+
+## ADR-016: Modern dashboard redesign + a real in-app notification center — outside the original 13-phase plan, requested directly by the user after it shipped
+
+- **Context.** With `PRODUCT_EVOLUTION_PLAN.md` complete, the user asked for something the plan
+  never scoped: a visually modern dashboard for every role, backed by a genuinely working
+  notification system and booking flow, not just a restyle. Design direction was worked out first
+  as a standalone HTML mockup (published as a Claude.ai artifact, iterated on live with the user —
+  theme, layout, spacing — before any app code changed), then ported into the real Next.js app.
+  The mockup file itself was never committed; it was a throwaway design surface, not a deliverable.
+- **Decision 1 — a real notification center, not a decorative bell.** The `Notification` model
+  and its dispatcher already existed (built early in this project for reminders/queue updates) but
+  had no user-facing read surface at all — no list endpoint, no read/unread concept. Added
+  `Notification.readAt DateTime?` (migration `20260917084237_notification_read_at`, additive/
+  nullable, no backfill) and a new `src/modules/notifications/` module:
+  `listMyNotifications(ctx)` (tenant-scoped, `channel: "IN_APP"`, returns both `PENDING` and
+  `SENT` rows — `status` tracks the delivery/retry pipeline, not whether the row is worth showing,
+  and IN_APP rows are meant to appear immediately, not wait for the next dispatch tick) and
+  `markNotificationsRead(ctx, {ids?})`. The event→human-message mapping
+  (`APPOINTMENT_BOOKED` → "An appointment was booked.", etc.) lives server-side in the service,
+  not duplicated in the client component, so it evolves with the backend that defines the events.
+  New routes `GET /api/orgs/:orgId/notifications`, `POST /api/orgs/:orgId/notifications/read`.
+  `src/components/notification-bell.tsx` (client component) polls every 30s while mounted — this
+  app has no realtime transport, and a 30s-stale unread count is a reasonable tradeoff against
+  standing up one just for this.
+- **Decision 2 — a mistake caught before it shipped: the mobile drawer.** The first pass at the
+  new sidebar used `max-md:hidden` to remove it on narrow screens with no replacement, which would
+  have silently reintroduced the exact "dashboard unusable on a phone" bug ADR-014/Phase 12 had
+  just fixed — worse, actually, since the old CSS-collapse fallback would have been gone entirely.
+  Caught on review, not by the user. Fixed with `src/components/mobile-nav.tsx`: a small client
+  provider (`MobileNavProvider`/`MobileNavButton`/`MobileNavAside`) giving the sidebar a real
+  slide-in drawer with a backdrop and a proper `<button aria-expanded>` toggle, auto-closing on
+  route change via `usePathname()`. The layout itself (`app/dashboard/:orgId/layout.tsx`) stays a
+  Server Component doing all the data fetching; only the open/closed state is client-side.
+- **Decision 3 — new design tokens are additive, ported through `next/font/google` and the
+  existing `@theme` layer, not a parallel styling system.** Sora (display), IBM Plex Sans (dashboard
+  body), and IBM Plex Mono (tabular data) are self-hosted via `next/font` and exposed as
+  `--nf-sora`/`--nf-plex-sans`/`--nf-plex-mono` on `<html>`, then wired into new `@theme` keys
+  (`--font-display`, `--font-dash-body`, `--font-dash-mono`) in `globals.css` — deliberately two
+  different variable names on each side of that link (a first attempt named both `--font-display`
+  and created a silent self-referential custom-property collision between the `next/font` variable
+  and the Tailwind theme token). `--warn` and `--surface-2` were added as new semantic tokens
+  (light + dark), following the same "define once in `:root`, redefine under the dark-mode guard"
+  pattern the file already used. None of this touches `--font-sans` or any existing page's
+  rendering — Sora/Plex are opt-in via new utility classes only the new components use.
+- **Decision 4 — two mixing-tone-classes-with-override-classes bugs caught before shipping.**
+  The hero card's badges and buttons first used `tone="neutral"`/`variant="secondary"` plus a
+  `className` override for the translucent-white look needed on a colored gradient background.
+  Both `Badge` and `Button`/`LinkButton` build their class string by concatenating a tone/variant's
+  classes with the caller's `className`, and two classes setting the same CSS property (the tone's
+  `bg-surface` vs. the override's `bg-white/15`) are **not** guaranteed to resolve by source order
+  in Tailwind's generated stylesheet — a real risk of the badge silently rendering grey-on-gradient
+  in production. Fixed by adding real, mutually-exclusive variants instead of fighting the
+  cascade: `Badge` gained `tone="glass"`, `Button`/`LinkButton` gained `variant="light"` and
+  `variant="glass"`.
+- **Decision 5 — the booking widget UI changed, the booking mechanics didn't.** `BookForm.tsx`
+  still submits through the exact same `<input type="hidden" name="doctorId">` /
+  `name="scheduledStart">` contract and the same server action
+  (`bookAppointmentAction`/`rescheduleAppointmentAction`) as before — only the picker became a
+  doctor-chip row, a 14-day date strip, and a real slot grid (still backed by the same
+  `GET /api/orgs/:orgId/doctors/:doctorId/slots` fetch) with a sticky live-updating summary card,
+  in place of three native `<select>`s. `src/components/ui/hero.tsx`, `stat-tile.tsx`, and
+  `avatar.tsx` (a deterministic colored-initials avatar, same color per name every time) are new,
+  reusable additions to the Tailwind kit — built once and shared across all four role dashboards
+  (`Patient`/`Doctor`/`Reception`/`AdminOverview.tsx`), not copy-pasted per component.
+- **Scope note.** This redesign covers the four role-overview landing pages
+  (`app/dashboard/:orgId` per role), the dashboard shell (sidebar/topbar), the notification
+  center, and the appointment booking widget — the pieces the user specifically asked for.
+  The appointments *table*, older list pages (patients/settings/queue board), and the separate
+  `/admin` superadmin console were deliberately left on their existing (already Phase-12
+  responsive/accessible) styling — a full visual migration of those is a larger, separate piece of
+  work, not bundled in here.
+- **Consequences.** Verified live against the real dev database, not just build-checked: booked a
+  real appointment, confirmed the resulting `APPOINTMENT_BOOKED` notification is real, correctly
+  addressed to the doctor (not the booking admin), appears via `GET .../notifications` with the
+  right `unreadCount`, and that `POST .../notifications/read` actually clears it — then rendered
+  the real Admin and Doctor dashboards and the appointments/reschedule pages over HTTP with minted
+  sessions and confirmed the new markup (fonts, hero cards, doctor chips) is present, before
+  deleting all test data. `pnpm typecheck`, `pnpm build` (every route including the two new
+  notification endpoints), and `pnpm test:unit` (40/40) all clean.
+
+## ADR-017: Finished the visual migration ADR-016 deliberately deferred — appointments list, patients, doctors, staff, settings, queue board
+
+- **Context.** ADR-016 explicitly scoped itself to the four role dashboards, the shell, the
+  notification center, and the booking widget, and named what it left behind: "the appointments
+  *table*, older list pages (patients/settings/queue board)... a larger, separate piece of work."
+  The user asked to continue, so this pass finishes that named list — six pages in total
+  (appointments, patients, doctors, staff, settings, queue board) — onto the same design language
+  (Tailwind kit, `InitialsAvatar`, `Badge` tones, hero-style stat displays) rather than leaving the
+  app visually split between two eras indefinitely.
+- **Decision 1 — every raw `<table>` list became a card-row list, not a styled table.** Matches
+  what ADR-016 already established for "up next"/queue-style lists (`InitialsAvatar` + name/sub +
+  trailing badge or value), rather than introducing a second list pattern (a "modern" HTML table)
+  alongside the card-row one. Actions that used to sit in a table's dedicated actions column now
+  sit in a second row within each card, below a border — deliberately not making the whole card a
+  `<Link>`, since a `<form>` or `<button>` inside an `<a>` is the same invalid-nesting bug fixed
+  twice already this project (ADR-012's Phase 12 audit, and the `LinkButton` component it
+  produced). Only genuinely non-interactive parts of a row are ever wrapped in a link.
+- **Decision 2 — a new shared `Notice` component replaces the old kit's `ErrorNote` (which these
+  pages no longer import) and stops three pages from hand-writing the same inline banner div.**
+  `ErrorState` (the existing new-kit component) is sized for an empty section, not a one-line
+  form-submission result — using it for "Email already registered" would look oversized. `Notice`
+  (`src/components/ui/states.tsx`) is the lighter equivalent: one line, two tones (`ok`/`down`),
+  reused across the appointments, patients, staff, doctors, and queue pages instead of each
+  re-deriving the same `rounded-2xl border ... px-4 py-3 text-sm` div.
+- **Decision 3 — form mechanics are completely unchanged; only the field-rendering changed.**
+  Every server action (`createPatientAction`, `createStaffAction`, `createDoctorAction`,
+  `saveSettingsAction`, `addLocationAction`, `addAppointmentTypeAction`, `queueAction`) is called
+  exactly as before with the same field names. The only change is swapping the old kit's combined
+  `<Field label name>` (label+input in one component) for the new kit's separated
+  `<Field label><Input name /></Field>` — a mechanical conversion, not a logic change. The queue
+  filter's native `<select>`/`<input type=date>` became the new kit's `Select`/`Input`, keeping
+  the same `name` attributes the page's own query-string redirect already depends on.
+- **Consequences.** No schema/API changes. Verified live against the real database: rendered all
+  six pages over HTTP with a minted session and confirmed real data (a real doctor, patient, and
+  checked-in queue entry) appears correctly on each; exercised one real mutation through the new
+  UI's form fields (adding a clinic location via the settings page) and confirmed both the API
+  call and the page's post-submission re-render show the new location — then deleted all test
+  data. `pnpm typecheck`, `pnpm build` (every route), and `pnpm test:unit` (40/40) all clean.
+  With this, every screen in `app/dashboard/:orgId/*` uses the current design system except the
+  separate `/admin` super-admin console, which remains an explicitly out-of-scope, separate piece
+  of work.

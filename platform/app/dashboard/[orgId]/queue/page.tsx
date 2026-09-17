@@ -3,17 +3,17 @@ import { requireOrgContext } from "@/lib/web-context.js";
 import { listDoctors } from "@/modules/doctors/service.js";
 import { getBoard } from "@/modules/queue/service.js";
 import { AutoRefresh } from "../../AutoRefresh.js";
-import { Badge, Button, Card, EmptyState, ErrorNote, SectionTitle, Table, td, th } from "../../ui.js";
+import { Badge, Button, Card, EmptyState, Field, InitialsAvatar, Input, Notice, Select } from "@/components/ui/index.js";
 import { queueAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
 
-const STATE_TONE: Record<string, "indigo" | "coral" | "ok" | "muted"> = {
+const STATE_TONE: Record<string, "indigo" | "coral" | "ok" | "neutral"> = {
   WAITING: "indigo",
   CALLED: "coral",
   IN_CONSULTATION: "coral",
   COMPLETED: "ok",
-  SKIPPED: "muted",
+  SKIPPED: "neutral",
 };
 
 export default async function QueuePage({
@@ -41,9 +41,11 @@ export default async function QueuePage({
 
   if (!doctorId) {
     return (
-      <div>
-        <SectionTitle>Queue</SectionTitle>
-        <EmptyState>Add a doctor first.</EmptyState>
+      <div className="flex flex-col gap-7">
+        <h1 className="font-display text-2xl font-bold text-ink">Queue</h1>
+        <Card>
+          <EmptyState title="Add a doctor first." />
+        </Card>
       </div>
     );
   }
@@ -52,103 +54,102 @@ export default async function QueuePage({
   const redirectQuery = `doctorId=${doctorId}${sp.date ? `&date=${sp.date}` : ""}`;
 
   return (
-    <div>
+    <div className="flex flex-col gap-7">
       <AutoRefresh seconds={10} />
-      <SectionTitle>Queue — {board.queueDate}</SectionTitle>
-      <ErrorNote message={sp.error} />
+      <h1 className="font-display text-2xl font-bold text-ink">Queue — {board.queueDate}</h1>
+      {sp.error ? <Notice tone="down">{sp.error}</Notice> : null}
 
-      <form style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, maxWidth: 420 }}>
-        <label style={{ flex: 1, minWidth: 160 }}>
-          <span className="sr-only">Doctor</span>
-          <select
-            name="doctorId"
-            defaultValue={doctorId}
-            style={{ width: "100%", padding: "8px 10px", borderRadius: 10, border: "1px solid var(--border)" }}
-          >
-            {doctors.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Date</span>
-          <input
-            type="date"
-            name="date"
-            defaultValue={sp.date}
-            style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid var(--border)" }}
-          />
-        </label>
-        <Button variant="ghost" type="submit">
+      <form className="flex flex-wrap items-end gap-3">
+        <div className="min-w-40 flex-1">
+          <Field label="Doctor">
+            <Select name="doctorId" defaultValue={doctorId} className="w-full">
+              {doctors.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.displayName}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <Field label="Date">
+          <Input type="date" name="date" defaultValue={sp.date} />
+        </Field>
+        <Button variant="secondary" type="submit">
           View
         </Button>
       </form>
 
-      <Card>
-        <div style={{ marginBottom: 12, fontSize: 14 }}>
-          Now serving: <strong>{board.nowServingToken ?? "—"}</strong>
-        </div>
-        {board.entries.length === 0 ? (
-          <EmptyState>No one checked in yet for this day.</EmptyState>
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <th style={th}>Token</th>
-                <th style={th}>Patient</th>
-                <th style={th}>State</th>
-                <th style={th}>Ahead</th>
-                <th style={th}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {board.entries.map((e) => (
-                <tr key={e.id}>
-                  <td style={td}>#{e.tokenNumber}</td>
-                  <td style={td}>
+      <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5">
+        <div className="font-display text-3xl font-bold tabular-nums text-indigo">{board.nowServingToken ?? "—"}</div>
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Now serving</div>
+      </div>
+
+      {board.entries.length === 0 ? (
+        <Card>
+          <EmptyState title="No one checked in yet for this day." />
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {board.entries.map((e) => (
+            <Card key={e.id} className="p-4!">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-control bg-indigo/10 font-display text-[12.5px] font-bold tabular-nums text-indigo-dark">
+                  {e.tokenNumber}
+                </div>
+                <InitialsAvatar name={`${e.patient.firstName} ${e.patient.lastName}`} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13.5px] font-semibold text-ink">
                     {e.patient.firstName} {e.patient.lastName}
-                  </td>
-                  <td style={td}>
-                    <Badge tone={STATE_TONE[e.state] ?? "muted"}>{e.state}</Badge>
-                  </td>
-                  <td style={td}>{e.ahead}</td>
-                  <td style={td}>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {role !== "DOCTOR" && e.state === "WAITING" && (
-                        <form action={queueAction.bind(null, orgId, e.id, "CALL", redirectQuery)}>
-                          <Button variant="ghost">Call</Button>
-                        </form>
-                      )}
-                      {role !== "DOCTOR" && (e.state === "CALLED" || e.state === "SKIPPED") && (
-                        <form action={queueAction.bind(null, orgId, e.id, "RECALL", redirectQuery)}>
-                          <Button variant="ghost">Recall</Button>
-                        </form>
-                      )}
-                      {role !== "DOCTOR" && (e.state === "WAITING" || e.state === "CALLED") && (
-                        <form action={queueAction.bind(null, orgId, e.id, "SKIP", redirectQuery)}>
-                          <Button variant="ghost">Skip</Button>
-                        </form>
-                      )}
-                      {role === "DOCTOR" && e.state === "CALLED" && (
-                        <form action={queueAction.bind(null, orgId, e.id, "START", redirectQuery)}>
-                          <Button variant="ghost">Start</Button>
-                        </form>
-                      )}
-                      {role === "DOCTOR" && e.state === "IN_CONSULTATION" && (
-                        <form action={queueAction.bind(null, orgId, e.id, "COMPLETE", redirectQuery)}>
-                          <Button variant="ghost">Complete</Button>
-                        </form>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-      </Card>
+                  </div>
+                  <div className="text-[11.5px] text-ink-muted">{e.ahead} ahead</div>
+                </div>
+                <Badge tone={STATE_TONE[e.state] ?? "neutral"}>{e.state}</Badge>
+              </div>
+
+              {(role !== "DOCTOR" && ["WAITING", "CALLED", "SKIPPED"].includes(e.state)) ||
+              (role === "DOCTOR" && ["CALLED", "IN_CONSULTATION"].includes(e.state)) ? (
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+                  {role !== "DOCTOR" && e.state === "WAITING" && (
+                    <form action={queueAction.bind(null, orgId, e.id, "CALL", redirectQuery)}>
+                      <Button variant="ghost" size="sm">
+                        Call
+                      </Button>
+                    </form>
+                  )}
+                  {role !== "DOCTOR" && (e.state === "CALLED" || e.state === "SKIPPED") && (
+                    <form action={queueAction.bind(null, orgId, e.id, "RECALL", redirectQuery)}>
+                      <Button variant="ghost" size="sm">
+                        Recall
+                      </Button>
+                    </form>
+                  )}
+                  {role !== "DOCTOR" && (e.state === "WAITING" || e.state === "CALLED") && (
+                    <form action={queueAction.bind(null, orgId, e.id, "SKIP", redirectQuery)}>
+                      <Button variant="ghost" size="sm">
+                        Skip
+                      </Button>
+                    </form>
+                  )}
+                  {role === "DOCTOR" && e.state === "CALLED" && (
+                    <form action={queueAction.bind(null, orgId, e.id, "START", redirectQuery)}>
+                      <Button variant="ghost" size="sm">
+                        Start
+                      </Button>
+                    </form>
+                  )}
+                  {role === "DOCTOR" && e.state === "IN_CONSULTATION" && (
+                    <form action={queueAction.bind(null, orgId, e.id, "COMPLETE", redirectQuery)}>
+                      <Button variant="ghost" size="sm">
+                        Complete
+                      </Button>
+                    </form>
+                  )}
+                </div>
+              ) : null}
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

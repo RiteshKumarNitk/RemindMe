@@ -20,7 +20,7 @@ export default async function OrgOverview({
   const role = ctx.org!.role;
 
   if (role === "PATIENT") {
-    return <PatientOverview orgId={orgId} userId={ctx.userId} />;
+    return <PatientOverview ctx={ctx} orgId={orgId} />;
   }
 
   if (role === "RECEPTIONIST") {

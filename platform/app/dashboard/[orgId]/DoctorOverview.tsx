@@ -2,7 +2,20 @@ import Link from "next/link";
 import type { RequestContext } from "@/lib/context.js";
 import { getBoard } from "@/modules/queue/service.js";
 import { listAppointments } from "@/modules/appointments/service.js";
-import { Badge, Card, CardSubtitle, CardTitle, EmptyState, LinkButton } from "@/components/ui/index.js";
+import {
+  Badge,
+  Card,
+  EmptyState,
+  Hero,
+  HeroActions,
+  HeroLabel,
+  HeroMain,
+  HeroSide,
+  LinkButton,
+  SideStat,
+  StatTile,
+} from "@/components/ui/index.js";
+import { CalendarIcon, CheckIcon, ClockIcon, CloseIcon } from "@/components/dashboard-icons.js";
 
 const STATUS_TONE: Record<string, "indigo" | "ok" | "down" | "neutral"> = {
   REQUESTED: "neutral",
@@ -43,11 +56,12 @@ export async function DoctorOverview({
   const noShowToday = todaysAppointments.filter((a) => a.status === "NO_SHOW").length;
 
   const nextAppointmentId = (nextUp ?? inConsultation)?.appointmentId ?? null;
+  const active = inConsultation ?? nextUp;
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-ink">
+        <h1 className="font-display text-2xl font-bold text-ink">
           {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
         </h1>
         <LinkButton variant="secondary" href={`/dashboard/${orgId}/queue`}>
@@ -55,63 +69,62 @@ export async function DoctorOverview({
         </LinkButton>
       </div>
 
-      {inConsultation ? (
-        <Card>
-          <CardSubtitle>Currently in consultation</CardSubtitle>
-          <CardTitle className="mt-1 text-lg">
-            {inConsultation.patient.firstName} {inConsultation.patient.lastName}
-          </CardTitle>
-          <div className="mt-2">
-            <Badge tone="indigo">Token {inConsultation.tokenNumber}</Badge>
-          </div>
-          {inConsultation.appointmentId ? (
-            <div className="mt-4">
-              <LinkButton href={`/dashboard/${orgId}/appointments/${inConsultation.appointmentId}/consultation`}>
+      <Hero>
+        <HeroMain>
+          {active ? (
+            <div>
+              <HeroLabel>{inConsultation ? "Currently in consultation" : "Next patient"}</HeroLabel>
+              <h2 className="relative mt-1 font-display text-xl font-bold">
+                {active.patient.firstName} {active.patient.lastName}
+              </h2>
+              <div className="relative mt-3">
+                <Badge tone="glass">Token {active.tokenNumber}</Badge>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <HeroLabel>Queue</HeroLabel>
+              <h2 className="relative mt-1 font-display text-xl font-bold">Nobody is waiting right now</h2>
+            </div>
+          )}
+          {inConsultation?.appointmentId ? (
+            <HeroActions>
+              <LinkButton variant="light" href={`/dashboard/${orgId}/appointments/${inConsultation.appointmentId}/consultation`}>
                 Continue consultation
               </LinkButton>
-            </div>
+            </HeroActions>
+          ) : nextAppointmentId ? (
+            <HeroActions>
+              <LinkButton variant="light" href={`/dashboard/${orgId}/appointments/${nextAppointmentId}`}>
+                View appointment
+              </LinkButton>
+            </HeroActions>
           ) : null}
-        </Card>
-      ) : nextUp ? (
-        <Card>
-          <CardSubtitle>Next patient</CardSubtitle>
-          <CardTitle className="mt-1 text-lg">
-            {nextUp.patient.firstName} {nextUp.patient.lastName}
-          </CardTitle>
-          <div className="mt-2">
-            <Badge tone="indigo">Token {nextUp.tokenNumber}</Badge>
-          </div>
-          {nextAppointmentId ? (
-            <div className="mt-4">
-              <LinkButton href={`/dashboard/${orgId}/appointments/${nextAppointmentId}`}>View appointment</LinkButton>
-            </div>
-          ) : null}
-        </Card>
-      ) : (
-        <Card>
-          <CardSubtitle>Queue</CardSubtitle>
-          <p className="mt-2 text-sm text-ink-muted">Nobody is waiting right now.</p>
-        </Card>
-      )}
+        </HeroMain>
+        <HeroSide>
+          <SideStat value={waiting.length} label="Waiting" sub={nextUp ? `Next: ${nextUp.patient.firstName} ${nextUp.patient.lastName}` : "Nobody waiting"} />
+          <SideStat label="Today's pace" sub="Avg. consult time updates as the day goes." />
+        </HeroSide>
+      </Hero>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Waiting" value={waiting.length} />
-        <StatCard label="Today's total" value={todaysAppointments.length} />
-        <StatCard label="Completed" value={completedToday} />
-        <StatCard label="No-shows" value={noShowToday} />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatTile icon={<ClockIcon />} tone="warn" label="Waiting" value={waiting.length} />
+        <StatTile icon={<CalendarIcon />} tone="indigo" label="Today's total" value={todaysAppointments.length} />
+        <StatTile icon={<CheckIcon />} tone="ok" label="Completed" value={completedToday} />
+        <StatTile icon={<CloseIcon />} tone="danger" label="No-shows" value={noShowToday} />
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-ink">Today&rsquo;s schedule</h2>
+        <h2 className="mb-3 font-display text-lg font-bold text-ink">Today&rsquo;s schedule</h2>
         {todaysAppointments.length === 0 ? (
           <EmptyState title="No appointments today" />
         ) : (
           <div className="flex flex-col gap-2">
             {todaysAppointments.map((a) => (
               <Link key={a.id} href={`/dashboard/${orgId}/appointments/${a.id}`} className="no-underline">
-                <Card className="flex flex-row items-center justify-between py-3">
+                <Card className="flex flex-row items-center justify-between py-3 transition-colors hover:border-indigo">
                   <div className="flex items-center gap-3">
-                    <span className="w-16 text-sm font-medium text-ink">
+                    <span className="w-16 text-sm font-medium tabular-nums text-ink">
                       {new Date(a.scheduledStart).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                     </span>
                     <span className="text-sm text-ink">
@@ -126,14 +139,5 @@ export async function DoctorOverview({
         )}
       </div>
     </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: number }) {
-  return (
-    <Card className="py-4 text-center">
-      <div className="text-2xl font-bold text-ink">{value}</div>
-      <div className="mt-1 text-xs text-ink-muted">{label}</div>
-    </Card>
   );
 }

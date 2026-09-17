@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { listPatients } from "@/modules/patients/service.js";
-import { Button, Card, EmptyState, ErrorNote, Field, SectionTitle, Table, td, th } from "../../ui.js";
+import { Button, Card, CardSubtitle, EmptyState, Field, InitialsAvatar, Input, Notice, SearchBar } from "@/components/ui/index.js";
 import { createPatientAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -21,59 +21,66 @@ export default async function PatientsPage({
   const { data: patients } = await listPatients(ctx, { q, limit: 50 });
 
   return (
-    <div>
-      <SectionTitle>Patients</SectionTitle>
-      <Card style={{ marginBottom: 20 }}>
-        <form style={{ marginBottom: 14 }}>
-          <Field label="Search by name, phone or MRN" name="q" defaultValue={q} placeholder="Search…" />
-        </form>
-        {patients.length === 0 ? (
-          <EmptyState>No patients found.</EmptyState>
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <th style={th}>Name</th>
-                <th style={th}>Phone</th>
-                <th style={th}>Email</th>
-                <th style={th}>MRN</th>
-              </tr>
-            </thead>
-            <tbody>
-              {patients.map((p) => (
-                <tr key={p.id}>
-                  <td style={td}>
-                    <Link href={`/dashboard/${orgId}/patients/${p.id}`} style={{ color: "var(--indigo)" }}>
-                      {p.firstName} {p.lastName}
-                    </Link>
-                  </td>
-                  <td style={td}>{p.phone ?? "—"}</td>
-                  <td style={td}>{p.email ?? "—"}</td>
-                  <td style={td}>{p.mrn ?? "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-      </Card>
+    <div className="flex flex-col gap-7">
+      <h1 className="font-display text-2xl font-bold text-ink">Patients</h1>
 
-      <Card style={{ maxWidth: 420 }}>
-        <SectionTitle>Register a patient</SectionTitle>
-        <ErrorNote message={error} />
-        <form action={createPatientAction.bind(null, orgId)}>
-          <Field label="First name" name="firstName" required />
-          <Field label="Last name" name="lastName" required />
-          <Field label="Phone" name="phone" />
-          <Field label="Email" name="email" type="email" />
-          <Field
-            label="Link to their platform login (optional)"
-            name="ownerEmail"
-            type="email"
-            placeholder="Only if they already have a DoseWise account"
-          />
-          <div style={{ marginTop: 8 }}>
-            <Button>Register patient</Button>
+      <form>
+        <SearchBar name="q" defaultValue={q} placeholder="Search by name, phone, or MRN…" />
+      </form>
+
+      {patients.length === 0 ? (
+        <Card>
+          <EmptyState title="No patients found." />
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {patients.map((p) => (
+            <Link
+              key={p.id}
+              href={`/dashboard/${orgId}/patients/${p.id}`}
+              className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 no-underline transition-colors hover:border-indigo"
+            >
+              <InitialsAvatar name={`${p.firstName} ${p.lastName}`} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13.5px] font-semibold text-ink">
+                  {p.firstName} {p.lastName}
+                </div>
+                <div className="truncate text-[11.5px] text-ink-muted">
+                  {p.phone ?? "No phone"} {p.email ? `· ${p.email}` : ""}
+                </div>
+              </div>
+              {p.mrn ? <span className="shrink-0 font-mono text-[11.5px] text-ink-faint">{p.mrn}</span> : null}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <Card>
+        <CardSubtitle>Register a patient</CardSubtitle>
+        {error ? (
+          <div className="mt-3">
+            <Notice tone="down">{error}</Notice>
           </div>
+        ) : null}
+        <form action={createPatientAction.bind(null, orgId)} className="mt-4 flex max-w-md flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="First name">
+              <Input name="firstName" required className="w-full" />
+            </Field>
+            <Field label="Last name">
+              <Input name="lastName" required className="w-full" />
+            </Field>
+          </div>
+          <Field label="Phone">
+            <Input name="phone" className="w-full" />
+          </Field>
+          <Field label="Email">
+            <Input name="email" type="email" className="w-full" />
+          </Field>
+          <Field label="Link to their platform login (optional)" hint="Only if they already have a DoseWise account">
+            <Input name="ownerEmail" type="email" className="w-full" />
+          </Field>
+          <Button className="self-start">Register patient</Button>
         </form>
       </Card>
     </div>

@@ -4,7 +4,7 @@ import { listAppointments } from "@/modules/appointments/service.js";
 import { listDoctors } from "@/modules/doctors/service.js";
 import { listPatients } from "@/modules/patients/service.js";
 import { listMyAccess } from "@/modules/family/service.js";
-import { Badge, Button, Card, EmptyState, ErrorNote, SectionTitle, Table, td, th } from "../../ui.js";
+import { Badge, Button, Card, CardSubtitle, EmptyState, InitialsAvatar, LinkButton, Notice } from "@/components/ui/index.js";
 import { BookForm } from "./BookForm.js";
 import {
   bookAppointmentAction,
@@ -16,16 +16,16 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const STATUS_TONE: Record<string, "indigo" | "coral" | "ok" | "muted"> = {
+const STATUS_TONE: Record<string, "indigo" | "coral" | "ok" | "neutral"> = {
   REQUESTED: "coral",
   CONFIRMED: "indigo",
   CHECKED_IN: "indigo",
   WAITING: "indigo",
   IN_CONSULTATION: "coral",
   COMPLETED: "ok",
-  CANCELLED: "muted",
-  NO_SHOW: "muted",
-  RESCHEDULED: "muted",
+  CANCELLED: "neutral",
+  NO_SHOW: "neutral",
+  RESCHEDULED: "neutral",
 };
 
 export default async function AppointmentsPage({
@@ -81,127 +81,101 @@ export default async function AppointmentsPage({
   const isStaff = role === "RECEPTIONIST" || role === "CLINIC_ADMIN";
 
   return (
-    <div>
-      <SectionTitle>Appointments</SectionTitle>
-      {booked ? (
-        <div
-          style={{
-            marginBottom: 16,
-            padding: "10px 14px",
-            borderRadius: 10,
-            border: "1px solid var(--ok)",
-            background: "color-mix(in srgb, var(--ok) 10%, transparent)",
-            fontSize: 14,
-            color: "var(--ok)",
-          }}
-        >
-          Your appointment is booked.
-        </div>
-      ) : null}
-      <ErrorNote message={error} />
+    <div className="flex flex-col gap-7">
+      <h1 className="font-display text-2xl font-bold text-ink">Appointments</h1>
 
-      <Card style={{ marginBottom: 20 }}>
-        {appointments.length === 0 ? (
-          <EmptyState>No appointments yet.</EmptyState>
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <th style={th}>When</th>
-                <th style={th}>Patient</th>
-                <th style={th}>Doctor</th>
-                <th style={th}>Status</th>
-                <th style={th}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {appointments.map((a) => {
-                const isMine = myDoctorId && a.doctorId === myDoctorId;
-                return (
-                  <tr key={a.id}>
-                    <td style={td}>
-                      {new Date(a.scheduledStart).toLocaleString([], {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    <td style={td}>
-                      {a.patient.firstName} {a.patient.lastName}
-                    </td>
-                    <td style={td}>{a.doctor.displayName}</td>
-                    <td style={td}>
-                      <Badge tone={STATUS_TONE[a.status] ?? "muted"}>{a.status}</Badge>
-                    </td>
-                    <td style={td}>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <a
-                          href={`/dashboard/${orgId}/appointments/${a.id}`}
-                          style={{ fontSize: 13, fontWeight: 700, alignSelf: "center" }}
-                        >
-                          View
-                        </a>
-                        {isStaff && a.status === "REQUESTED" && (
-                          <form action={confirmAppointmentAction.bind(null, orgId, a.id)}>
-                            <Button variant="ghost">Confirm</Button>
-                          </form>
-                        )}
-                        {isStaff && a.status === "CONFIRMED" && (
-                          <>
-                            <form action={checkInAppointmentAction.bind(null, orgId, a.id)}>
-                              <Button variant="ghost">Check in</Button>
-                            </form>
-                            <form action={noShowAppointmentAction.bind(null, orgId, a.id)}>
-                              <Button variant="ghost">No-show</Button>
-                            </form>
-                          </>
-                        )}
-                        {(role === "CLINIC_ADMIN" || (role === "DOCTOR" && isMine)) &&
-                          ["CHECKED_IN", "WAITING", "IN_CONSULTATION", "COMPLETED"].includes(a.status) && (
-                            <a
-                              href={`/dashboard/${orgId}/appointments/${a.id}/consultation`}
-                              style={{ fontSize: 13, fontWeight: 700, alignSelf: "center" }}
-                            >
-                              Notes
-                            </a>
-                          )}
-                        {["REQUESTED", "CONFIRMED"].includes(a.status) && (
-                          <a
-                            href={`/dashboard/${orgId}/appointments/${a.id}/reschedule`}
-                            style={{ fontSize: 13, fontWeight: 700, alignSelf: "center" }}
-                          >
-                            Reschedule
-                          </a>
-                        )}
-                        {["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING"].includes(a.status) && (
-                          <form action={cancelAppointmentAction.bind(null, orgId, a.id)}>
-                            <input type="hidden" name="reason" value="Cancelled from dashboard" />
-                            <Button variant="danger">Cancel</Button>
-                          </form>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </Table>
-        )}
-      </Card>
+      {booked ? <Notice tone="ok">Your appointment is booked.</Notice> : null}
+      {error ? <Notice tone="down">{error}</Notice> : null}
 
-      {doctors.length > 0 ? (
-        <Card style={{ maxWidth: 420 }}>
-          <SectionTitle>Book an appointment</SectionTitle>
-          <BookForm
-            orgId={orgId}
-            doctors={doctors}
-            patients={patients}
-            action={bookAppointmentAction.bind(null, orgId)}
-          />
+      {appointments.length === 0 ? (
+        <Card>
+          <EmptyState title="No appointments yet." />
         </Card>
       ) : (
-        <EmptyState>Add a doctor with availability before booking appointments.</EmptyState>
+        <div className="flex flex-col gap-2.5">
+          {appointments.map((a) => {
+            const isMine = myDoctorId && a.doctorId === myDoctorId;
+            return (
+              <Card key={a.id} className="p-4!">
+                <div className="flex items-center gap-3">
+                  <InitialsAvatar name={`${a.patient.firstName} ${a.patient.lastName}`} />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13.5px] font-semibold text-ink">
+                      {a.patient.firstName} {a.patient.lastName}
+                    </div>
+                    <div className="truncate text-[11.5px] text-ink-muted">
+                      {a.doctor.displayName} ·{" "}
+                      {new Date(a.scheduledStart).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </div>
+                  <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>{a.status}</Badge>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+                  <LinkButton variant="ghost" size="sm" href={`/dashboard/${orgId}/appointments/${a.id}`}>
+                    View
+                  </LinkButton>
+                  {isStaff && a.status === "REQUESTED" && (
+                    <form action={confirmAppointmentAction.bind(null, orgId, a.id)}>
+                      <Button variant="ghost" size="sm">
+                        Confirm
+                      </Button>
+                    </form>
+                  )}
+                  {isStaff && a.status === "CONFIRMED" && (
+                    <>
+                      <form action={checkInAppointmentAction.bind(null, orgId, a.id)}>
+                        <Button variant="ghost" size="sm">
+                          Check in
+                        </Button>
+                      </form>
+                      <form action={noShowAppointmentAction.bind(null, orgId, a.id)}>
+                        <Button variant="ghost" size="sm">
+                          No-show
+                        </Button>
+                      </form>
+                    </>
+                  )}
+                  {(role === "CLINIC_ADMIN" || (role === "DOCTOR" && isMine)) &&
+                    ["CHECKED_IN", "WAITING", "IN_CONSULTATION", "COMPLETED"].includes(a.status) && (
+                      <LinkButton variant="ghost" size="sm" href={`/dashboard/${orgId}/appointments/${a.id}/consultation`}>
+                        Notes
+                      </LinkButton>
+                    )}
+                  {["REQUESTED", "CONFIRMED"].includes(a.status) && (
+                    <LinkButton variant="ghost" size="sm" href={`/dashboard/${orgId}/appointments/${a.id}/reschedule`}>
+                      Reschedule
+                    </LinkButton>
+                  )}
+                  {["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING"].includes(a.status) && (
+                    <form action={cancelAppointmentAction.bind(null, orgId, a.id)}>
+                      <input type="hidden" name="reason" value="Cancelled from dashboard" />
+                      <Button variant="danger" size="sm">
+                        Cancel
+                      </Button>
+                    </form>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {doctors.length > 0 ? (
+        <Card>
+          <CardSubtitle>Book an appointment</CardSubtitle>
+          <div className="mt-3">
+            <BookForm
+              orgId={orgId}
+              doctors={doctors}
+              patients={patients}
+              action={bookAppointmentAction.bind(null, orgId)}
+            />
+          </div>
+        </Card>
+      ) : (
+        <EmptyState title="Add a doctor with availability before booking appointments." />
       )}
     </div>
   );

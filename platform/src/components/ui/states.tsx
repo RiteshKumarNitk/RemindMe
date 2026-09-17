@@ -39,3 +39,15 @@ export function ErrorState({
 export function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded-control bg-border ${className}`} />;
 }
+
+const NOTICE_TONE = {
+  ok: "border-ok/20 bg-ok/10 text-ok",
+  down: "border-down/20 bg-down/10 text-down",
+} as const;
+
+/** A small inline banner for a one-line success/error message under a page
+ * heading or form — lighter-weight than `ErrorState`, which is for an empty
+ * section, not a form-submission result. */
+export function Notice({ tone, children }: { tone: keyof typeof NOTICE_TONE; children: ReactNode }) {
+  return <div className={`rounded-2xl border px-4 py-3 text-sm ${NOTICE_TONE[tone]}`}>{children}</div>;
+}

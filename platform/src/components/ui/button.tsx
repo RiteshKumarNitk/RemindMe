@@ -1,7 +1,7 @@
 import Link, { type LinkProps } from "next/link";
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "light" | "glass";
 type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
@@ -9,6 +9,10 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   secondary: "bg-card text-ink border border-border hover:bg-surface",
   ghost: "bg-transparent text-ink hover:bg-surface",
   danger: "bg-down text-white hover:opacity-90",
+  // For use on a colored/gradient surface (the hero card), where the
+  // ordinary variants' card/border/surface colors would be illegible.
+  light: "bg-white text-indigo-dark hover:bg-white/90",
+  glass: "border border-white/30 bg-white/15 text-white hover:bg-white/25",
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {

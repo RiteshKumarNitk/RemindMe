@@ -4,6 +4,44 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-09-17 — Finished the visual migration to the remaining older screens (uncommitted)
+
+Continuation of yesterday's dashboard redesign, onto the six pages it deliberately deferred:
+appointments list, patients, doctors, staff, settings, and the queue board. Every raw HTML table
+on these pages became a card-row list (colored-initials avatar, name/sub, status badge) matching
+the pattern already established for "up next"/queue lists — not a second, competing "styled
+table" pattern. Added a shared `Notice` component (`src/components/ui/states.tsx`) so five pages
+stopped hand-writing the same inline success/error banner. All server actions and form field
+names are unchanged — only how each field renders changed (the old kit's combined
+`<Field label name>` became the new kit's `<Field label><Input name /></Field>`). See ADR-017.
+Verified live: rendered all six pages with real data (a real doctor, patient, checked-in queue
+entry), and exercised one real mutation through the new form UI (adding a clinic location) to
+confirm the pages still submit and re-render correctly. `pnpm typecheck`/`pnpm build`/
+`pnpm test:unit` (40/40) clean. Every dashboard screen now uses the current design system except
+the separate super-admin `/admin` console, which stays explicitly out of scope.
+
+## 2026-09-17 — Modern dashboard redesign + a real in-app notification center (uncommitted)
+
+Outside the original 13-phase plan — requested directly after it shipped. Design was worked out
+first as a standalone mockup (published for live feedback, never committed), then built into the
+real app. **Notifications**: added `Notification.readAt`, a new `notifications` module
+(list/mark-read, tenant-scoped), two new API routes, and a real notification bell in the
+dashboard topbar that polls every 30s and shows real events (appointment booked/cancelled/
+rescheduled/reminders, queue updates) — not a static icon. **Dashboards**: all four role
+landing pages (Patient/Doctor/Reception/Admin) rebuilt with a gradient "what's next" hero, stat
+tiles, and colored-initials avatars, sharing new reusable kit pieces (`Hero`, `StatTile`,
+`InitialsAvatar`). **Shell**: new icon-based sidebar + topbar with search and the notification
+bell, self-hosted Sora/IBM Plex fonts via `next/font`. **Booking**: the appointment booking
+widget is now a doctor-chip / date-strip / slot-grid picker with a live sticky summary, same
+underlying form submission as before. Caught two issues before they shipped: a first pass at the
+mobile sidebar would have reintroduced the exact "unusable on a phone" bug Phase 12 fixed (fixed
+with a real slide-in drawer, `src/components/mobile-nav.tsx`), and a couple of hero-card
+badges/buttons mixed tone classes with override classes in a way that isn't guaranteed to resolve
+correctly in Tailwind's cascade (fixed by adding proper `glass`/`light` variants instead). See
+ADR-016. Verified live against the real database — booked a real appointment, confirmed the
+resulting notification is correctly addressed and clearable via the real API, rendered the real
+dashboards over HTTP. `pnpm typecheck`/`pnpm build`/`pnpm test:unit` (40/40) clean.
+
 ## 2026-09-16 — Phase 13 (final): full regression run + a real stored-XSS fix (uncommitted)
 
 The last phase in the plan. Ran the real, DB-truncating integration suite for the first time in

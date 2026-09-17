@@ -1,6 +1,6 @@
 # DoseWise Platform — Status
 
-**Last updated: 2026-09-16.** This file is updated every time a piece of work
+**Last updated: 2026-09-17.** This file is updated every time a piece of work
 finishes — it's meant to be shown to non-technical stakeholders as-is, no
 translation needed. If something below looks stale, ask and it'll be
 refreshed before you rely on it.
@@ -31,6 +31,7 @@ foundation underneath both.
 
 | Area | What it means for the business |
 |---|---|
+| **A modern dashboard, and real notifications** | Every clinic screen — the four role dashboards, appointments, patients, doctors, staff, settings, and the queue board — has been visually rebuilt with a consistent design (hero cards, stat tiles, colored patient avatars), plus a working notification bell that shows real events (appointment booked, cancelled, rescheduled, reminders) and can be marked as read. The appointment booking screen is now a doctor/date/time picker with a live summary instead of a plain form. Verified live: a real booking creates a real notification, addressed to the right person, that clears when marked read; real forms (add doctor, add staff, add location) still work through the new design. |
 | **Accounts & login** | Clinics and staff can register and log in securely (industry-standard password hashing, session handling). |
 | **Multi-clinic isolation** | One clinic can never see another clinic's data — tested and enforced, not just assumed. |
 | **Roles & permissions** | Admin / Doctor / Receptionist / Patient each see only what their role should — including a rule that no admin can grant themselves extra medical-record access (must be a second admin). |
@@ -53,7 +54,7 @@ foundation underneath both.
 | **Audit trail** | Every sensitive action (who changed what, when) is logged and reviewable by that clinic's admin. |
 | **Family access** | A patient can grant a family member read access to their own records; nothing is shared without an explicit grant. |
 | **Platform admin console** | We (the platform owner) have a super-admin panel to see all clinics, suspend/reactivate one if needed, and review a cross-clinic audit feed — without being able to silently self-grant medical-record access. |
-| **Web app (functional)** | All of the above is usable today through a working (plain-styled, not final visual design) website — login, dashboards per role, booking, queue board, notes, admin console. |
+| **Web app (functional)** | All of the above is usable today through a working website — login, dashboards per role, booking, queue board, notes, admin console. Every screen in the clinic dashboard now has real visual design; only the separate platform-owner admin console still uses the earlier plain styling. |
 
 **In short: the operational core of "run a clinic's day-to-day" is built and
 working.** What's missing now is mostly the polished patient-facing experience
@@ -74,7 +75,7 @@ module passing, no crash. Whatever caused the earlier failure didn't reproduce.
 
 | Area | Notes |
 |---|---|
-| **Visual design pass** | Current UI is clean but generic — not yet matching DoseWise's actual brand look (the new public/booking/dashboard pages use a real component system now; a handful of older screens — settings, patients list, queue board — still don't). This is a look-and-feel gap, separate from the phone-usability fix above. |
+| **Visual design pass on the platform admin console** | The public pages, every clinic-side dashboard screen (overview, appointments, patients, doctors, staff, settings, queue board), and the booking flow all now have real modern design. What's left: the separate `/admin` super-admin console (platform-owner only, not clinic staff) still uses the earlier plain styling. |
 | **Mobile-app integration (Flutter)** | The existing DoseWise app and this new backend aren't connected yet — planned as the final phase, deliberately last so the web product is solid first. |
 | Document uploads, SMS/WhatsApp notifications, right-to-erasure workflow | Explicitly deferred, not required for MVP. |
 
@@ -98,10 +99,12 @@ end to end. All verified live against the real database, not just build-checked.
 
 ## Recommended next milestone
 
-**The evolution plan is complete.** What's left is outside the original 13 phases: a full visual
-design pass to match DoseWise's brand (see below), connecting the existing Flutter mobile app to
-this backend, and deciding when/how to commit and deploy this cycle's work — none of that is
-started yet and would need a fresh scoping conversation.
+**The evolution plan is complete, and every clinic-facing screen now has real modern design.**
+What's left is outside the original 13 phases: a visual pass on the separate platform-admin
+console (lower priority — used only by the platform owner, not clinic staff), connecting the
+existing Flutter mobile app to this backend, and deciding when/how to commit and deploy this
+cycle's work — none of that is started yet and
+would need a fresh scoping conversation.
 
 ---
 

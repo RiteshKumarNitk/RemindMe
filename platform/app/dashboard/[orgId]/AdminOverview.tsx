@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { RequestContext } from "@/lib/context.js";
 import { tenantDb } from "@/lib/tenant.js";
 import { listAppointments } from "@/modules/appointments/service.js";
-import { Badge, Card, EmptyState, LinkButton } from "@/components/ui/index.js";
+import { Badge, EmptyState, InitialsAvatar, LinkButton, StatTile } from "@/components/ui/index.js";
+import { BuildingIcon, CalendarIcon, CheckIcon, ClockIcon, CloseIcon, UsersIcon } from "@/components/dashboard-icons.js";
 
 const STATUS_TONE: Record<string, "indigo" | "ok" | "down" | "neutral"> = {
   REQUESTED: "neutral",
@@ -40,23 +41,44 @@ export async function AdminOverview({ ctx, orgId }: { ctx: RequestContext; orgId
     .slice(0, 6);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-ink">Overview</h1>
+        <h1 className="font-display text-2xl font-bold text-ink">Overview</h1>
         <Badge tone={org.verificationStatus === "VERIFIED" ? "indigo" : "neutral"}>
           {org.verificationStatus === "VERIFIED" ? "Verified" : org.isPubliclyListed ? "Listed, not verified" : "Not listed"}
         </Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Doctors" value={doctors} href={`/dashboard/${orgId}/doctors`} />
-        <StatCard label="Staff" value={staff} href={`/dashboard/${orgId}/staff`} />
-        <StatCard label="Today's total" value={todaysAppointments.length} href={`/dashboard/${orgId}/appointments`} />
-        <StatCard label="Waiting now" value={waiting} href={`/dashboard/${orgId}/queue`} />
-        <StatCard label="Completed today" value={completed} href={`/dashboard/${orgId}/appointments`} />
-        <StatCard label="Cancelled today" value={cancelled} href={`/dashboard/${orgId}/appointments`} />
-        <StatCard label="No-shows today" value={noShows} href={`/dashboard/${orgId}/appointments`} />
-        <StatCard label="Public profile" value={org.isPubliclyListed ? 1 : 0} href={`/dashboard/${orgId}/profile`} suffix={org.isPubliclyListed ? "Live" : "Draft"} />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Link href={`/dashboard/${orgId}/doctors`} className="no-underline">
+          <StatTile icon={<UsersIcon />} tone="indigo" label="Doctors" value={doctors} />
+        </Link>
+        <Link href={`/dashboard/${orgId}/staff`} className="no-underline">
+          <StatTile icon={<UsersIcon />} tone="coral" label="Staff" value={staff} />
+        </Link>
+        <Link href={`/dashboard/${orgId}/appointments`} className="no-underline">
+          <StatTile icon={<CalendarIcon />} tone="indigo" label="Today's total" value={todaysAppointments.length} />
+        </Link>
+        <Link href={`/dashboard/${orgId}/queue`} className="no-underline">
+          <StatTile icon={<ClockIcon />} tone="warn" label="Waiting now" value={waiting} />
+        </Link>
+        <Link href={`/dashboard/${orgId}/appointments`} className="no-underline">
+          <StatTile icon={<CheckIcon />} tone="ok" label="Completed today" value={completed} />
+        </Link>
+        <Link href={`/dashboard/${orgId}/appointments`} className="no-underline">
+          <StatTile icon={<CloseIcon />} tone="neutral" label="Cancelled today" value={cancelled} />
+        </Link>
+        <Link href={`/dashboard/${orgId}/appointments`} className="no-underline">
+          <StatTile icon={<CloseIcon />} tone="danger" label="No-shows today" value={noShows} />
+        </Link>
+        <Link href={`/dashboard/${orgId}/profile`} className="no-underline">
+          <StatTile
+            icon={<BuildingIcon />}
+            tone="neutral"
+            label="Public profile"
+            value={org.isPubliclyListed ? "Live" : "Draft"}
+          />
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -75,25 +97,28 @@ export async function AdminOverview({ ctx, orgId }: { ctx: RequestContext; orgId
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-ink">Today&rsquo;s schedule</h2>
+        <h2 className="mb-3 font-display text-lg font-bold text-ink">Today&rsquo;s schedule</h2>
         {recent.length === 0 ? (
           <EmptyState title="No appointments today" />
         ) : (
           <div className="flex flex-col gap-2">
             {recent.map((a) => (
-              <Link key={a.id} href={`/dashboard/${orgId}/appointments/${a.id}`} className="no-underline">
-                <Card className="flex flex-row items-center justify-between py-3">
-                  <div className="flex items-center gap-3">
-                    <span className="w-16 text-sm font-medium text-ink">
-                      {new Date(a.scheduledStart).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                    <span className="text-sm text-ink">
-                      {a.patient.firstName} {a.patient.lastName}
-                    </span>
-                    <span className="text-sm text-ink-muted">{a.doctor.displayName}</span>
+              <Link
+                key={a.id}
+                href={`/dashboard/${orgId}/appointments/${a.id}`}
+                className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2.5 no-underline transition-colors hover:border-indigo"
+              >
+                <InitialsAvatar name={`${a.patient.firstName} ${a.patient.lastName}`} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13px] font-semibold text-ink">
+                    {a.patient.firstName} {a.patient.lastName}
                   </div>
-                  <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>{a.status}</Badge>
-                </Card>
+                  <div className="truncate text-[11.5px] text-ink-muted">{a.doctor.displayName}</div>
+                </div>
+                <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>{a.status}</Badge>
+                <span className="w-14 shrink-0 text-right text-[11.5px] tabular-nums text-ink-faint">
+                  {new Date(a.scheduledStart).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                </span>
               </Link>
             ))}
           </div>
@@ -107,16 +132,5 @@ export async function AdminOverview({ ctx, orgId }: { ctx: RequestContext; orgId
         ) : null}
       </div>
     </div>
-  );
-}
-
-function StatCard({ label, value, href, suffix }: { label: string; value: number; href: string; suffix?: string }) {
-  return (
-    <Link href={href} className="no-underline">
-      <Card className="py-4 text-center transition-colors hover:border-indigo">
-        <div className="text-2xl font-bold text-ink">{suffix ?? value}</div>
-        <div className="mt-1 text-xs text-ink-muted">{label}</div>
-      </Card>
-    </Link>
   );
 }
