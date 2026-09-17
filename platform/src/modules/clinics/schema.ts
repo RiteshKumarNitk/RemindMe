@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { httpUrlSchema } from "@/lib/validation.js";
 
 export const organizationTypeEnum = z.enum([
   "HOSPITAL",
@@ -17,11 +18,11 @@ export const updateOrgSchema = z
     orgType: organizationTypeEnum.nullable().optional(),
     tagline: z.string().max(200).nullable().optional(),
     about: z.string().max(4000).nullable().optional(),
-    logoUrl: z.string().url().max(1000).nullable().optional(),
-    coverImageUrl: z.string().url().max(1000).nullable().optional(),
+    logoUrl: httpUrlSchema(1000).nullable().optional(),
+    coverImageUrl: httpUrlSchema(1000).nullable().optional(),
     publicPhone: z.string().max(40).nullable().optional(),
     publicEmail: z.string().email().max(320).nullable().optional(),
-    website: z.string().url().max(500).nullable().optional(),
+    website: httpUrlSchema(500).nullable().optional(),
   })
   .strict();
 

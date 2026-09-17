@@ -309,10 +309,12 @@ incrementally, page by page, not deleted and replaced in one commit.
   filter and verification action column, `aria-current` on active nav links, and two heading-
   hierarchy skips. Verified live against the real database (not just build-checked) — see
   `DECISIONS.md` ADR-014.
-- **Phase 13 — security + regression pass.** Partially ongoing — every phase so far has been
-  typecheck/build-verified and several have been live-verified against the real database, but a
-  dedicated full-suite regression pass hasn't happened (see `STATUS.md`'s open test-stability
-  item).
+- **Phase 13 — security + regression pass.** Done. Ran the full DB-backed integration suite for
+  the first time in a while (explicit confirmation, shared dev DB) — 19/19 files, 113/113 tests,
+  no crash; the previously-reported instability did not reproduce. Security review found and
+  fixed one real stored-XSS (profile URL fields accepted a `javascript:` scheme, rendered
+  unescaped on the public hospital page) — see `DECISIONS.md` ADR-015. **All 13 phases of this
+  plan are now complete.**
 
 See `docs/STATUS.md` for the plain-English version and `docs/CHANGELOG.md`/`docs/DECISIONS.md`
 for the dated log and the reasoning behind each non-obvious call. Every phase above got its own

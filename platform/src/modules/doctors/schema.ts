@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { httpUrlSchema } from "@/lib/validation.js";
 
 export const createDoctorSchema = z
   .object({
@@ -28,7 +29,7 @@ export const updateDoctorSchema = z
     isAcceptingNewPatients: z.boolean().optional(),
     isActive: z.boolean().optional(),
     // Public profile fields (PRODUCT_EVOLUTION_PLAN.md §6/§15 Phase 4).
-    photoUrl: z.string().url().max(1000).nullable().optional(),
+    photoUrl: httpUrlSchema(1000).nullable().optional(),
     qualifications: z.string().max(500).nullable().optional(),
     yearsOfExperience: z.number().int().min(0).max(80).nullable().optional(),
     languages: z.array(z.string().min(1).max(60)).max(20).optional(),

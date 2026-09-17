@@ -479,3 +479,63 @@ state.
   deleted all test data. `pnpm typecheck`, `pnpm build` (every route generates clean), and
   `pnpm test:unit` (34/34) all clean. The DB-truncating integration suite was not run, per the
   project's standing caution (see `STATUS.md`'s still-open test-stability item).
+
+## ADR-015: Phase 13 (final) — full suite ran green with no reproduction of the earlier flakiness; one real stored-XSS found and fixed at the validation boundary
+
+- **Context.** Phase 13 is the plan's last item: "full existing test suite must stay green
+  throughout every phase above, not just at the end" plus a security pass. `STATUS.md` had an
+  open item since early in this project's work: a prior full test run had hit a worker crash
+  after a cascading failure in the queue tests, and `consultations.test.ts`/`family.test.ts` had
+  reportedly collected 0 tests — never root-caused, twice explicitly deferred at the user's
+  direction to keep momentum on the functional phases. Running the real DB-truncating integration
+  suite (`ALLOW_DB_TESTS=1 pnpm test`) requires pointing `DATABASE_URL` at a database that gets
+  every app table `TRUNCATE`d — this project's standing rule is to never do that against the
+  shared dev Neon instance without explicit, in-the-moment confirmation, which was asked for and
+  given for this run specifically.
+- **Decision 1 — ran the full suite for real, rather than continuing to reason about the
+  flakiness from source alone.** Static review of `queue.test.ts` and the shared `beforeAll`/
+  `truncateAll()` pattern across every integration file didn't surface a deterministic bug (no
+  `.only`/`.skip`, availability rules cover all 7 ISO weekdays so no day-of-week-dependent
+  flakiness, no shared mutable state between files). Rather than keep guessing, ran the real
+  suite: **19/19 test files, 113/113 tests passed, no crash, no 0-test files, exit code 0.** The
+  `prisma:error` lines visible in the log are Prisma's own verbose logging of two *intentionally*
+  triggered failures the tests assert against (a double-booking's exclusion-constraint violation,
+  a queue-action-on-a-stale-entry lookup) — both correctly caught and asserted as 409/404
+  responses, not test failures. The previously-reported instability did not reproduce; no specific
+  bug was found to have caused it (most likely a transient environment issue from whatever
+  produced that original report), and this ADR records that honestly rather than claiming a fix
+  for a bug that was never actually located.
+- **Decision 2 — the security pass found one real, fixable vulnerability: `javascript:`/`data:`
+  URIs accepted by every profile URL field, then rendered unescaped as `<a href>` on a public,
+  unauthenticated page.** `updateOrgSchema.website`/`logoUrl`/`coverImageUrl` and
+  `updateDoctorSchema.photoUrl` all validated with plain `z.string().url()`, which delegates to
+  the WHATWG `URL` parser and accepts *any* scheme it recognizes, including `javascript:` —
+  verified directly (`new URL("javascript:alert(1)").protocol` returns `"javascript:"`, and Zod's
+  `.url()` accepts it). `website` flows from the profile edit form → `updateOrganization` →
+  stored on `Organization.website` → returned by `getPublicOrganization` (the same function
+  ADR-008 built specifically for anonymous, cross-tenant reads) → rendered directly as `<a
+  href={org.website}>` on `/hospitals/:slug`, a page anyone can reach with no login. A
+  `CLINIC_ADMIN` — the legitimate owner of that field, or an attacker who compromises one such
+  account — could set it to a `javascript:` URI, publish their org, and any visitor who clicks the
+  link executes attacker JS in the platform's origin. React does not protect against this: its
+  auto-escaping guards against markup injection into the DOM tree, not against a dangerous
+  *scheme* in a `href`/`src` attribute value it's told to render verbatim.
+- **Decision 3 — fixed at the validation boundary with a shared `httpUrlSchema()` helper, not a
+  render-time escape.** There's nothing to "escape" here — the value is already a syntactically
+  valid URL, the danger is entirely in which scheme it uses. Added `httpUrlSchema(maxLength)` to
+  `src/lib/validation.ts` (same module `parseBody`/`parseQuery` already live in), which requires
+  the value to match `/^https?:\/\//i` in addition to passing `.url()`. Applied to all four
+  affected fields (`website`, `logoUrl`, `coverImageUrl`, `photoUrl`) — `logoUrl`/`coverImageUrl`/
+  `photoUrl` aren't actually rendered as `src`/`href` by any page in this codebase yet, but share
+  the exact same field shape and the same eventual destination, so fixing all four now is
+  cheaper and more honest than fixing only the one currently-exploitable field and leaving a
+  known-dangerous pattern in the other three for whichever future page renders them first.
+- **Consequences.** No schema/API breaking change for legitimate use — every real clinic website/
+  logo/photo URL in practice already used http(s). New `tests/unit/http-url-schema.test.ts` (6
+  tests) locks the fix in as a permanent regression test, matching this project's established
+  pattern of DB-free unit tests for pure validators (ADR-006's `canPublishOrganization`, ADR-009's
+  `safeNextPath`). Verified: the schema change rejects `javascript:`/`data:` URIs and still
+  accepts plain `http://`/`https://` values (checked directly against the parser, not just
+  inferred), `pnpm typecheck`, `pnpm build` (every route), and `pnpm test:unit` (40/40, including
+  the 6 new tests) all clean. This closes the plan's final phase — all 13 phases of
+  `PRODUCT_EVOLUTION_PLAN.md` are now done.

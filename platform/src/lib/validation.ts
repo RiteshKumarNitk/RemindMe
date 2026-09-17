@@ -1,6 +1,24 @@
 import { z } from "zod";
 import { AppError } from "./errors.js";
 
+/**
+ * A URL field that will later be rendered as an `<a href>`/`<img src>` (org
+ * website/logo/cover, doctor photo, ...). `z.string().url()` alone accepts any
+ * scheme the WHATWG URL parser recognizes, including `javascript:` — a stored
+ * XSS vector once such a value round-trips through a public, unauthenticated
+ * page. Restricting to http(s) at the validation boundary is the fix, not
+ * escaping at render time (there's nothing to escape; the danger is the scheme
+ * itself, not markup).
+ */
+export function httpUrlSchema(maxLength: number) {
+  return z
+    .string()
+    .max(maxLength)
+    .refine((v) => /^https?:\/\//i.test(v) && z.string().url().safeParse(v).success, {
+      message: "Must be a valid http(s) URL.",
+    });
+}
+
 function issuesOf(err: z.ZodError) {
   return err.issues.map((i) => ({ path: i.path.join("."), message: i.message }));
 }

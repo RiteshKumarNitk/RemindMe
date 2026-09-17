@@ -4,6 +4,24 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-09-16 — Phase 13 (final): full regression run + a real stored-XSS fix (uncommitted)
+
+The last phase in the plan. Ran the real, DB-truncating integration suite for the first time in
+a while (with explicit confirmation, against the shared dev database) to finally resolve an
+open item: a prior run had reportedly hit a worker crash and some files collecting 0 tests. This
+run came back clean — **19/19 test files, 113/113 tests, no crash** — the earlier instability
+didn't reproduce and no specific cause was found to blame (recorded honestly, not claimed as
+fixed). Security pass found one real issue: `website`/`logoUrl`/`coverImageUrl`/`photoUrl`
+profile fields accepted any URL scheme including `javascript:` and `data:`, and `website`
+specifically renders unescaped as `<a href>` on the public, unauthenticated hospital page —
+a working stored-XSS a clinic admin (or an attacker who compromises one) could use against any
+visitor to their published profile. Fixed at the validation boundary with a new shared
+`httpUrlSchema()` (`src/lib/validation.ts`) requiring http(s), applied to all four affected
+fields; 6 new regression tests lock it in. See ADR-015. `pnpm typecheck`/`pnpm build`/
+`pnpm test:unit` (40/40) clean. **All 13 phases of `PRODUCT_EVOLUTION_PLAN.md` are now done.**
+Phases 2–12 were committed separately outside this changelog entry; this phase's changes
+(`src/lib/validation.ts`, the two schema files, the new test) are not yet committed.
+
 ## 2026-09-16 — Phase 12: responsive + accessibility pass (uncommitted)
 
 Fixed one launch-blocking bug and several systemic smaller ones across everything built in

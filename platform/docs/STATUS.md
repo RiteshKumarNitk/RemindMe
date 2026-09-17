@@ -45,6 +45,7 @@ foundation underneath both.
 | **Verification review** | A clinic admin can now formally request that DoseWise review and verify their clinic; we (the platform) have a real queue to approve or reject those requests, and the "Verified" badge shown to patients only ever reflects a real decision — never faked. Verified live end to end. |
 | **Dependent / family booking** | A guardian who has been given access to a dependent's record (a child, an elderly parent, etc.) can now book, view, reschedule, and cancel that dependent's appointments — with the exact same rules and limits the patient themself would have, no more and no less. Verified live end to end, including confirming an unrelated patient at the same clinic still cannot see or touch that dependent's appointment. |
 | **Works on a phone, and with a keyboard/screen reader** | Fixed the biggest gap: the dashboard was previously unusable on a phone screen (the side menu didn't adapt at all). Also added a visible outline for keyboard users tabbing through the site, fixed some invalid button/link markup, and made data tables scroll sideways on a narrow screen instead of squeezing unreadably. |
+| **Full test suite + a security fix** | Ran every automated test (113 of them) against the real database — all passing, no crash. A security review of everything built this cycle found and fixed one real issue: a clinic's website link could have been used to run malicious code in a visitor's browser; that's now blocked at the point where the clinic saves their profile, so it can never be stored in the first place. |
 | **Doctor scheduling** | Doctors set weekly availability + exceptions (holidays, leave); the system calculates real open slots automatically. |
 | **Booking a real appointment** | A patient/staff can book, confirm, cancel, reschedule, or no-show an appointment — double-booking the same doctor at the same time is physically impossible (enforced at the database level, not just in app code). |
 | **Front-desk queue** | Check-in issues a token, a live board shows who's waiting, staff can call/recall/skip, and starting/completing a visit is restricted to the assigned doctor. |
@@ -62,9 +63,12 @@ and the doctor/clinic onboarding wizard.
 
 | Item | Status |
 |---|---|
-| Automated test stability for the queue/consultation/family modules | A recent full test run hit a worker crash after a cascading failure in the queue tests — needs a root-cause fix before we build more UI on top of those modules. Not a sign the features are broken in practice, but the safety net needs repair first. |
 | Site response time in production | Root cause identified (a database configuration/region issue, not app code) — write-up in `DEPLOYMENT.md`; one code-level fix is ready but not yet deployed, and the infrastructure checks need someone with dashboard access to confirm. |
 | Reminder/notification delivery in production | The scheduler that fires reminders was never actually turned on in production until this week; it's wired up now but needs two configuration values set before it's live. |
+
+*Resolved this update:* the automated-test-stability item (a prior run had hit a worker crash and
+some test files reporting 0 tests) — a full re-run came back clean, all 113 tests across every
+module passing, no crash. Whatever caused the earlier failure didn't reproduce.
 
 ## ⛔ Not started yet
 
@@ -82,21 +86,22 @@ A detailed, phase-by-phase plan for turning this from a clinic-operations tool i
 patient-facing product (public hospital/doctor discovery, self-service booking, guided
 onboarding for clinics and doctors) now exists at
 [`PRODUCT_EVOLUTION_PLAN.md`](../PRODUCT_EVOLUTION_PLAN.md), based on an audit of the actual
-current code. **Phases 2–12 are done** — design system, organization & doctor public profiles,
-public discovery pages, patient self-service booking, role-specific "what's next" views for
-every staff role, a real platform verification queue, dependent/family booking, and a responsive/
-accessibility pass. A stranger can find a doctor, see real availability, log in, book, and land on
-a real dashboard; staff logging in immediately see what needs attention; a clinic can request a
-"Verified" badge and the platform can actually grant one; a guardian can manage a dependent's
-appointments with the same rules as the patient themself; and the whole thing now actually works
-on a phone screen and with a keyboard. All verified live against the real database, not just
-build-checked. One phase remains.
+current code. **All 13 phases are now done** — design system, organization & doctor public
+profiles, public discovery pages, patient self-service booking, role-specific "what's next" views
+for every staff role, a real platform verification queue, dependent/family booking, a responsive/
+accessibility pass, and a final regression + security pass. A stranger can find a doctor, see real
+availability, log in, book, and land on a real dashboard; staff logging in immediately see what
+needs attention; a clinic can request a "Verified" badge and the platform can actually grant one;
+a guardian can manage a dependent's appointments with the same rules as the patient themself; the
+whole thing works on a phone screen and with a keyboard; and the full automated test suite passes
+end to end. All verified live against the real database, not just build-checked.
 
 ## Recommended next milestone
 
-**Full regression pass (Phase 13)** — the last phase in the plan. Worth using this pass to also
-finally resolve the test-stability issue flagged above, since Phase 13 is explicitly about
-strengthening the safety net, not just adding to what already works.
+**The evolution plan is complete.** What's left is outside the original 13 phases: a full visual
+design pass to match DoseWise's brand (see below), connecting the existing Flutter mobile app to
+this backend, and deciding when/how to commit and deploy this cycle's work — none of that is
+started yet and would need a fresh scoping conversation.
 
 ---
 
