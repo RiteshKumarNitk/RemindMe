@@ -16,17 +16,6 @@
   --surface-2: #eef0f9;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --surface: #12131f;
-    --card: #1b1d2e;
-    --ink: #f2f2f8;
-    --ink-muted: #a3a6c2;
-    --border: #2b2d43;
-    --warn: #d97706;
-    --surface-2: #1f2145;
-  }
-}
 
 /*
  * Design-system token layer (PRODUCT_EVOLUTION_PLAN.md §14). These map the existing
@@ -61,6 +50,14 @@
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  /* Light theme only, deliberately — no `prefers-color-scheme: dark` support.
+     Without this, a browser with a dark OS preference still dark-inverts
+     native chrome (scrollbars, date/select pickers) even though every color
+     in this file is a light-mode value. */
+  color-scheme: light;
 }
 
 html,

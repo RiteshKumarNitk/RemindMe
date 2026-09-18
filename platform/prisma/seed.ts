@@ -24,7 +24,15 @@ async function main() {
   const passwordHash = await pw(DEMO_PASSWORD);
 
   const admin = await db.user.create({
-    data: { email: "admin@demo.dosewise.test", fullName: "Demo Admin", passwordHash, emailVerifiedAt: new Date() },
+    // Also the documented /admin (super-admin) login (README.md) — matches
+    // the platform-owner account, not just the clinic's CLINIC_ADMIN.
+    data: {
+      email: "admin@demo.dosewise.test",
+      fullName: "Demo Admin",
+      passwordHash,
+      emailVerifiedAt: new Date(),
+      isPlatformAdmin: true,
+    },
   });
   const doctorUser = await db.user.create({
     data: { email: "doctor@demo.dosewise.test", fullName: "Dr. Demo Sharma", passwordHash, emailVerifiedAt: new Date() },

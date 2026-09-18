@@ -4,6 +4,21 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-09-18 — Fixed local login (unseeded demo DB) and removed auto dark mode (uncommitted)
+
+Two bugs reported from a local `pnpm dev` run. **Login**: the documented demo accounts
+(`README.md`) never actually existed in the dev database — `prisma/seed.ts` already creates them
+correctly but had never been run here. Ran it, and fixed a real mismatch found in the process:
+the seed never gave the demo admin `isPlatformAdmin`, so the README's claim that the same account
+also logs into `/admin` was never true. Fixed and re-seeded. **Theme**: the real app (not the
+earlier design-mockup artifact, which had its own separate fix) was still switching to dark colors
+based on the visitor's OS preference, with no in-app way to turn it off. Removed
+`@media (prefers-color-scheme: dark)` from `app/globals.css` entirely and added
+`color-scheme: light` so native browser chrome (scrollbars, date pickers) stops dark-inverting
+too. See ADR-020. Verified live: all three demo accounts log in via the real API; confirmed
+`isPlatformAdmin: true` on the demo admin; confirmed the rebuilt stylesheet has no dark-mode rule.
+`pnpm typecheck`/`pnpm build` clean.
+
 ## 2026-09-17 — Patient discovery journey: audit found it mostly already built, three real gaps closed (uncommitted)
 
 A detailed brief asked for the full patient discovery→booking journey. Audit found it already

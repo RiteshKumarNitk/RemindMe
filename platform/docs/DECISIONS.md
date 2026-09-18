@@ -757,3 +757,36 @@ state.
   `pnpm build` (every route), and `pnpm test:unit` (40/40) all clean. `pnpm test:integration` (the
   DB-truncating suite) was **not** re-run — the confirmation given for Phase 13's run (ADR-015)
   was scoped to that run, not standing approval, and it wasn't asked for again this time.
+
+## ADR-020: Local login failure was an unseeded database, not an app bug; dark mode is now removed entirely, not just overridden in one demo
+
+- **Context.** The user ran their own local `pnpm dev` against the shared dev DB and could not
+  log in with the demo credentials `README.md` documents (`admin@demo.dosewise.test` /
+  `DemoPassw0rd!`, etc.) — every attempt returned "Invalid email or password." Separately, the
+  real app (not the earlier design-mockup artifact) was still switching to dark colors, because
+  the light-theme fix applied earlier in this session was only ever applied to the throwaway
+  Artifact mockup (via a `document.documentElement.dataset.theme = "light"` script specific to
+  that file), never to the actual product's `app/globals.css`.
+- **Decision 1 — root cause was data, not code.** `prisma/seed.ts` already exists, is idempotent,
+  and creates exactly the three accounts `README.md` documents — it had simply never been run
+  against this dev database. Ran `pnpm db:seed`. While doing so, found the seed didn't fully match
+  its own documentation: `README.md` says `admin@demo.dosewise.test` also logs into `/admin` (the
+  super-admin console), but the seed never set `isPlatformAdmin` on that user, so the documented
+  admin-panel login was never actually true. Fixed the seed to set `isPlatformAdmin: true` on the
+  demo admin and re-ran it.
+- **Decision 2 — removed `@media (prefers-color-scheme: dark)` from `globals.css` entirely,
+  rather than adding another one-off override.** The app has no theme toggle anywhere, so dark
+  mode only ever engaged passively, based on the visitor's OS setting, with no way to turn it off
+  in-app — exactly the situation the user was hitting. Since the product is explicitly meant to be
+  light-only right now (stated twice this session), removing the automatic switch is the direct
+  fix, not a workaround. Also added `color-scheme: light` on `html` — without it, a browser with a
+  dark OS preference still dark-inverts native chrome (scrollbars, date/select pickers) even once
+  every custom color in the stylesheet is light-only.
+- **Consequences.** No schema/API changes. `pnpm db:seed` is safe to re-run any time (deletes and
+  recreates only rows scoped to the `demo-clinic` slug and `@demo.dosewise.test` emails) but is
+  not something this session runs automatically going forward — it's a one-time unblock, not part
+  of the regular verification flow. Verified live: all three demo accounts
+  (`admin`/`doctor`/`reception@demo.dosewise.test`) log in successfully via the real
+  `/api/auth/login` endpoint; confirmed the demo admin now has `isPlatformAdmin: true`; rebuilt
+  and confirmed the served stylesheet contains no `prefers-color-scheme` rule and does declare
+  `color-scheme:light`. `pnpm typecheck` and `pnpm build` clean.
