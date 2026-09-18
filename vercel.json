@@ -1,0 +1,13 @@
+{
+  "cleanUrls": false,
+  "rewrites": [
+    {
+      "source": "/vivhabio/:path*",
+      "destination": "/vivhabio/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
