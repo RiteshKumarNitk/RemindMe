@@ -28,11 +28,13 @@ export function BookForm({
   doctors,
   patients,
   action,
+  submitLabel = "Confirm booking",
 }: {
   orgId: string;
   doctors: Doctor[];
   patients?: PatientOpt[];
   action: (formData: FormData) => void;
+  submitLabel?: string;
 }) {
   const [doctorId, setDoctorId] = useState(doctors[0]?.id ?? "");
   const days = useMemo(() => nextDays(14), []);
@@ -82,28 +84,30 @@ export function BookForm({
 
       <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
         <div className="flex flex-col gap-5">
-          <div>
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Doctor</div>
-            <div className="flex gap-2 overflow-x-auto pb-1" role="radiogroup" aria-label="Choose a doctor">
-              {doctors.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  onClick={() => setDoctorId(d.id)}
-                  aria-pressed={d.id === doctorId}
-                  className={`flex shrink-0 items-center gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left ${
-                    d.id === doctorId ? "border-indigo bg-indigo/10" : "border-border bg-card hover:bg-surface-2"
-                  }`}
-                >
-                  <InitialsAvatar name={d.displayName} />
-                  <span>
-                    <span className="block text-[12.5px] font-semibold text-ink">{d.displayName}</span>
-                    {d.specialty ? <span className="block text-[11px] text-ink-muted">{d.specialty}</span> : null}
-                  </span>
-                </button>
-              ))}
+          {doctors.length > 1 ? (
+            <div>
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Doctor</div>
+              <div className="flex gap-2 overflow-x-auto pb-1" role="radiogroup" aria-label="Choose a doctor">
+                {doctors.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => setDoctorId(d.id)}
+                    aria-pressed={d.id === doctorId}
+                    className={`flex shrink-0 items-center gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left ${
+                      d.id === doctorId ? "border-indigo bg-indigo/10" : "border-border bg-card hover:bg-surface-2"
+                    }`}
+                  >
+                    <InitialsAvatar name={d.displayName} />
+                    <span>
+                      <span className="block text-[12.5px] font-semibold text-ink">{d.displayName}</span>
+                      {d.specialty ? <span className="block text-[11px] text-ink-muted">{d.specialty}</span> : null}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
           <input type="hidden" name="doctorId" value={doctorId} />
 
           <div>
@@ -185,7 +189,7 @@ export function BookForm({
             </span>
           </div>
           <Button className="mt-1 w-full justify-center" disabled={!selected || !doctorId}>
-            Confirm booking
+            {submitLabel}
           </Button>
         </div>
       </div>

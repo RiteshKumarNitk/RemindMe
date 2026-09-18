@@ -1,6 +1,6 @@
 import { requireOrgContext } from "@/lib/web-context.js";
 import { getAppointment } from "@/modules/appointments/service.js";
-import { Card, ErrorNote, SectionTitle } from "../../../../ui.js";
+import { Card, CardSubtitle, InitialsAvatar, Notice } from "@/components/ui/index.js";
 import { BookForm } from "../../BookForm.js";
 import { rescheduleAppointmentAction } from "./actions.js";
 
@@ -19,14 +19,21 @@ export default async function ReschedulePage({
   const appointment = await getAppointment(ctx, appointmentId);
 
   return (
-    <div>
-      <SectionTitle>
-        Reschedule — {appointment.patient.firstName} {appointment.patient.lastName} with{" "}
-        {appointment.doctor.displayName}
-      </SectionTitle>
-      <Card style={{ maxWidth: 420 }}>
-        <ErrorNote message={error} />
-        <p style={{ marginTop: 0, fontSize: 13, color: "var(--ink-muted)" }}>
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center gap-3">
+        <InitialsAvatar name={`${appointment.patient.firstName} ${appointment.patient.lastName}`} />
+        <div>
+          <h1 className="font-display text-2xl font-bold text-ink">Reschedule appointment</h1>
+          <p className="text-sm text-ink-muted">
+            {appointment.patient.firstName} {appointment.patient.lastName} with {appointment.doctor.displayName}
+          </p>
+        </div>
+      </div>
+
+      {error ? <Notice tone="down">{error}</Notice> : null}
+
+      <Card className="max-w-2xl">
+        <CardSubtitle>
           Currently{" "}
           {new Date(appointment.scheduledStart).toLocaleString([], {
             weekday: "short",
@@ -36,12 +43,15 @@ export default async function ReschedulePage({
             minute: "2-digit",
           })}
           . Pick a new time below.
-        </p>
-        <BookForm
-          orgId={orgId}
-          doctors={[{ id: appointment.doctorId, displayName: appointment.doctor.displayName }]}
-          action={rescheduleAppointmentAction.bind(null, orgId, appointmentId)}
-        />
+        </CardSubtitle>
+        <div className="mt-4">
+          <BookForm
+            orgId={orgId}
+            doctors={[{ id: appointment.doctorId, displayName: appointment.doctor.displayName }]}
+            action={rescheduleAppointmentAction.bind(null, orgId, appointmentId)}
+            submitLabel="Confirm reschedule"
+          />
+        </div>
       </Card>
     </div>
   );

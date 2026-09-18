@@ -790,3 +790,40 @@ state.
   `/api/auth/login` endpoint; confirmed the demo admin now has `isPlatformAdmin: true`; rebuilt
   and confirmed the served stylesheet contains no `prefers-color-scheme` rule and does declare
   `color-scheme:light`. `pnpm typecheck` and `pnpm build` clean.
+
+## ADR-021: The last 7 old-styled sub-pages migrated — every reachable dashboard screen is now on the current design system
+
+- **Context.** ADR-017/018 called the dashboard/admin visual migration complete, but an inventory
+  of every file under `app/dashboard/:orgId/` found 7 sub-pages still on the pre-migration inline
+  kit: consultation notes, reschedule, the org-scoped audit log, doctor availability, family
+  access (both the patient's own view and the staff/owner grant-management view on a patient's
+  detail page), and team (member/role/capability management). These are reachable by every role in
+  normal use — not edge cases — so this is exactly the kind of inconsistency a "make it better,
+  every role" request would land on.
+- **Decision 1 — two real UX fixes made in `BookForm.tsx` while touching the page that reuses it
+  for reschedule.** The doctor-picker chip row now hides itself when there's only one doctor to
+  choose from (`doctors.length > 1`) — reschedule always has exactly one (you can't reschedule to
+  a different doctor), so the picker was pure clutter there. Added an optional `submitLabel` prop
+  so the confirm button reads "Confirm reschedule" in that context instead of the generic
+  "Confirm booking." Both changes are additive; the original booking flow (multiple doctors) is
+  unaffected since neither behavior is reachable there.
+- **Decision 2 — the weekly-availability grid and the audit logs stayed real `<table>`s, not
+  card-row lists.** Same reasoning as ADR-018's audit-log call: a 7-row-by-5-column schedule
+  editor and a dense change log are genuinely tabular, scanned/edited like a spreadsheet — forcing
+  either into the card-row pattern used for people-lists elsewhere would make them harder to use,
+  not more modern. The table's own cells now use the kit's `Input` component and an
+  `accent-indigo` checkbox instead of unstyled native controls.
+- **Decision 3 — added a `Textarea` component to the shared kit** (`src/components/ui/input.tsx`)
+  for the consultation notes fields — the one input type the kit didn't have yet, built to the
+  exact same visual contract as `Input`/`Select` (same border/focus/disabled treatment) rather
+  than a one-off styled `<textarea>` local to that page.
+- **Consequences.** No schema/API/server-action changes — every form field's `name` attribute was
+  preserved exactly as it was (the pages the actions bind to and the `FormData` keys they read are
+  untouched); this was a rendering migration, not a behavior change. Verified live against the
+  real, seeded demo clinic (`admin`/`doctor`/`reception@demo.dosewise.test`, ADR-020): all 6
+  affected routes return 200 with real demo data visible (member roster, weekly schedule grid,
+  patient record, reschedule form, consultation notes/prescription form), and confirmed the new
+  single-doctor picker-hiding behavior actually hides on the reschedule page while remaining
+  unaffected on the multi-doctor public booking flow. `pnpm typecheck`, `pnpm build` (every
+  route), and `pnpm test:unit` (40/40) all clean. This closes the visual migration completely —
+  every reachable screen in the app, across every role, is now on the current design system.

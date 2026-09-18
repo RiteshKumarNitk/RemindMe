@@ -4,6 +4,20 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-09-18 — Migrated the last 7 old-styled pages — every screen now on the current design (uncommitted)
+
+An inventory found 7 reachable sub-pages still on the pre-migration inline-style kit: consultation
+notes, reschedule, org audit log, doctor availability, family access (both views), and team.
+Migrated all of them onto the current kit. Two real UX fixes along the way: the booking form's
+doctor picker now hides itself when there's only one doctor (reschedule always has exactly one),
+and its submit button text is now contextual ("Confirm reschedule" vs "Confirm booking"). Added a
+`Textarea` component to the shared kit for the consultation notes fields. The weekly-availability
+grid and both audit logs stayed real tables (genuinely tabular data), restyled rather than
+converted to card lists. No server action or form field name changed — this is a rendering
+migration only. See ADR-021. Verified live against the real, now-seeded demo clinic: all 6 routes
+render with real data, single-doctor picker-hiding confirmed on reschedule and unaffected on
+multi-doctor public booking. `pnpm typecheck`/`pnpm build`/`pnpm test:unit` (40/40) clean.
+
 ## 2026-09-18 — Fixed local login (unseeded demo DB) and removed auto dark mode (uncommitted)
 
 Two bugs reported from a local `pnpm dev` run. **Login**: the documented demo accounts

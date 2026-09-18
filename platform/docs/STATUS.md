@@ -1,6 +1,6 @@
 # DoseWise Platform — Status
 
-**Last updated: 2026-09-17.** This file is updated every time a piece of work
+**Last updated: 2026-09-18.** This file is updated every time a piece of work
 finishes — it's meant to be shown to non-technical stakeholders as-is, no
 translation needed. If something below looks stale, ask and it'll be
 refreshed before you rely on it.
@@ -31,7 +31,7 @@ foundation underneath both.
 
 | Area | What it means for the business |
 |---|---|
-| **A modern design, top to bottom, and real notifications** | Every screen in the app — the four clinic role dashboards, appointments, patients, doctors, staff, settings, the queue board, and the separate platform-owner admin console — has been visually rebuilt with a consistent design (hero cards, stat tiles, colored patient avatars), plus a working notification bell that shows real events (appointment booked, cancelled, rescheduled, reminders) and can be marked as read. The appointment booking screen is now a doctor/date/time picker with a live summary instead of a plain form. Verified live: a real booking creates a real notification, addressed to the right person, that clears when marked read; real forms (add doctor, add staff, add location, suspend a clinic) still work through the new design. |
+| **A modern design, top to bottom, and real notifications** | Every reachable screen in the app — the four clinic role dashboards, appointments, patients, doctors, staff, settings, the queue board, consultation notes, reschedule, doctor availability, family access, team, both audit logs, and the separate platform-owner admin console — has been visually rebuilt with a consistent design (hero cards, stat tiles, colored patient avatars), plus a working notification bell that shows real events (appointment booked, cancelled, rescheduled, reminders) and can be marked as read. The appointment booking/reschedule screens are now a doctor/date/time picker with a live summary instead of a plain form. Verified live against the real, seeded demo clinic: a real booking creates a real notification, addressed to the right person, that clears when marked read; every migrated page renders with real data through the new design. |
 | **Accounts & login** | Clinics and staff can register and log in securely (industry-standard password hashing, session handling). |
 | **Multi-clinic isolation** | One clinic can never see another clinic's data — tested and enforced, not just assumed. |
 | **Roles & permissions** | Admin / Doctor / Receptionist / Patient each see only what their role should — including a rule that no admin can grant themselves extra medical-record access (must be a second admin). |

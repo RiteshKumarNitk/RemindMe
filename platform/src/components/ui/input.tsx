@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, LabelHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import type { InputHTMLAttributes, LabelHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 
 export function Field({
   label,
@@ -19,6 +19,16 @@ export function Input({ className = "", ...rest }: InputHTMLAttributes<HTMLInput
   return (
     <input
       className={`h-10 rounded-control border border-border bg-card px-3 text-sm text-ink placeholder:text-ink-muted focus:border-indigo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${className}`}
+      {...rest}
+    />
+  );
+}
+
+export function Textarea({ className = "", rows = 3, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      rows={rows}
+      className={`rounded-control border border-border bg-card px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:border-indigo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:bg-surface-2 disabled:text-ink-muted ${className}`}
       {...rest}
     />
   );

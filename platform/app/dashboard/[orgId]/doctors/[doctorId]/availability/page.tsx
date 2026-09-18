@@ -1,7 +1,7 @@
 import { requireOrgContext } from "@/lib/web-context.js";
 import { getDoctor } from "@/modules/doctors/service.js";
 import { getRules, listExceptions } from "@/modules/availability/service.js";
-import { Button, Card, EmptyState, ErrorNote, Field, Select, SectionTitle, Table, td, th } from "../../../../ui.js";
+import { Badge, Button, Card, CardSubtitle, EmptyState, Field, Input, Notice, Select } from "@/components/ui/index.js";
 import { addExceptionAction, deleteExceptionAction, saveAvailabilityAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +15,14 @@ const WEEKDAYS: Array<{ n: number; label: string }> = [
   { n: 6, label: "Saturday" },
   { n: 7, label: "Sunday" },
 ];
+
+const KIND_TONE: Record<string, "warn" | "coral" | "ok" | "indigo"> = {
+  DAY_OFF: "warn",
+  HOLIDAY: "coral",
+  LEAVE: "warn",
+  EXTRA_HOURS: "ok",
+  BREAK: "indigo",
+};
 
 function fromMinutes(min: number): string {
   const h = Math.floor(min / 60)
@@ -42,109 +50,104 @@ export default async function AvailabilityPage({
   const byWeekday = new Map(rules.map((r) => [r.weekday, r]));
 
   return (
-    <div>
-      <SectionTitle>Availability — {doctor.displayName}</SectionTitle>
-      <ErrorNote message={error} />
+    <div className="flex flex-col gap-7">
+      <div>
+        <h1 className="font-display text-2xl font-bold text-ink">Availability</h1>
+        <p className="mt-1 text-sm text-ink-muted">{doctor.displayName}</p>
+      </div>
+      {error ? <Notice tone="down">{error}</Notice> : null}
 
-      <Card style={{ marginBottom: 20 }}>
-        <form action={saveAvailabilityAction.bind(null, orgId, doctorId)}>
-          <Table>
-            <thead>
-              <tr>
-                <th style={th}>Day</th>
-                <th style={th}>Open</th>
-                <th style={th}>Start</th>
-                <th style={th}>End</th>
-                <th style={th}>Slot (min)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {WEEKDAYS.map((wd) => {
-                const r = byWeekday.get(wd.n);
-                return (
-                  <tr key={wd.n}>
-                    <td style={td}>{wd.label}</td>
-                    <td style={td}>
-                      <input type="checkbox" name={`open-${wd.n}`} defaultChecked={!!r} />
-                    </td>
-                    <td style={td}>
-                      <input type="time" name={`start-${wd.n}`} defaultValue={r ? fromMinutes(r.startMinute) : "09:00"} />
-                    </td>
-                    <td style={td}>
-                      <input type="time" name={`end-${wd.n}`} defaultValue={r ? fromMinutes(r.endMinute) : "17:00"} />
-                    </td>
-                    <td style={td}>
-                      <input
-                        type="number"
-                        name={`slot-${wd.n}`}
-                        min={5}
-                        max={240}
-                        defaultValue={r?.slotMinutes ?? 15}
-                        style={{ width: 64 }}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </Table>
-          <div style={{ marginTop: 14 }}>
-            <Button>Save weekly schedule</Button>
+      <Card>
+        <CardSubtitle>Weekly schedule</CardSubtitle>
+        <form action={saveAvailabilityAction.bind(null, orgId, doctorId)} className="mt-4">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-125 border-collapse text-[13px]">
+              <thead>
+                <tr className="text-left text-[10.5px] font-semibold uppercase tracking-wide text-ink-faint">
+                  <th className="pb-2 pr-3">Day</th>
+                  <th className="pb-2 pr-3">Open</th>
+                  <th className="pb-2 pr-3">Start</th>
+                  <th className="pb-2 pr-3">End</th>
+                  <th className="pb-2">Slot (min)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {WEEKDAYS.map((wd) => {
+                  const r = byWeekday.get(wd.n);
+                  return (
+                    <tr key={wd.n} className="border-t border-border">
+                      <td className="py-2.5 pr-3 font-medium text-ink">{wd.label}</td>
+                      <td className="py-2.5 pr-3">
+                        <input type="checkbox" name={`open-${wd.n}`} defaultChecked={!!r} className="h-4 w-4 accent-indigo" />
+                      </td>
+                      <td className="py-2.5 pr-3">
+                        <Input type="time" name={`start-${wd.n}`} defaultValue={r ? fromMinutes(r.startMinute) : "09:00"} />
+                      </td>
+                      <td className="py-2.5 pr-3">
+                        <Input type="time" name={`end-${wd.n}`} defaultValue={r ? fromMinutes(r.endMinute) : "17:00"} />
+                      </td>
+                      <td className="py-2.5">
+                        <Input type="number" name={`slot-${wd.n}`} min={5} max={240} defaultValue={r?.slotMinutes ?? 15} className="w-18" />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
+          <Button className="mt-4">Save weekly schedule</Button>
         </form>
       </Card>
 
-      <SectionTitle>Exceptions (leave, holidays, extra hours)</SectionTitle>
-      <Card style={{ marginBottom: 20 }}>
-        {exceptions.length === 0 ? (
-          <EmptyState>No exceptions.</EmptyState>
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <th style={th}>Kind</th>
-                <th style={th}>From</th>
-                <th style={th}>To</th>
-                <th style={th}>Reason</th>
-                <th style={th} />
-              </tr>
-            </thead>
-            <tbody>
-              {exceptions.map((ex) => (
-                <tr key={ex.id}>
-                  <td style={td}>{ex.kind}</td>
-                  <td style={td}>{new Date(ex.startsAt).toLocaleDateString()}</td>
-                  <td style={td}>{new Date(ex.endsAt).toLocaleDateString()}</td>
-                  <td style={td}>{ex.reason ?? "—"}</td>
-                  <td style={td}>
-                    <form action={deleteExceptionAction.bind(null, orgId, doctorId, ex.id)}>
-                      <Button variant="danger" type="submit">
-                        Remove
-                      </Button>
-                    </form>
-                  </td>
-                </tr>
+      <div>
+        <h2 className="mb-3 font-display text-lg font-bold text-ink">Exceptions</h2>
+        <p className="mb-3 -mt-2 text-sm text-ink-muted">Leave, holidays, or extra hours on top of the weekly schedule.</p>
+        <Card>
+          {exceptions.length === 0 ? (
+            <EmptyState title="No exceptions." />
+          ) : (
+            <div className="flex flex-col">
+              {exceptions.map((ex, i) => (
+                <div
+                  key={ex.id}
+                  className={`flex flex-wrap items-center gap-3 py-2.5 ${i < exceptions.length - 1 ? "border-b border-border" : ""}`}
+                >
+                  <Badge tone={KIND_TONE[ex.kind] ?? "neutral"}>{ex.kind.replaceAll("_", " ")}</Badge>
+                  <span className="text-[13px] text-ink">
+                    {new Date(ex.startsAt).toLocaleDateString()} – {new Date(ex.endsAt).toLocaleDateString()}
+                  </span>
+                  {ex.reason ? <span className="text-[12px] text-ink-muted">{ex.reason}</span> : null}
+                  <form action={deleteExceptionAction.bind(null, orgId, doctorId, ex.id)} className="ml-auto">
+                    <Button variant="danger" size="sm" type="submit">
+                      Remove
+                    </Button>
+                  </form>
+                </div>
               ))}
-            </tbody>
-          </Table>
-        )}
-      </Card>
+            </div>
+          )}
+        </Card>
+      </div>
 
-      <Card style={{ maxWidth: 420 }}>
-        <SectionTitle>Add an exception</SectionTitle>
-        <form action={addExceptionAction.bind(null, orgId, doctorId)}>
-          <Select label="Kind" name="kind" defaultValue="DAY_OFF">
-            <option value="DAY_OFF">Day off</option>
-            <option value="HOLIDAY">Holiday</option>
-            <option value="LEAVE">Leave</option>
-            <option value="EXTRA_HOURS">Extra hours</option>
-            <option value="BREAK">Break</option>
-          </Select>
-          <Field label="Date" name="date" type="date" required />
-          <Field label="Reason" name="reason" placeholder="Optional" />
-          <div style={{ marginTop: 8 }}>
-            <Button>Add exception</Button>
-          </div>
+      <Card className="max-w-md">
+        <CardSubtitle>Add an exception</CardSubtitle>
+        <form action={addExceptionAction.bind(null, orgId, doctorId)} className="mt-4 flex flex-col gap-4">
+          <Field label="Kind">
+            <Select name="kind" defaultValue="DAY_OFF" className="w-full">
+              <option value="DAY_OFF">Day off</option>
+              <option value="HOLIDAY">Holiday</option>
+              <option value="LEAVE">Leave</option>
+              <option value="EXTRA_HOURS">Extra hours</option>
+              <option value="BREAK">Break</option>
+            </Select>
+          </Field>
+          <Field label="Date">
+            <Input name="date" type="date" required className="w-full" />
+          </Field>
+          <Field label="Reason" hint="Optional">
+            <Input name="reason" className="w-full" />
+          </Field>
+          <Button className="self-start">Add exception</Button>
         </form>
       </Card>
     </div>

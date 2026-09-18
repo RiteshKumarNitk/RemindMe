@@ -1,7 +1,7 @@
 import { requireOrgContext } from "@/lib/web-context.js";
 import { getAppointment } from "@/modules/appointments/service.js";
 import { getConsultation } from "@/modules/consultations/service.js";
-import { Badge, Button, Card, EmptyState, ErrorNote, Field, SectionTitle, Table, td, th } from "../../../../ui.js";
+import { Badge, Button, Card, CardSubtitle, EmptyState, Field, Input, Notice, Textarea } from "@/components/ui/index.js";
 import {
   addPrescriptionItemAction,
   removePrescriptionItemAction,
@@ -34,116 +34,126 @@ export default async function ConsultationPage({
   const items = consultation?.prescriptions.flatMap((p) => p.items) ?? [];
 
   return (
-    <div>
-      <SectionTitle>
-        Consultation — {appointment.patient.firstName} {appointment.patient.lastName} ·{" "}
-        {new Date(appointment.scheduledStart).toLocaleString([], {
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
-      </SectionTitle>
-      <ErrorNote message={error} />
-      <div style={{ marginBottom: 16 }}>
-        <Badge tone={appointment.status === "COMPLETED" ? "ok" : "coral"}>{appointment.status}</Badge>
-        {signed && (
-          <span style={{ marginLeft: 8 }}>
-            <Badge tone="muted">Signed</Badge>
-          </span>
-        )}
+    <div className="flex flex-col gap-7">
+      <div>
+        <h1 className="font-display text-2xl font-bold text-ink">Consultation</h1>
+        <p className="mt-1 text-sm text-ink-muted">
+          {appointment.patient.firstName} {appointment.patient.lastName} ·{" "}
+          {new Date(appointment.scheduledStart).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+        </p>
+        <div className="mt-2 flex gap-2">
+          <Badge tone={appointment.status === "COMPLETED" ? "ok" : "coral"}>{appointment.status}</Badge>
+          {signed ? <Badge tone="neutral">Signed</Badge> : null}
+        </div>
       </div>
 
+      {error ? <Notice tone="down">{error}</Notice> : null}
+
       {["CHECKED_IN", "WAITING"].includes(appointment.status) && canWrite && (
-        <Card style={{ marginBottom: 20, maxWidth: 420 }}>
-          <p style={{ marginTop: 0, fontSize: 14 }}>This appointment hasn&rsquo;t started yet.</p>
+        <Card className="max-w-md">
+          <p className="mb-4 text-sm text-ink">This appointment hasn&rsquo;t started yet.</p>
           <form action={startConsultationAction.bind(null, orgId, appointmentId)}>
             <Button>Start consultation</Button>
           </form>
         </Card>
       )}
 
-      <Card style={{ marginBottom: 20, maxWidth: 640 }}>
-        <SectionTitle>Notes</SectionTitle>
-        <form action={saveConsultationAction.bind(null, orgId, appointmentId)}>
-          <TextArea label="Subjective (patient-reported)" name="subjective" defaultValue={consultation?.subjective} disabled={signed} />
-          <TextArea label="Objective (exam findings)" name="objective" defaultValue={consultation?.objective} disabled={signed} />
-          <TextArea label="Assessment" name="assessment" defaultValue={consultation?.assessment} disabled={signed} />
-          <TextArea label="Plan" name="plan" defaultValue={consultation?.plan} disabled={signed} />
-          <Field
-            label="Follow-up date"
-            name="followUpDate"
-            type="date"
-            defaultValue={consultation?.followUpDate ? new Date(consultation.followUpDate).toISOString().slice(0, 10) : undefined}
-          />
-          <TextArea label="Tests advised" name="testsAdvised" defaultValue={consultation?.testsAdvised ?? undefined} disabled={signed} />
-          <TextArea label="Instructions" name="instructions" defaultValue={consultation?.instructions ?? undefined} disabled={signed} />
+      <Card className="max-w-2xl">
+        <CardSubtitle>Notes</CardSubtitle>
+        <form action={saveConsultationAction.bind(null, orgId, appointmentId)} className="mt-4 flex flex-col gap-4">
+          <Field label="Subjective (patient-reported)">
+            <Textarea name="subjective" defaultValue={consultation?.subjective ?? ""} disabled={signed} className="w-full" />
+          </Field>
+          <Field label="Objective (exam findings)">
+            <Textarea name="objective" defaultValue={consultation?.objective ?? ""} disabled={signed} className="w-full" />
+          </Field>
+          <Field label="Assessment">
+            <Textarea name="assessment" defaultValue={consultation?.assessment ?? ""} disabled={signed} className="w-full" />
+          </Field>
+          <Field label="Plan">
+            <Textarea name="plan" defaultValue={consultation?.plan ?? ""} disabled={signed} className="w-full" />
+          </Field>
+          <Field label="Follow-up date">
+            <Input
+              name="followUpDate"
+              type="date"
+              defaultValue={consultation?.followUpDate ? new Date(consultation.followUpDate).toISOString().slice(0, 10) : undefined}
+              disabled={signed}
+              className="w-full"
+            />
+          </Field>
+          <Field label="Tests advised">
+            <Textarea name="testsAdvised" defaultValue={consultation?.testsAdvised ?? ""} disabled={signed} className="w-full" />
+          </Field>
+          <Field label="Instructions">
+            <Textarea name="instructions" defaultValue={consultation?.instructions ?? ""} disabled={signed} className="w-full" />
+          </Field>
           {!signed && canWrite && (
-            <div style={{ marginTop: 8 }}>
-              <Button variant="ghost">Save notes</Button>
-            </div>
+            <Button variant="ghost" className="self-start">
+              Save notes
+            </Button>
           )}
         </form>
       </Card>
 
-      <Card style={{ marginBottom: 20, maxWidth: 640 }}>
-        <SectionTitle>Prescription</SectionTitle>
+      <Card className="max-w-2xl">
+        <CardSubtitle>Prescription</CardSubtitle>
         {items.length === 0 ? (
-          <EmptyState>No medicines added yet.</EmptyState>
+          <div className="mt-4">
+            <EmptyState title="No medicines added yet." />
+          </div>
         ) : (
-          <Table>
-            <thead>
-              <tr>
-                <th style={th}>Drug</th>
-                <th style={th}>Dosage</th>
-                <th style={th}>Frequency</th>
-                <th style={th}>Days</th>
-                <th style={th} />
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((it) => (
-                <tr key={it.id}>
-                  <td style={td}>
+          <div className="mt-4 flex flex-col">
+            {items.map((it, i) => (
+              <div
+                key={it.id}
+                className={`flex flex-wrap items-center gap-3 py-2.5 ${i < items.length - 1 ? "border-b border-border" : ""}`}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13.5px] font-semibold text-ink">
                     {it.drugName} {it.strength ?? ""}
-                  </td>
-                  <td style={td}>{it.dosage ?? "—"}</td>
-                  <td style={td}>{it.frequency ?? "—"}</td>
-                  <td style={td}>{it.durationDays ?? "—"}</td>
-                  <td style={td}>
-                    {!signed && canWrite && (
-                      <form action={removePrescriptionItemAction.bind(null, orgId, appointmentId, it.id)}>
-                        <Button variant="danger">Remove</Button>
-                      </form>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
+                  </div>
+                  <div className="text-[11.5px] text-ink-muted">
+                    {it.dosage ?? "—"} · {it.frequency ?? "—"} {it.durationDays ? `· ${it.durationDays}d` : ""}
+                  </div>
+                </div>
+                {!signed && canWrite && (
+                  <form action={removePrescriptionItemAction.bind(null, orgId, appointmentId, it.id)}>
+                    <Button variant="danger" size="sm">
+                      Remove
+                    </Button>
+                  </form>
+                )}
+              </div>
+            ))}
+          </div>
         )}
 
         {!signed && canWrite && (
-          <form action={addPrescriptionItemAction.bind(null, orgId, appointmentId)} style={{ marginTop: 14 }}>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ flex: "1 1 160px" }}>
-                <Field label="Drug name" name="drugName" required />
-              </div>
-              <div style={{ flex: "1 1 100px" }}>
-                <Field label="Strength" name="strength" placeholder="500mg" />
-              </div>
-              <div style={{ flex: "1 1 120px" }}>
-                <Field label="Dosage" name="dosage" placeholder="1 tablet" />
-              </div>
-              <div style={{ flex: "1 1 140px" }}>
-                <Field label="Frequency" name="frequency" placeholder="Twice daily" />
-              </div>
-              <div style={{ flex: "1 1 90px" }}>
-                <Field label="Days" name="durationDays" type="number" />
-              </div>
+          <form action={addPrescriptionItemAction.bind(null, orgId, appointmentId)} className="mt-5 flex flex-col gap-4 border-t border-border pt-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              <Field label="Drug name">
+                <Input name="drugName" required className="w-full" />
+              </Field>
+              <Field label="Strength">
+                <Input name="strength" placeholder="500mg" className="w-full" />
+              </Field>
+              <Field label="Dosage">
+                <Input name="dosage" placeholder="1 tablet" className="w-full" />
+              </Field>
+              <Field label="Frequency">
+                <Input name="frequency" placeholder="Twice daily" className="w-full" />
+              </Field>
+              <Field label="Days">
+                <Input name="durationDays" type="number" className="w-full" />
+              </Field>
             </div>
-            <Field label="Instructions" name="instructions" placeholder="Optional" />
-            <Button variant="ghost">Add medicine</Button>
+            <Field label="Instructions" hint="Optional">
+              <Input name="instructions" className="w-full" />
+            </Field>
+            <Button variant="ghost" className="self-start">
+              Add medicine
+            </Button>
           </form>
         )}
       </Card>
@@ -154,42 +164,5 @@ export default async function ConsultationPage({
         </form>
       )}
     </div>
-  );
-}
-
-function TextArea({
-  label,
-  name,
-  defaultValue,
-  disabled,
-}: {
-  label: string;
-  name: string;
-  defaultValue?: string | null;
-  disabled?: boolean;
-}) {
-  return (
-    <label style={{ display: "block", marginBottom: 12 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink-muted)", marginBottom: 4 }}>
-        {label}
-      </div>
-      <textarea
-        name={name}
-        defaultValue={defaultValue ?? ""}
-        disabled={disabled}
-        rows={2}
-        style={{
-          width: "100%",
-          padding: "9px 12px",
-          borderRadius: 10,
-          border: "1px solid var(--border)",
-          background: disabled ? "var(--border)" : "var(--surface)",
-          color: "var(--ink)",
-          fontSize: 14,
-          fontFamily: "inherit",
-          resize: "vertical",
-        }}
-      />
-    </label>
   );
 }
