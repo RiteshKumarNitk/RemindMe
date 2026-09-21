@@ -1,0 +1,23 @@
+Failed to bind web development server:
+SocketException: Failed to create server socket (OS Error: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+, errno = 10048), address = localhost, port = 8081
+#0      _NativeSocket.bind (dart:io-patch/socket_patch.dart:1220:7)
+<asynchronous suspension>
+#1      _RawServerSocket.bind.<anonymous closure> (dart:io-patch/socket_patch.dart:2166:12)
+<asynchronous suspension>
+#2      _ServerSocket.bind.<anonymous closure> (dart:io-patch/socket_patch.dart:2521:12)
+<asynchronous suspension>
+#3      _HttpServer.bind.<anonymous closure> (dart:_http/http_impl.dart:3506:24)
+<asynchronous suspension>
+#4      WebAssetServer.start (package:flutter_tools/src/isolated/web_asset_server.dart:240:24)
+<asynchronous suspension>
+#5      WebDevFS.create (package:flutter_tools/src/isolated/devfs_web.dart:209:22)
+<asynchronous suspension>
+#6      ResidentWebRunner.run.<anonymous closure> (package:flutter_tools/src/isolated/resident_web_runner.dart:354:19)
+<asynchronous suspension>
+#7      asyncGuard.<anonymous closure> (package:flutter_tools/src/base/async_guard.dart:108:24)
+<asynchronous suspension>
+
+Failed to bind web development server:
+SocketException: Failed to create server socket (OS Error: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+, errno = 10048), address = localhost, port = 8081

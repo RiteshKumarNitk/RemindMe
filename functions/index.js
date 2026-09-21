@@ -32,15 +32,18 @@ exports.onDoseWrite = functions.firestore
     const name = after.medicine_name || 'Medicine';
     const time = after.scheduled_at || after.scheduledAt || '';
 
-    const household = await admin
+    // Members live in a subcollection (households/{id}/members/{uid}),
+    // not as a map on the household document. Query the subcollection
+    // to collect FCM tokens from every household member.
+    const membersSnap = await admin
       .firestore()
       .collection('households')
       .doc(code)
+      .collection('members')
       .get();
-    const members = (household.data() && household.data().members) || {};
 
-    const tokens = Object.values(members)
-      .map((m) => m && m.fcmToken)
+    const tokens = membersSnap.docs
+      .map((doc) => doc.data().fcmToken)
       .filter((t) => typeof t === 'string' && t.length > 0);
 
     if (tokens.length === 0) return;

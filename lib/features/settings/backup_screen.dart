@@ -16,6 +16,7 @@ class _BackupScreenState extends State<BackupScreen> {
   List<BackupInfo> _backups = [];
   bool _loading = true;
   bool _operating = false;
+  String? _loadError;
 
   @override
   void initState() {
@@ -24,13 +25,27 @@ class _BackupScreenState extends State<BackupScreen> {
   }
 
   Future<void> _loadBackups() async {
-    setState(() => _loading = true);
-    final backups = await _backupService.listBackups();
-    if (mounted) {
-      setState(() {
-        _backups = backups;
-        _loading = false;
-      });
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final backups = await _backupService.listBackups();
+      if (mounted) {
+        setState(() {
+          _backups = backups;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      // Surface the failure inline (with a Retry) instead of leaving the
+      // spinner up forever or only flashing a transient SnackBar.
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadError = '$e';
+        });
+      }
     }
   }
 
@@ -120,8 +135,16 @@ class _BackupScreenState extends State<BackupScreen> {
     );
 
     if (confirmed == true) {
-      await _backupService.deleteBackup(backup.path);
-      await _loadBackups();
+      try {
+        await _backupService.deleteBackup(backup.path);
+        await _loadBackups();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Delete failed: $e')),
+          );
+        }
+      }
     }
   }
 
@@ -135,6 +158,8 @@ class _BackupScreenState extends State<BackupScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
+          : _loadError != null
+          ? _LoadErrorView(message: _loadError!, onRetry: _loadBackups)
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
@@ -271,6 +296,59 @@ class _BackupScreenState extends State<BackupScreen> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+/// Shown when the backup list can't be read. Keeps the user out of an
+/// infinite spinner and offers a Retry instead of a dead end.
+class _LoadErrorView extends StatelessWidget {
+  const _LoadErrorView({required this.message, required this.onRetry});
+
+  final String message;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.cloud_off_rounded,
+              size: 48,
+              color: theme.colorScheme.error,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "Couldn't load your backups",
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () => onRetry(),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

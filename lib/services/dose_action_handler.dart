@@ -60,6 +60,7 @@ class DoseActionHandler {
         );
         await scheduler.scheduleDoseReminder(
           doseId: doseId,
+          medicineId: medicine.id,
           title: text.title(medicine.name),
           body: text.body(
             medicine.name,

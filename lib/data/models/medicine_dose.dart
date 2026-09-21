@@ -30,14 +30,18 @@ class MedicineDose {
   }) : createdAt = createdAt ?? DateTime.now(),
        updatedAt = updatedAt ?? DateTime.now();
 
+  /// Sentinel value to distinguish "parameter not supplied" from
+  /// "parameter explicitly supplied as null" in [copyWith].
+  static const _sentinel = Object();
+
   MedicineDose copyWith({
     int? id,
     int? medicineId,
     DateTime? scheduledAt,
     DoseStatus? status,
-    DateTime? takenAt,
-    DateTime? skippedAt,
-    DateTime? snoozedUntil,
+    Object? takenAt = _sentinel,
+    Object? skippedAt = _sentinel,
+    Object? snoozedUntil = _sentinel,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -46,9 +50,9 @@ class MedicineDose {
       medicineId: medicineId ?? this.medicineId,
       scheduledAt: scheduledAt ?? this.scheduledAt,
       status: status ?? this.status,
-      takenAt: takenAt ?? this.takenAt,
-      skippedAt: skippedAt ?? this.skippedAt,
-      snoozedUntil: snoozedUntil ?? this.snoozedUntil,
+      takenAt: identical(takenAt, _sentinel) ? this.takenAt : takenAt as DateTime?,
+      skippedAt: identical(skippedAt, _sentinel) ? this.skippedAt : skippedAt as DateTime?,
+      snoozedUntil: identical(snoozedUntil, _sentinel) ? this.snoozedUntil : snoozedUntil as DateTime?,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

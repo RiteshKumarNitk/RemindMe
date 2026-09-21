@@ -345,6 +345,9 @@ class AppLocalizationsHi extends AppLocalizations {
   String get medSearch => 'दवाएं खोजें...';
 
   @override
+  String get medSearchClear => 'खोज साफ़ करें';
+
+  @override
   String get medSearchEmpty => 'आपकी खोज से कोई दवा मेल नहीं खाती';
 
   @override
@@ -917,6 +920,51 @@ class AppLocalizationsHi extends AppLocalizations {
   String get profileSignedOut => 'सफलतापूर्वक साइन आउट हो गया';
 
   @override
+  String get profileDangerZone => 'खतरे का क्षेत्र';
+
+  @override
+  String get profileDeleteAccount => 'मेरा खाता और डेटा हटाएं';
+
+  @override
+  String get profileDeleteAccountDesc =>
+      'इस डिवाइस की सारी जानकारी, और साइन इन हो तो आपका खाता भी, स्थायी रूप से मिटाएं';
+
+  @override
+  String get profileDeleteAccountConfirmTitle => 'सब कुछ हटाएं?';
+
+  @override
+  String get profileDeleteAccountConfirmBody =>
+      'यह इस डिवाइस पर मौजूद हर दवा, खुराक और इतिहास स्थायी रूप से हटा देगा। इसे वापस नहीं किया जा सकता।';
+
+  @override
+  String get profileDeleteAccountConfirmBodySignedIn =>
+      'यह आपका साइन-इन खाता भी हटा देगा और आपको आपके परिवार से हटा देगा।';
+
+  @override
+  String get profileDeleteAccountButton => 'सब कुछ हटाएं';
+
+  @override
+  String get profileDeleteAccountReauthTitle => 'कृपया फिर से साइन इन करें';
+
+  @override
+  String get profileDeleteAccountReauthBody =>
+      'सुरक्षा कारणों से, खाता हटाने के लिए हाल ही में साइन इन होना ज़रूरी है। फिर से साइन इन करें और दोबारा कोशिश करें।';
+
+  @override
+  String get profileDeleteAccountReauthButton => 'फिर से साइन इन करें';
+
+  @override
+  String get profileDeleteAccountDone => 'सब कुछ हटा दिया गया है।';
+
+  @override
+  String get profileDeleteAccountPartial =>
+      'इस डिवाइस का डेटा हटा दिया गया। कुछ खाता-सफाई पूरी नहीं हो सकी — बाद में ऑनलाइन रहते हुए दोबारा कोशिश करें।';
+
+  @override
+  String get profileDeleteAccountOwnerNote =>
+      'आपने एक परिवार समूह बनाया था, इसलिए थोड़ी सदस्यता जानकारी तब तक रहेगी जब तक कोई अन्य सदस्य उसे न हटाए।';
+
+  @override
   String get profileSignInPrompt =>
       'अपनी दवाओं को विभिन्न डिवाइसों पर परिवार के साथ सिंक करने के लिए Google से साइन इन करें।';
 
@@ -947,4 +995,17 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get navProfile => 'प्रोफ़ाइल';
+
+  @override
+  String get elapsedJustNow => 'अभी';
+
+  @override
+  String elapsedMinAgo(int minutes) {
+    return '$minutes मिनट पहले';
+  }
+
+  @override
+  String elapsedHourMinAgo(int hours, int minutes) {
+    return '$hoursघ $minutesमि पहले';
+  }
 }

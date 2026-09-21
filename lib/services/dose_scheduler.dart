@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import '../core/notifications/notification_service.dart';
 import '../core/notifications/reminder_text.dart';
 import '../data/models/dose_status.dart';
@@ -51,7 +53,7 @@ class DoseScheduler {
         '${d.medicineId}_${d.scheduledAt.toIso8601String()}': d,
     };
 
-    final desired = <int, ({DateTime when, Medicine medicine})>{};
+    final desired = <int, ({DateTime when, Medicine medicine, MedicineDose dose})>{};
     for (final med in medicines) {
       if (!med.active) continue;
       for (final s in med.schedules.where((s) => s.enabled)) {
@@ -69,23 +71,72 @@ class DoseScheduler {
           if (dose == null) continue;
           final when = _notificationTime(dose, now);
           if (when != null) {
-            desired[dose.id!] = (when: when, medicine: med);
+            desired[dose.id!] = (when: when, medicine: med, dose: dose);
           }
         }
       }
     }
 
     final pending = await scheduler.pendingIds();
+    developer.log(
+      'DoseScheduler.sync: ${medicines.length} medicines, '
+      '${desired.length} desired doses, ${pending.length} already pending',
+      name: 'DoseScheduler',
+    );
+    // On the first sync after a device reboot / app update, `pending` is the
+    // set the plugin's native ScheduledNotificationBootReceiver already
+    // re-registered with AlarmManager (no Dart ran to do this). This line
+    // lets the log prove reboot recovery happened; sync then reconciles any
+    // gaps against the DB below (creates missing, cancels stale).
+    developer.log(
+      'DOSE_BOOT_RESTORE osPendingAlarmIds=${(pending.toList()..sort())} '
+      'count=${pending.length} desiredThisWindow=${desired.length}',
+      name: 'DoseAudit',
+    );
     for (final entry in desired.entries) {
       final med = entry.value.medicine;
+      final dose = entry.value.dose;
       final doseWhen = entry.value.when;
       // "1 tablet · 20 mg · after food · 2:30 PM" — always in the notification.
       final info = text.info(med.doseLabel, med.foodInstruction, doseWhen);
 
+      // If the notification is already pending, check whether the fire time
+      // has drifted from the original scheduled time (e.g. the dose became
+      // overdue and should now fire immediately). If so, cancel the stale
+      // notification and re-schedule so the user gets prompted promptly.
+      final alreadyPending = pending.contains(entry.key);
+      var wasRescheduled = false;
+      if (alreadyPending) {
+        final originalTime = dose.snoozedUntil ?? dose.scheduledAt;
+        if (!doseWhen.isAtSameMomentAs(originalTime)) {
+          developer.log(
+            'Fire time changed for dose ${entry.key}: '
+            'was ${originalTime.toIso8601String()} → now ${doseWhen.toIso8601String()}, '
+            're-scheduling',
+            name: 'DoseScheduler',
+          );
+          await scheduler.cancel(entry.key);
+          pending.remove(entry.key);
+          wasRescheduled = true;
+        }
+      }
+
       // Main reminder — only (re)schedule if it isn't already queued.
+      // The canonical DOSE_ALARM_SCHEDULE record (with the landed
+      // scheduleMethod + osQueueVerified) is emitted inside
+      // NotificationService.scheduleDoseReminder.
       if (!pending.contains(entry.key)) {
+        if (wasRescheduled) {
+          developer.log(
+            'DOSE_ALARM_SCHEDULE doseId=${entry.key} note=rescheduled '
+            '(fire time moved from ${(dose.snoozedUntil ?? dose.scheduledAt)
+                .toIso8601String()} to ${doseWhen.toIso8601String()})',
+            name: 'DoseAudit',
+          );
+        }
         await scheduler.scheduleDoseReminder(
           doseId: entry.key,
+          medicineId: med.id,
           title: text.title(med.name),
           body: text.body(med.name, info),
           when: doseWhen,
@@ -93,6 +144,11 @@ class DoseScheduler {
           takenLabel: text.takenLabel,
           snoozeLabel: text.snoozeLabel,
           skipLabel: text.skipLabel,
+        );
+      } else {
+        developer.log(
+          'Dose ${entry.key} already pending with correct time, skipping',
+          name: 'DoseScheduler',
         );
       }
 
@@ -107,6 +163,7 @@ class DoseScheduler {
         if (pending.contains(advanceKey)) continue;
         await scheduler.scheduleAdvanceAlarm(
           doseId: entry.key,
+          medicineId: med.id,
           offset: offset,
           title: text.title(med.name),
           body: text.body(med.name, info),
@@ -117,7 +174,13 @@ class DoseScheduler {
     }
     for (final id in pending) {
       if (!desired.containsKey(id)) {
+        developer.log('Cancelling stale notification id=$id', name: 'DoseScheduler');
         await scheduler.cancel(id);
+        developer.log(
+          'DOSE_CANCEL notificationId=$id alarmId=$id result=cancelled '
+          'reason=no-longer-desired',
+          name: 'DoseAudit',
+        );
       }
     }
     // Cancel advance alarm notifications for doses no longer needed.

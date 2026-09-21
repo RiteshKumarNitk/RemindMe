@@ -345,6 +345,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get medSearch => 'Search medicines...';
 
   @override
+  String get medSearchClear => 'Clear search';
+
+  @override
   String get medSearchEmpty => 'No medicines match your search';
 
   @override
@@ -917,6 +920,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileSignedOut => 'Signed out successfully';
 
   @override
+  String get profileDangerZone => 'Danger zone';
+
+  @override
+  String get profileDeleteAccount => 'Delete my account & data';
+
+  @override
+  String get profileDeleteAccountDesc =>
+      'Permanently erase everything on this device, and your account if signed in';
+
+  @override
+  String get profileDeleteAccountConfirmTitle => 'Delete everything?';
+
+  @override
+  String get profileDeleteAccountConfirmBody =>
+      'This permanently deletes every medicine, dose and history entry stored on this device. This cannot be undone.';
+
+  @override
+  String get profileDeleteAccountConfirmBodySignedIn =>
+      'It will also delete your signed-in account and remove you from any family you\'ve joined.';
+
+  @override
+  String get profileDeleteAccountButton => 'Delete everything';
+
+  @override
+  String get profileDeleteAccountReauthTitle => 'Please sign in again';
+
+  @override
+  String get profileDeleteAccountReauthBody =>
+      'For your security, deleting your account needs a recent sign-in. Sign in again, then try again.';
+
+  @override
+  String get profileDeleteAccountReauthButton => 'Sign in again';
+
+  @override
+  String get profileDeleteAccountDone => 'Everything has been deleted.';
+
+  @override
+  String get profileDeleteAccountPartial =>
+      'Your data on this device was deleted. Some account cleanup couldn\'t finish — you can try again later while online.';
+
+  @override
+  String get profileDeleteAccountOwnerNote =>
+      'You created a family household, so a small amount of membership info stays until another member removes it.';
+
+  @override
   String get profileSignInPrompt =>
       'Sign in with Google to sync your medicines with family members across devices.';
 
@@ -947,4 +995,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get navProfile => 'Profile';
+
+  @override
+  String get elapsedJustNow => 'just now';
+
+  @override
+  String elapsedMinAgo(int minutes) {
+    return '$minutes min ago';
+  }
+
+  @override
+  String elapsedHourMinAgo(int hours, int minutes) {
+    return '${hours}h ${minutes}m ago';
+  }
 }

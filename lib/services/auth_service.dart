@@ -97,7 +97,10 @@ class AuthService extends ChangeNotifier {
       }
 
       _debugInfo = 'Got Google account: ${account.email}';
-      developer.log('Got Google account: ${account.email}', name: 'Auth');
+      // Don't log the raw email to `developer.log` — it persists to logcat
+      // on every build, unlike `_debugInfo` (only ever shown in a
+      // kDebugMode-gated UI card). Log that sign-in progressed, not the PII.
+      developer.log('Got Google account', name: 'Auth');
 
       final auth = await account.authentication;
       if (auth.accessToken == null || auth.idToken == null) {
@@ -126,7 +129,7 @@ class AuthService extends ChangeNotifier {
 
       _debugInfo = 'Signed in successfully: ${result.user!.email}';
       _error = null;
-      developer.log('Signed in: ${result.user!.email}', name: 'Auth');
+      developer.log('Signed in successfully', name: 'Auth');
       notifyListeners();
       return result.user;
     } on FirebaseAuthException catch (e) {
@@ -201,6 +204,23 @@ class AuthService extends ChangeNotifier {
       _debugInfo = 'Sign-out error: $e';
       developer.log('Sign-out failed: $e', name: 'Auth', error: e);
     }
+  }
+
+  /// Permanently deletes the signed-in user's Firebase Auth account. Unlike
+  /// most methods here, errors are NOT swallowed — this is a destructive,
+  /// security-sensitive operation and the caller (`AccountDeletionService`)
+  /// needs to know exactly what happened, in particular a
+  /// [FirebaseAuthException] with code `requires-recent-login` (Firebase's
+  /// own safeguard: it refuses to delete an account whose sign-in is more
+  /// than ~5 minutes old) so the UI can prompt the user to sign in again and
+  /// retry, rather than silently failing to delete anything.
+  Future<void> deleteAccount() async {
+    final current = _auth?.currentUser;
+    if (current == null) return;
+    await current.delete();
+    _debugInfo = 'Account deleted';
+    developer.log('Firebase Auth account deleted', name: 'Auth');
+    notifyListeners();
   }
 
   /// Updates the user's display name.

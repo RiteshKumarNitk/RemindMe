@@ -27,11 +27,17 @@ class MedicineRepository {
   }
 
   Future<Medicine?> getById(int id) async {
-    final all = await getAll();
-    for (final m in all) {
-      if (m.id == id) return m;
-    }
-    return null;
+    final db = await _db.database;
+    final rows = await db.query(
+      'medicines',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    final med = Medicine.fromMap(rows.first);
+    final schedules = await _schedulesForMedicine(id);
+    return med.copyWith(schedules: schedules);
   }
 
   Future<Medicine?> getByName(String name) async {
@@ -43,7 +49,10 @@ class MedicineRepository {
       limit: 1,
     );
     if (rows.isEmpty) return null;
-    return getById(rows.first['id'] as int);
+    final id = rows.first['id'] as int;
+    final med = Medicine.fromMap(rows.first);
+    final schedules = await _schedulesForMedicine(id);
+    return med.copyWith(schedules: schedules);
   }
 
   /// Inserts the medicine and its schedules in a transaction.
@@ -90,9 +99,24 @@ class MedicineRepository {
     if (id != null) await _sync?.enqueueMedicine(id, medicine.updatedAt);
   }
 
+  /// Deletes a medicine and all its dependent records (schedules, doses).
+  /// With ON DELETE CASCADE on medicine_doses and medicine_schedules, the
+  /// database handles cleanup automatically. We also explicitly clean up
+  /// for safety on databases that may not have the FK yet.
   Future<void> delete(int id) async {
     final db = await _db.database;
-    await db.delete('medicines', where: 'id = ?', whereArgs: [id]);
+    await db.transaction((txn) async {
+      await txn.delete(
+        'medicine_doses',
+        where: 'medicine_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete(
+        'medicines',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    });
   }
 
   Future<void> deleteIfExists(int id) async {
@@ -190,6 +214,17 @@ class MedicineRepository {
   Future<List<MedicineSchedule>> _allSchedules() async {
     final db = await _db.database;
     final rows = await db.query('medicine_schedules', orderBy: 'hour, minute');
+    return rows.map(MedicineSchedule.fromMap).toList();
+  }
+
+  Future<List<MedicineSchedule>> _schedulesForMedicine(int medicineId) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'medicine_schedules',
+      where: 'medicine_id = ?',
+      whereArgs: [medicineId],
+      orderBy: 'hour, minute',
+    );
     return rows.map(MedicineSchedule.fromMap).toList();
   }
 }

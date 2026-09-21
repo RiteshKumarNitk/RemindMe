@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 
@@ -196,6 +197,18 @@ class AppState extends ChangeNotifier {
     final now = DateTime.now();
     final grace = settings.graceDuration;
 
+    // Status line every reconcile so a missed reminder can be pinned to a
+    // permission / battery state. alarmCapability=false only degrades exact
+    // delivery — alarmClock mode still works without the grant.
+    final permsOk = _notificationsEnabled;
+    developer.log(
+      'DOSE_PERMS result=${permsOk ? 'ok' : 'permission_denied'} '
+      'notifications=$_notificationsEnabled '
+      'batteryOptimization=${_batteryUnrestricted ? 'unrestricted' : 'restricted'} '
+      'alarmCapability=$_exactAlarmsEnabled',
+      name: 'DoseAudit',
+    );
+
     await doseRepository.sweepMissed(grace, now);
     await doseScheduler.sync(
       now: now,
@@ -248,6 +261,7 @@ class AppState extends ChangeNotifier {
     _lastActionPreviousStatus = entry.dose.status;
     _lastActionPreviousTakenAt = entry.dose.takenAt;
     _lastActionPreviousSkippedAt = entry.dose.skippedAt;
+    _lastActionUndoFailed = false;
   }
 
   /// Reverts the last markTaken / markSkipped action.
@@ -255,17 +269,36 @@ class AppState extends ChangeNotifier {
     final entry = _lastActionEntry;
     final prevStatus = _lastActionPreviousStatus;
     if (entry == null || prevStatus == null) return;
-    await doseRepository.restorePreviousStatus(
-      entry.dose.id!,
-      status: prevStatus,
-      takenAt: _lastActionPreviousTakenAt,
-      skippedAt: _lastActionPreviousSkippedAt,
-    );
+    try {
+      await doseRepository.restorePreviousStatus(
+        entry.dose.id!,
+        status: prevStatus,
+        takenAt: _lastActionPreviousTakenAt,
+        skippedAt: _lastActionPreviousSkippedAt,
+      );
+      await refresh();
+    } catch (e, st) {
+      // Keep the undo snapshot so the user can try again — losing it would
+      // make the action permanently irreversible if the refresh failed.
+      debugPrint('undoLastAction failed, retaining undo state: $e\n$st');
+      _lastActionUndoFailed = true;
+      notifyListeners();
+      return;
+    }
+    // DB write + refresh both succeeded: now it is safe to drop the snapshot.
     _lastActionEntry = null;
     _lastActionPreviousStatus = null;
-    await refresh();
+    _lastActionPreviousTakenAt = null;
+    _lastActionPreviousSkippedAt = null;
+    _lastActionUndoFailed = false;
     unawaited(sync.syncNow());
   }
+
+  /// True when the most recent [undoLastAction] could not be completed (the
+  /// DB write or the subsequent refresh threw). The undo state is retained so
+  /// the UI can offer a retry.
+  bool get lastUndoFailed => _lastActionUndoFailed;
+  bool _lastActionUndoFailed = false;
 
   bool get canUndo => _lastActionEntry != null;
 
@@ -306,6 +339,7 @@ class AppState extends ChangeNotifier {
     );
     await notifications.scheduleDoseReminder(
       doseId: entry.dose.id!,
+      medicineId: med.id,
       title: text.title(med.name),
       body: text.body(
         med.name,

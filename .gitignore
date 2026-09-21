@@ -43,3 +43,23 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Platform (Next.js backend, see platform/) — mirrors platform/.gitignore.
+# Kept here too so root-level tooling (and anyone running git from the repo
+# root) never accidentally stages secrets or build output from platform/.
+platform/.env
+
+# Firebase config contains an API key; GitHub flagged it as a public leak.
+# Each dev/CI must supply their own from the Firebase console.
+android/app/google-services.json
+platform/.env.*
+!platform/.env.example
+platform/node_modules/
+platform/.next/
+platform/out/
+platform/dist/
+platform/build/
+platform/*.tsbuildinfo
+platform/coverage/
+platform/prisma/*.db
+platform/prisma/*.db-journal

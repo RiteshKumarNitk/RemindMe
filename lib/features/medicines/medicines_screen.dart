@@ -108,6 +108,7 @@ class _MedicinesScreenState extends State<MedicinesScreen> {
                         prefixIcon: const Icon(Icons.search_rounded),
                         suffixIcon: _query.isNotEmpty
                             ? IconButton(
+                                tooltip: l10n.medSearchClear,
                                 icon: const Icon(Icons.clear_rounded),
                                 onPressed: () {
                                   _searchController.clear();

@@ -8,6 +8,9 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
     // Reads google-services.json for Firebase (see README section 9).
     id("com.google.gms.google-services")
+    // Uploads native (Kotlin/Java) crash symbols for Crashlytics; the Dart
+    // side is wired in lib/main.dart via the firebase_crashlytics package.
+    id("com.google.firebase.crashlytics")
 }
 
 // Release signing: create android/key.properties (git-ignored) with
@@ -65,6 +68,15 @@ android {
                 // Fallback so `flutter run --release` still works without a keystore.
                 signingConfigs.getByName("debug")
             }
+            // Minification/shrinking is intentionally OFF for now (larger but
+            // safer APK/AAB) — see proguard-rules.pro's header comment for
+            // why, and what must happen before it's turned on.
+            isMinifyEnabled = false
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
@@ -80,11 +92,15 @@ dependencies {
 
     // Firebase BoM — manages all Firebase SDK versions centrally.
     // Analytics is intentionally omitted: the app collects no analytics, which
-    // keeps the Play "Data safety" declaration minimal.
+    // keeps the Play "Data safety" declaration minimal. Crashlytics DOES
+    // collect crash/diagnostic data (device model, OS version, stack traces)
+    // — this must be added to the Play "Data safety" form before release
+    // (see PLAY_STORE_RELEASE.md).
     implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-crashlytics")
 }
 
 flutter {

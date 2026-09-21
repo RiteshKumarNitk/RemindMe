@@ -14,6 +14,7 @@ import 'features/profile/profile_screen.dart';
 import 'features/splash/splash_screen.dart';
 import 'data/models/dose_entry.dart';
 import 'data/models/dose_status.dart';
+import 'services/account_deletion_service.dart';
 import 'services/auth_service.dart';
 import 'services/settings_controller.dart';
 import 'services/sync/sync_service.dart';
@@ -26,12 +27,14 @@ class MediReminderApp extends StatelessWidget {
     required this.settings,
     required this.sync,
     required this.auth,
+    required this.accountDeletion,
   });
 
   final AppState appState;
   final SettingsController settings;
   final SyncService sync;
   final AuthService auth;
+  final AccountDeletionService accountDeletion;
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +44,7 @@ class MediReminderApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: appState),
         ChangeNotifierProvider.value(value: sync),
         ChangeNotifierProvider.value(value: auth),
+        Provider<AccountDeletionService>.value(value: accountDeletion),
       ],
       child: Consumer<SettingsController>(
         builder: (context, s, _) {

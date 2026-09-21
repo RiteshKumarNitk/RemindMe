@@ -6,15 +6,31 @@ Everything you need to publish DoseWise to Google Play. Work top to bottom.
 
 ## 0. Build artifact (done)
 
-- **File:** `build/app/outputs/bundle/release/app-release.aab` (~47.7 MB)
-- **Signed with:** upload key `CN=DoseWise` — `jarsigner -verify` → *jar verified*
-- **Keystore:** `C:\Users\RiteshKumar\keystores\dosewise-upload.jks` (alias `upload`,
-  store/key password `DoseWise@2026!`, valid to 2054)
-- **Package name (permanent):** `com.family.medireminder`
-- **Version:** `1.0.0` (versionCode 1) — from `pubspec.yaml` `version: 1.0.0+1`
+> ⚠️ **This section previously contained the real upload-keystore password in
+> plaintext, committed to git.** It has been redacted here, but it already
+> exists in this repo's git history (and, if this repo has ever been pushed,
+> on the remote too) — **treat that password as compromised**. Rotate it
+> before relying on this keystore for a production upload:
+> `keytool -storepasswd -keystore <path-to-jks>` and
+> `keytool -keypasswd -keystore <path-to-jks> -alias upload`, then update the
+> password values in the local (git-ignored) `android/key.properties`. Never
+> put a real secret — password, API secret key, private key — in a committed
+> file again; `android/key.properties` already exists for exactly this
+> purpose and is git-ignored.
 
-> **Back up the `.jks` file and its password now, in two places.** Losing it means you can
-> never update the app (only a Play key reset, if you enrol in Play App Signing).
+- **File:** `build/app/outputs/bundle/release/app-release.aab` — **stale**: this was
+  built against `version: 1.0.0+1`; `pubspec.yaml` is now `1.0.1+2`. Rebuild
+  (`flutter build appbundle --release`) before uploading anything.
+- **Signed with:** upload key `CN=DoseWise` — `jarsigner -verify` → *jar verified*
+  (as of the stale 1.0.0+1 build; re-verify after rebuilding)
+- **Keystore:** local path and credentials live only in the git-ignored
+  `android/key.properties` — see that file, not this document.
+- **Package name (permanent):** `com.family.medireminder`
+
+> **Back up the `.jks` file (and, separately, its — now-rotated — password)
+> now, in two places, neither of which is this git repository.** Losing it
+> means you can never update the app (only a Play key reset, if you enrol in
+> Play App Signing).
 
 **Bump for every future upload:** change `version:` in `pubspec.yaml` — e.g. `1.0.1+2`,
 then `1.1.0+3`. The number after `+` (versionCode) must always increase.
@@ -105,8 +121,10 @@ FAMILY SYNC (optional)
 • Everyone can both manage their own medicines and help watch a relative.
 
 PRIVACY
-• No ads. No data selling. No analytics.
+• No ads. No data selling.
 • Cloud sharing is off by default and limited to the family members you invite.
+• Crash reports (device model, OS version, and what the app was doing when it
+  crashed — no medicine names or personal data) help us fix bugs.
 
 DoseWise is a reminder tool, not a medical device. It does not give medical advice —
 always follow your doctor or pharmacist.
@@ -136,7 +154,10 @@ profanity, no gambling, no user-generated content shared publicly. Reference to
 
 ## 6. Data safety form (App content → Data safety)
 
-Declare the following. (Analytics was removed from the build, so there is none.)
+Declare the following. (Analytics — the general-purpose kind, e.g. Google
+Analytics — was deliberately never added. **Crashlytics was added
+2026-09-15** and must be declared separately below; it is crash/diagnostic
+data, not behavioral analytics, but Play's form still wants it disclosed.)
 
 **Does your app collect or share user data?** Yes.
 
@@ -148,15 +169,22 @@ Declare the following. (Analytics was removed from the build, so there is none.)
 | Health info (medicines, schedules, dose history) | Yes | Yes | App functionality (reminders & family sharing) | Yes — only if Family Sync is on |
 | App activity — other (adherence/dose events) | Yes | Yes | App functionality | Yes |
 | Device or other IDs (FCM push token) | Yes | No | App functionality (missed-dose alerts) | Yes |
+| Crash logs / diagnostics (Crashlytics — device model, OS version, stack traces) | Yes | No | Analytics (app stability/bug-fixing) | No — collection is automatic, but only when Crashlytics is enabled server-side and never in debug builds |
 
 - **Encrypted in transit:** Yes.
-- **Users can request data deletion:** Yes — provide your support email; users turn off
-  Family Sync and email you to delete the household.
-- All items above are **only** collected when the user signs in / enables Family Sync;
-  mark them optional.
-- If you do **not** enable Family Sync features for launch, you can instead answer
-  "No, this app does not collect or share any user data" — but Google Sign-In on the
-  Profile screen still collects account data, so keep the table above.
+- **Users can request data deletion:** Yes, **in-app** — Profile → "Delete my
+  account & data" (built 2026-09-15, `AccountDeletionService`). This
+  permanently wipes local data always, and best-effort deletes the user's
+  household membership + Firebase Auth account when signed in. The web
+  page `docs/delete-account.html` is a secondary/fallback path, not the
+  primary one — update its copy to point at the in-app flow first.
+- All items above except crash logs are **only** collected when the user
+  signs in / enables Family Sync; mark them optional.
+- If you do **not** enable Family Sync features for launch, you can instead
+  answer "No, this app does not collect or share any user data" for the
+  rows above the crash-logs row — but Google Sign-In on the Profile screen
+  still collects account data, and Crashlytics collects diagnostics
+  regardless, so keep those declared.
 
 ---
 

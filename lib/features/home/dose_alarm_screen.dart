@@ -84,16 +84,15 @@ class _DoseAlarmScreenState extends State<DoseAlarmScreen>
     });
   }
 
-  String get _elapsed {
+  String _elapsed(AppLocalizations l10n) {
     final diff = _now.difference(widget.entry.dose.scheduledAt);
     if (diff.isNegative) return '';
     final mins = diff.inMinutes;
-    if (mins == 0) return 'just now';
-    if (mins == 1) return '1 min ago';
-    if (mins < 60) return '$mins min ago';
+    if (mins == 0) return l10n.elapsedJustNow;
+    if (mins < 60) return l10n.elapsedMinAgo(mins);
     final hrs = diff.inHours;
     final remMins = mins % 60;
-    return '${hrs}h ${remMins}m ago';
+    return l10n.elapsedHourMinAgo(hrs, remMins);
   }
 
   String _foodLabel(AppLocalizations l10n, FoodInstruction food) {
@@ -239,7 +238,7 @@ class _DoseAlarmScreenState extends State<DoseAlarmScreen>
                 _AlarmChip(
                   icon: Icons.schedule_rounded,
                   label: AppDateUtils.timeLabel(entry.dose.scheduledAt, locale),
-                  trailing: _elapsed.isNotEmpty ? _elapsed : null,
+                  trailing: _elapsed(l10n).isNotEmpty ? _elapsed(l10n) : null,
                 ),
 
                 // Food instruction

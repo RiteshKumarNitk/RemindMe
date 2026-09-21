@@ -1,0 +1,192 @@
+@import "tailwindcss";
+
+:root {
+  --indigo: #4f46e5;
+  --indigo-dark: #3f37c9;
+  --coral: #f26d6d;
+  --surface: #f5f6fa;
+  --card: #ffffff;
+  --ink: #16182b;
+  --ink-muted: #5b5f7a;
+  --border: #e4e6f0;
+  --ok: #1f9d55;
+  --warn: #b45309;
+  --down: #d64545;
+  --focus-ring: #4f46e5;
+  --surface-2: #eef0f9;
+}
+
+
+/*
+ * Design-system token layer (PRODUCT_EVOLUTION_PLAN.md §14). These map the existing
+ * dashboard color variables above into Tailwind utilities (bg-indigo, text-ink-muted, ...)
+ * so new public-facing pages share the same palette as the existing dashboard, without
+ * touching how any existing inline-styled page renders.
+ */
+@theme {
+  --color-indigo: var(--indigo);
+  --color-indigo-dark: var(--indigo-dark);
+  --color-coral: var(--coral);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-border: var(--border);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-down: var(--down);
+  --color-focus: var(--focus-ring);
+  --color-surface-2: var(--surface-2);
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: var(--nf-sora), "Segoe UI", sans-serif;
+  --font-dash-body: var(--nf-plex-sans), "Segoe UI", sans-serif;
+  --font-dash-mono: var(--nf-plex-mono), ui-monospace, monospace;
+
+  --radius-card: 16px;
+  --radius-control: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  /* Light theme only, deliberately — no `prefers-color-scheme: dark` support.
+     Without this, a browser with a dark OS preference still dark-inverts
+     native chrome (scrollbars, date/select pickers) even though every color
+     in this file is a light-mode value. */
+  color-scheme: light;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--surface);
+  color: var(--ink);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+}
+
+a {
+  color: var(--indigo);
+}
+
+code {
+  background: var(--border);
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  font-size: 0.9em;
+}
+
+/*
+ * A single, consistent :focus-visible ring for every interactive element in the
+ * app — including the older inline-styled `app/dashboard/ui.tsx` kit, which can't
+ * express a `:focus-visible` pseudo-class through inline `style` objects. Applying
+ * it globally (rather than per-component) guarantees no button/link/input anywhere
+ * can end up with an invisible keyboard focus state.
+ */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Visually hidden but still announced by screen readers — for an accessible name
+   on a control that has no visible label (e.g. a filter select next to a button
+   that already says what it's for visually, or a table column with an icon-only
+   action). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Visually hidden unless focused — lets keyboard users jump past the sidebar nav. */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 8px;
+  z-index: 100;
+  background: var(--card);
+  color: var(--ink);
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  text-decoration: none;
+}
+.skip-link:focus {
+  top: 8px;
+}
+
+/*
+ * Shared responsive shell for the dashboard and admin sidebar layouts (both
+ * `app/dashboard/[orgId]/layout.tsx` and `app/admin/layout.tsx`). Below 768px the
+ * fixed 220px sidebar would either clip or force horizontal scroll on the whole
+ * page, so it collapses to a top bar with a horizontally-wrapping nav instead.
+ */
+.dashboard-shell {
+  display: flex;
+  min-height: 100vh;
+}
+.dashboard-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+}
+.dashboard-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.dashboard-nav a[aria-current="page"] {
+  background: var(--surface);
+  font-weight: 700;
+}
+.dashboard-main {
+  flex: 1;
+  padding: 32px 40px;
+  max-width: 980px;
+}
+
+@media (max-width: 768px) {
+  .dashboard-shell {
+    flex-direction: column;
+  }
+  .dashboard-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 16px;
+  }
+  .dashboard-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .dashboard-main {
+    padding: 20px 16px;
+    max-width: 100%;
+  }
+}
+
+/* Wraps the old ui.tsx `table` export so wide tables scroll horizontally on a
+   narrow screen instead of breaking the page layout or clipping columns. */
+.table-scroll {
+  overflow-x: auto;
+}

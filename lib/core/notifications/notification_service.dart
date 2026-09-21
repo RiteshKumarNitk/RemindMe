@@ -16,6 +16,7 @@ import '../constants/app_constants.dart';
 abstract class ReminderScheduler {
   Future<bool> scheduleDoseReminder({
     required int doseId,
+    int? medicineId,
     required String title,
     required String body,
     required DateTime when,
@@ -33,6 +34,7 @@ abstract class ReminderScheduler {
   /// Schedules an advance alarm notification (loops before dose time).
   Future<bool> scheduleAdvanceAlarm({
     required int doseId,
+    int? medicineId,
     required int offset,
     required String title,
     required String body,
@@ -58,11 +60,6 @@ class NotificationService implements ReminderScheduler {
   bool _initialized = false;
   bool _soundEnabled = true;
 
-  /// Set to false the first time `exactAllowWhileIdle` scheduling is rejected,
-  /// so we don't pay 2 extra failed platform round-trips for every remaining
-  /// dose in the same reconcile (this was the cause of the splash-screen hang).
-  bool _exactModeUsable = true;
-
   bool get initialized => _initialized;
 
   /// ~6 seconds of insistent buzzing so an elderly user notices even with the
@@ -83,12 +80,21 @@ class NotificationService implements ReminderScheduler {
   /// Version suffix for channel IDs. Bump when changing channel settings —
   /// Android caches channel config after first creation, so a new sound /
   /// importance / audio stream only takes effect on a channel ID it has
-  /// never seen. v9: re-add ALARM audio attributes on the channel so the
-  /// bundled WAV plays on the alarm stream (louder, bypasses Doze, and
-  /// works even when notification volume is down). The belt-and-suspenders
-  /// approach — sound on BOTH channel AND notification details — ensures
-  /// maximum device compatibility.
-  static const String _v = 'v9';
+  /// never seen.
+  ///
+  /// v10: actually set `audioAttributesUsage: AudioAttributesUsage.alarm` on
+  /// the channel AND the notification details. Up to v9 the code *claimed*
+  /// alarm audio attributes but never passed the parameter, so the WAV played
+  /// on the NOTIFICATION stream — inaudible whenever the user's ring/
+  /// notification volume is low (very common; the alarm/media volume is
+  /// usually left up). Vibration is stream-independent, which is why it kept
+  /// working while sound did not. USAGE_ALARM routes the sound to the alarm
+  /// stream: louder, survives ringer-mute, and honours `bypassDnd`.
+  static const String _v = 'v10';
+
+  /// Route reminder audio to the ALARM stream so a dose alert is heard even
+  /// when the phone's ringer/notification volume is down.
+  static const AudioAttributesUsage _alarmUsage = AudioAttributesUsage.alarm;
 
   // ---- Channel IDs (versioned) --------------------------------------------
 
@@ -109,7 +115,6 @@ class NotificationService implements ReminderScheduler {
   }) async {
     try {
       _soundEnabled = soundEnabled;
-      _exactModeUsable = true; // re-test exact scheduling each app run
       const androidInit =
           AndroidInitializationSettings('@mipmap/ic_launcher');
       const initSettings = InitializationSettings(android: androidInit);
@@ -182,6 +187,9 @@ class NotificationService implements ReminderScheduler {
       '${AppConstants.channelId}_v8',
       '${AppConstants.silentChannelId}_v8',
       '${AppConstants.familyChannelId}_v8',
+      '${AppConstants.channelId}_v9',
+      '${AppConstants.silentChannelId}_v9',
+      '${AppConstants.familyChannelId}_v9',
       _soundChannelId,
       _silentChannelId,
       _familyChannelId,
@@ -203,6 +211,7 @@ class NotificationService implements ReminderScheduler {
         importance: Importance.max,
         playSound: true,
         sound: _alarmSound,
+        audioAttributesUsage: _alarmUsage,
         enableVibration: true,
         vibrationPattern: _vibrationPattern,
         enableLights: true,
@@ -235,6 +244,7 @@ class NotificationService implements ReminderScheduler {
         importance: Importance.max,
         playSound: true,
         sound: _alarmSound,
+        audioAttributesUsage: _alarmUsage,
         enableVibration: true,
         vibrationPattern: _vibrationPattern,
         enableLights: true,
@@ -303,6 +313,7 @@ class NotificationService implements ReminderScheduler {
             category: AndroidNotificationCategory.reminder,
             playSound: true,
             sound: _alarmSound,
+            audioAttributesUsage: _alarmUsage,
             enableVibration: true,
             vibrationPattern: _vibrationPattern,
           ),
@@ -334,6 +345,7 @@ class NotificationService implements ReminderScheduler {
             category: AndroidNotificationCategory.reminder,
             playSound: true,
             sound: _alarmSound,
+            audioAttributesUsage: _alarmUsage,
             enableVibration: true,
             vibrationPattern: _vibrationPattern,
           ),
@@ -369,6 +381,7 @@ class NotificationService implements ReminderScheduler {
             category: AndroidNotificationCategory.reminder,
             playSound: true,
             sound: _alarmSound,
+            audioAttributesUsage: _alarmUsage,
             enableVibration: true,
             enableLights: true,
             ledColor: const Color(0xFF2E7D32),
@@ -601,7 +614,6 @@ class NotificationService implements ReminderScheduler {
       landedMode = 'alarmClock';
       exact = true;
     } else if (canExact &&
-        _exactModeUsable &&
         await attempt(AndroidScheduleMode.exactAllowWhileIdle)) {
       landedMode = 'exactAllowWhileIdle';
       exact = true;
@@ -616,6 +628,15 @@ class NotificationService implements ReminderScheduler {
       'scheduleSelfTest -> mode=$landedMode exact=$exact verified=$verified '
       'fireAt=${result.fireAt} tz=${result.tzName}',
       name: 'Notif',
+    );
+    developer.log(
+      'DOSE_ALARM_SCHEDULE medicineId=null doseId=99998 (SELF-TEST) '
+      'notificationId=99998 alarmId=99998 '
+      'effectiveLocal=${result.fireAt.toIso8601String()} '
+      'scheduleMethod=$landedMode osQueueVerified=$verified '
+      'timezone=${result.tzName} '
+      'result=${scheduled ? (exact ? 'scheduled' : 'scheduled_inexact') : 'schedule_failed'}',
+      name: 'DoseAudit',
     );
     return (
       scheduled: scheduled,
@@ -668,12 +689,18 @@ class NotificationService implements ReminderScheduler {
       channelName,
       channelDescription: AppConstants.channelDescription,
       importance: Importance.max,
-      priority: Priority.high,
-      category: AndroidNotificationCategory.reminder,
+      priority: Priority.max,
+      // CATEGORY_ALARM (not reminder): a medicine dose IS an alarm. Android
+      // 14+/15 rank it above heads-up, keep the full-screen intent, and let
+      // it through DnD more readily.
+      category: AndroidNotificationCategory.alarm,
       playSound: true,
       // Belt-and-suspenders: WAV sound on BOTH channel AND notification details.
       // Some OEMs (Samsung, Xiaomi, OnePlus) only respect one or the other.
       sound: _alarmSound,
+      // Route to the ALARM stream (see _v doc) so the dose alert is audible
+      // even with ring/notification volume down.
+      audioAttributesUsage: _alarmUsage,
       enableVibration: true,
       enableLights: true,
       ledColor: const Color(0xFF2E7D32),
@@ -698,6 +725,7 @@ class NotificationService implements ReminderScheduler {
   @override
   Future<bool> scheduleDoseReminder({
     required int doseId,
+    int? medicineId,
     required String title,
     required String body,
     required DateTime when,
@@ -706,7 +734,24 @@ class NotificationService implements ReminderScheduler {
     required String snoozeLabel,
     required String skipLabel,
   }) async {
-    if (!_initialized) return false;
+    if (!_initialized) {
+      developer.log('scheduleDoseReminder: NOT initialized, skipping dose=$doseId', name: 'Notif');
+      developer.log(
+        'DOSE_ERROR stage=schedule doseId=$doseId error=notification-service-not-initialized',
+        name: 'DoseAudit',
+      );
+      return false;
+    }
+    // A scheduled notification is dropped by the OS if POST_NOTIFICATIONS is
+    // denied — the alarm still fires but nothing is shown. Log it so the
+    // trace explains a silent miss.
+    if (!await areNotificationsEnabled()) {
+      developer.log(
+        'DOSE_ERROR stage=permission doseId=$doseId '
+        'error=POST_NOTIFICATIONS-denied (alarm will fire but not display)',
+        name: 'DoseAudit',
+      );
+    }
     final tzWhen = tz.TZDateTime.from(when, tz.local);
     // If time is in the past or very near, fire immediately so user still
     // gets the notification even if the app was closed when it became due.
@@ -716,6 +761,29 @@ class NotificationService implements ReminderScheduler {
     final channel = _soundEnabled ? _soundChannelId : _silentChannelId;
     final chName =
         _soundEnabled ? AppConstants.channelName : AppConstants.silentChannelName;
+
+    developer.log(
+      'scheduleDoseReminder: doseId=$doseId title="$title" '
+      'when=${when.toIso8601String()} fireAt=${fireAt.toIso8601String()} '
+      'channel=$channel exact=$exact tz=${tz.local.name}',
+      name: 'Notif',
+    );
+    // Timezone sanity line: the wall clock the user picked vs the exact local
+    // wall clock the OS alarm will fire at. scheduledLocal and effectiveLocal
+    // must read the same (no accidental UTC shift); scheduledUtc is the
+    // absolute instant. tzWhen carries the right instant even if the zone name
+    // fell back, so the UTC values are the source of truth.
+    developer.log(
+      'DOSE_TZ doseId=$doseId '
+      'deviceTimezone=${tz.local.name} '
+      'deviceNow=${DateTime.now().toIso8601String()} '
+      'scheduledLocal=${when.toIso8601String()} '
+      'scheduledUtc=${when.toUtc().toIso8601String()} '
+      'effectiveLocal=${fireAt.toIso8601String()} '
+      'effectiveUtc=${fireAt.toUtc().toIso8601String()} '
+      'alarmId=$doseId',
+      name: 'DoseAudit',
+    );
 
     final details = NotificationDetails(
       android: _buildReminderDetails(
@@ -728,6 +796,13 @@ class NotificationService implements ReminderScheduler {
         snoozeLabel: snoozeLabel,
         skipLabel: skipLabel,
       ),
+    );
+    developer.log(
+      'DOSE_NOTIFICATION doseId=$doseId channelId=$channel '
+      'sound=${_soundEnabled ? 'medicine_alarm.wav' : 'none'} '
+      'audioUsage=alarm importance=MAX fullScreenIntent=true '
+      'category=alarm insistent=true',
+      name: 'DoseAudit',
     );
     final payload = '${AppConstants.payloadPrefix}$doseId';
 
@@ -742,28 +817,99 @@ class NotificationService implements ReminderScheduler {
           androidScheduleMode: mode,
           payload: payload,
         );
+        developer.log(
+          'zonedSchedule OK: doseId=$doseId mode=$mode fireAt=${fireAt.toIso8601String()}',
+          name: 'Notif',
+        );
         return true;
-      } on Exception catch (e) {
-        if (mode == AndroidScheduleMode.exactAllowWhileIdle) {
-          _exactModeUsable = false; // stop retrying it for the rest of this pass
-        }
-        developer.log('zonedSchedule ($mode) failed for dose $doseId: $e',
+      } on Exception catch (e, st) {
+        developer.log('zonedSchedule ($mode) FAILED for dose $doseId: $e',
             name: 'Notif', error: e);
+        developer.log(
+          'DOSE_ERROR stage=zonedSchedule doseId=$doseId mode=$mode error=$e\n$st',
+          name: 'DoseAudit',
+        );
         return false;
       }
     }
 
-    // alarmClock first: AlarmManager.setAlarmClock() is exact, fires in Doze,
-    // and needs no SCHEDULE_EXACT_ALARM grant — the most reliable option for a
-    // medicine alarm. Then exactAllowWhileIdle, then inexact as a last resort.
-    if (await tryMode(AndroidScheduleMode.alarmClock)) return true;
-    if (exact &&
-        _exactModeUsable &&
-        await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
+    String landed = 'none';
+    // alarmClock first: AlarmManager.setAlarmClock() is exact, fires in Doze
+    // AND App Standby, and needs no SCHEDULE_EXACT_ALARM grant — the most
+    // reliable option for a medicine alarm. If it is accepted (no exception)
+    // TRUST it: do NOT fall through to a weaker mode just because the OS
+    // pending-list query didn't echo it back — re-scheduling the same id with
+    // inexactAllowWhileIdle would REPLACE a good exact alarm with one Doze can
+    // hold for the whole idle window. Only fall through if alarmClock threw.
+    if (await tryMode(AndroidScheduleMode.alarmClock)) {
+      landed = 'alarmClock';
+      final verified = (await pendingIds()).contains(doseId);
+      if (!verified) {
+        developer.log(
+          'scheduleDoseReminder: alarmClock accepted but not echoed in the OS '
+          'pending list for doseId=$doseId — trusting it anyway (query quirk on '
+          'many OEMs); NOT downgrading to inexact',
+          name: 'Notif',
+        );
+      }
+      _auditSchedule('DOSE_ALARM_SCHEDULE', medicineId: medicineId,
+          doseId: doseId, notificationId: doseId, alarmId: doseId,
+          scheduledLocal: when, effectiveLocal: fireAt, mode: landed,
+          verified: verified, result: 'scheduled');
       return true;
     }
-    if (await tryMode(AndroidScheduleMode.inexactAllowWhileIdle)) return true;
+    if (exact && await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
+      landed = 'exactAllowWhileIdle';
+      _auditSchedule('DOSE_ALARM_SCHEDULE', medicineId: medicineId,
+          doseId: doseId, notificationId: doseId, alarmId: doseId,
+          scheduledLocal: when, effectiveLocal: fireAt, mode: landed,
+          verified: (await pendingIds()).contains(doseId), result: 'scheduled');
+      return true;
+    }
+    if (await tryMode(AndroidScheduleMode.inexactAllowWhileIdle)) {
+      landed = 'inexactAllowWhileIdle';
+      developer.log(
+        'scheduleDoseReminder: doseId=$doseId only got inexactAllowWhileIdle '
+        '— Doze may delay it. Grant exact alarms / disable battery optimisation.',
+        name: 'Notif',
+      );
+      _auditSchedule('DOSE_ALARM_SCHEDULE', medicineId: medicineId,
+          doseId: doseId, notificationId: doseId, alarmId: doseId,
+          scheduledLocal: when, effectiveLocal: fireAt, mode: landed,
+          verified: (await pendingIds()).contains(doseId),
+          result: 'scheduled_inexact');
+      return true;
+    }
+    developer.log('scheduleDoseReminder: ALL MODES FAILED for doseId=$doseId', name: 'Notif');
+    _auditSchedule('DOSE_ALARM_SCHEDULE', medicineId: medicineId, doseId: doseId,
+        notificationId: doseId, alarmId: doseId, scheduledLocal: when,
+        effectiveLocal: fireAt, mode: 'none', verified: false,
+        result: 'schedule_failed');
     return false;
+  }
+
+  /// One canonical structured record per scheduling decision.
+  void _auditSchedule(
+    String event, {
+    required int? medicineId,
+    required int doseId,
+    required int notificationId,
+    required int alarmId,
+    required DateTime scheduledLocal,
+    required DateTime effectiveLocal,
+    required String mode,
+    required bool verified,
+    required String result,
+  }) {
+    developer.log(
+      '$event medicineId=$medicineId doseId=$doseId '
+      'notificationId=$notificationId alarmId=$alarmId '
+      'scheduledLocal=${scheduledLocal.toIso8601String()} '
+      'effectiveLocal=${effectiveLocal.toIso8601String()} '
+      'scheduleMethod=$mode osQueueVerified=$verified '
+      'timezone=${tz.local.name} result=$result',
+      name: 'DoseAudit',
+    );
   }
 
   @override
@@ -787,6 +933,7 @@ class NotificationService implements ReminderScheduler {
   @override
   Future<bool> scheduleAdvanceAlarm({
     required int doseId,
+    int? medicineId,
     required int offset,
     required String title,
     required String body,
@@ -809,6 +956,7 @@ class NotificationService implements ReminderScheduler {
         category: AndroidNotificationCategory.alarm,
         playSound: true,
         sound: _alarmSound,
+        audioAttributesUsage: _alarmUsage,
         enableVibration: true,
         enableLights: true,
         ledColor: const Color(0xFFFF6D00),
@@ -842,22 +990,37 @@ class NotificationService implements ReminderScheduler {
         );
         return true;
       } on Exception catch (e) {
-        if (mode == AndroidScheduleMode.exactAllowWhileIdle) {
-          _exactModeUsable = false;
-        }
         developer.log('scheduleAdvanceAlarm ($mode) failed: $e',
             name: 'Notif', error: e);
         return false;
       }
     }
 
-    if (await tryMode(AndroidScheduleMode.alarmClock)) return true;
-    if (exact &&
-        _exactModeUsable &&
-        await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
+    // Trust alarmClock if accepted (same rationale as scheduleDoseReminder):
+    // never downgrade a good exact alarm to inexact over a pending-list quirk.
+    if (await tryMode(AndroidScheduleMode.alarmClock)) {
+      final verified = (await pendingIds()).contains(notifId);
+      _auditSchedule('DOSE_ALARM_SCHEDULE_ADVANCE', medicineId: medicineId,
+          doseId: doseId, notificationId: notifId, alarmId: notifId,
+          scheduledLocal: when, effectiveLocal: when, mode: 'alarmClock',
+          verified: verified, result: 'scheduled');
       return true;
     }
-    return tryMode(AndroidScheduleMode.inexactAllowWhileIdle);
+    if (exact && await tryMode(AndroidScheduleMode.exactAllowWhileIdle)) {
+      _auditSchedule('DOSE_ALARM_SCHEDULE_ADVANCE', medicineId: medicineId,
+          doseId: doseId, notificationId: notifId, alarmId: notifId,
+          scheduledLocal: when, effectiveLocal: when,
+          mode: 'exactAllowWhileIdle',
+          verified: (await pendingIds()).contains(notifId), result: 'scheduled');
+      return true;
+    }
+    final ok = await tryMode(AndroidScheduleMode.inexactAllowWhileIdle);
+    _auditSchedule('DOSE_ALARM_SCHEDULE_ADVANCE', medicineId: medicineId,
+        doseId: doseId, notificationId: notifId, alarmId: notifId,
+        scheduledLocal: when, effectiveLocal: when,
+        mode: ok ? 'inexactAllowWhileIdle' : 'none', verified: false,
+        result: ok ? 'scheduled_inexact' : 'schedule_failed');
+    return ok;
   }
 
   @override

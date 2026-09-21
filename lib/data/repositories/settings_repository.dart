@@ -28,7 +28,7 @@ class SettingsRepository {
     return AppSettings(
       locale: _prefs.getString(_kLocale) ?? 'en',
       soundEnabled: _prefs.getBool(_kSound) ?? true,
-      voiceEnabled: _prefs.getBool(_kVoice) ?? false,
+      voiceEnabled: _prefs.getBool(_kVoice) ?? true,
       snoozeMinutes: _prefs.getInt(_kSnooze) ?? 10,
       graceMinutes: _prefs.getInt(_kGrace) ?? 30,
       advanceMinutes: _prefs.getInt(_kAdvance) ?? 5,
@@ -38,7 +38,7 @@ class SettingsRepository {
       onboardingDone: _prefs.getBool(_kOnboarding) ?? false,
       syncEnabled: _prefs.getBool(_kSyncEnabled) ?? false,
       householdCode: _prefs.getString(_kHousehold) ?? '',
-      syncRole: _prefs.getString(_kSyncRole) ?? 'primary',
+      syncRole: _prefs.getString(_kSyncRole) ?? 'owner',
       missedAlertsEnabled: _prefs.getBool(_kMissedAlerts) ?? true,
       lastSyncAt: _prefs.getString(_kLastSyncAt) == null
           ? null

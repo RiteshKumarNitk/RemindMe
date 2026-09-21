@@ -374,7 +374,7 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
         );
       },
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() => _times[index] = picked);
     }
   }
@@ -486,7 +486,7 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
         );
       },
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() => _times.add(picked));
     }
   }
@@ -503,7 +503,7 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
       cancelText: l10n.btnCancel,
       confirmText: l10n.permOk,
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() => _onceDate = picked);
     }
   }
