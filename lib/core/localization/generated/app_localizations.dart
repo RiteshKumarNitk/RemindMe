@@ -1921,6 +1921,894 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{hours}h {minutes}m ago'**
   String elapsedHourMinAgo(int hours, int minutes);
+
+  /// No description provided for @hcCareSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Care'**
+  String get hcCareSection;
+
+  /// No description provided for @hcFindTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Find healthcare'**
+  String get hcFindTitle;
+
+  /// No description provided for @hcFindSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Search clinics, hospitals and doctors'**
+  String get hcFindSubtitle;
+
+  /// No description provided for @hcUpcomingAppointment.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming appointment'**
+  String get hcUpcomingAppointment;
+
+  /// No description provided for @hcNoUpcomingAppointment.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming appointment'**
+  String get hcNoUpcomingAppointment;
+
+  /// No description provided for @hcViewAllAppointments.
+  ///
+  /// In en, this message translates to:
+  /// **'My appointments'**
+  String get hcViewAllAppointments;
+
+  /// No description provided for @hcSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinic, hospital or doctor'**
+  String get hcSearchHint;
+
+  /// No description provided for @hcSearchAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get hcSearchAction;
+
+  /// No description provided for @hcAllTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get hcAllTypes;
+
+  /// No description provided for @hcFilterType.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider type'**
+  String get hcFilterType;
+
+  /// No description provided for @hcTypeHospital.
+  ///
+  /// In en, this message translates to:
+  /// **'Hospitals'**
+  String get hcTypeHospital;
+
+  /// No description provided for @hcTypeClinic.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinics'**
+  String get hcTypeClinic;
+
+  /// No description provided for @hcTypePolyclinic.
+  ///
+  /// In en, this message translates to:
+  /// **'Polyclinics'**
+  String get hcTypePolyclinic;
+
+  /// No description provided for @hcTypeDiagnostic.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostic centres'**
+  String get hcTypeDiagnostic;
+
+  /// No description provided for @hcTypeOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other providers'**
+  String get hcTypeOther;
+
+  /// No description provided for @hcProvidersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinics & hospitals'**
+  String get hcProvidersTitle;
+
+  /// No description provided for @hcDoctorsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctors'**
+  String get hcDoctorsTitle;
+
+  /// No description provided for @hcSearchEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No healthcare providers found'**
+  String get hcSearchEmptyTitle;
+
+  /// No description provided for @hcSearchEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different name, provider type or city.'**
+  String get hcSearchEmptyBody;
+
+  /// No description provided for @hcNoDoctorsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No doctors listed'**
+  String get hcNoDoctorsTitle;
+
+  /// No description provided for @hcNoDoctorsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This provider has not published any bookable doctors yet.'**
+  String get hcNoDoctorsBody;
+
+  /// No description provided for @hcNoDoctorsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'No doctors listed'**
+  String get hcNoDoctorsShort;
+
+  /// No description provided for @hcLoadFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t load this'**
+  String get hcLoadFailedTitle;
+
+  /// No description provided for @hcLoadFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your internet connection and try again.'**
+  String get hcLoadFailedBody;
+
+  /// No description provided for @hcOfflineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You are offline'**
+  String get hcOfflineTitle;
+
+  /// No description provided for @hcRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get hcRetry;
+
+  /// No description provided for @hcLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get hcLoadMore;
+
+  /// No description provided for @hcVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get hcVerified;
+
+  /// No description provided for @hcDoctorCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No doctors listed} =1{1 doctor} other{{count} doctors}}'**
+  String hcDoctorCount(int count);
+
+  /// No description provided for @hcAbout.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get hcAbout;
+
+  /// No description provided for @hcContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get hcContact;
+
+  /// No description provided for @hcLocations.
+  ///
+  /// In en, this message translates to:
+  /// **'Locations'**
+  String get hcLocations;
+
+  /// No description provided for @hcCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Call'**
+  String get hcCall;
+
+  /// No description provided for @hcEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get hcEmail;
+
+  /// No description provided for @hcWebsite.
+  ///
+  /// In en, this message translates to:
+  /// **'Website'**
+  String get hcWebsite;
+
+  /// No description provided for @hcBookAppointment.
+  ///
+  /// In en, this message translates to:
+  /// **'Book appointment'**
+  String get hcBookAppointment;
+
+  /// No description provided for @hcChooseBranchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a branch'**
+  String get hcChooseBranchTitle;
+
+  /// No description provided for @hcChooseBranchBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This provider has more than one location. Pick the one you are visiting.'**
+  String get hcChooseBranchBody;
+
+  /// No description provided for @hcBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch'**
+  String get hcBranch;
+
+  /// No description provided for @hcSpecialty.
+  ///
+  /// In en, this message translates to:
+  /// **'Speciality'**
+  String get hcSpecialty;
+
+  /// No description provided for @hcQualifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Qualifications'**
+  String get hcQualifications;
+
+  /// No description provided for @hcExperience.
+  ///
+  /// In en, this message translates to:
+  /// **'{years, plural, =1{1 year experience} other{{years} years experience}}'**
+  String hcExperience(int years);
+
+  /// No description provided for @hcLanguages.
+  ///
+  /// In en, this message translates to:
+  /// **'Languages'**
+  String get hcLanguages;
+
+  /// No description provided for @hcConsultationFee.
+  ///
+  /// In en, this message translates to:
+  /// **'{fee} per visit'**
+  String hcConsultationFee(String fee);
+
+  /// No description provided for @hcRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration'**
+  String get hcRegistration;
+
+  /// No description provided for @hcSelectDateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a date'**
+  String get hcSelectDateTitle;
+
+  /// No description provided for @hcSelectTimeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a time'**
+  String get hcSelectTimeTitle;
+
+  /// No description provided for @hcClinicTimeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Times are in the clinic\'s time zone ({zone}).'**
+  String hcClinicTimeNote(String zone);
+
+  /// No description provided for @hcNoSlotsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No available appointments'**
+  String get hcNoSlotsTitle;
+
+  /// No description provided for @hcNoSlotsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no free times on this day. Try another date.'**
+  String get hcNoSlotsBody;
+
+  /// No description provided for @hcSlotsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t check this day. Please try again.'**
+  String get hcSlotsLoadFailed;
+
+  /// No description provided for @hcContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get hcContinue;
+
+  /// No description provided for @hcYourDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your details'**
+  String get hcYourDetailsTitle;
+
+  /// No description provided for @hcYourDetailsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The clinic registers you as a patient with these details.'**
+  String get hcYourDetailsBody;
+
+  /// No description provided for @hcFirstName.
+  ///
+  /// In en, this message translates to:
+  /// **'First name'**
+  String get hcFirstName;
+
+  /// No description provided for @hcLastName.
+  ///
+  /// In en, this message translates to:
+  /// **'Last name'**
+  String get hcLastName;
+
+  /// No description provided for @hcPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get hcPhone;
+
+  /// No description provided for @hcOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get hcOptional;
+
+  /// No description provided for @hcReasonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason for visit'**
+  String get hcReasonTitle;
+
+  /// No description provided for @hcReasonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. fever since two days'**
+  String get hcReasonHint;
+
+  /// No description provided for @hcReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check and confirm'**
+  String get hcReviewTitle;
+
+  /// No description provided for @hcConfirmBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm appointment'**
+  String get hcConfirmBooking;
+
+  /// No description provided for @hcBookingConfirmedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment confirmed'**
+  String get hcBookingConfirmedTitle;
+
+  /// No description provided for @hcBookingRequestedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment requested'**
+  String get hcBookingRequestedTitle;
+
+  /// No description provided for @hcBookingPendingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The clinic will confirm your appointment. You can follow it in My appointments.'**
+  String get hcBookingPendingBody;
+
+  /// No description provided for @hcBookingReferenceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference'**
+  String get hcBookingReferenceLabel;
+
+  /// No description provided for @hcViewAppointment.
+  ///
+  /// In en, this message translates to:
+  /// **'View appointment'**
+  String get hcViewAppointment;
+
+  /// No description provided for @hcDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get hcDone;
+
+  /// No description provided for @hcSlotTakenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'That time was just taken'**
+  String get hcSlotTakenTitle;
+
+  /// No description provided for @hcSlotTakenBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone else booked it first. Please choose another time.'**
+  String get hcSlotTakenBody;
+
+  /// No description provided for @hcFieldRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'This is needed.'**
+  String get hcFieldRequired;
+
+  /// No description provided for @hcEmailInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email address.'**
+  String get hcEmailInvalid;
+
+  /// No description provided for @hcPasswordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Use at least 10 characters.'**
+  String get hcPasswordTooShort;
+
+  /// No description provided for @hcBookingFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t book this appointment'**
+  String get hcBookingFailedTitle;
+
+  /// No description provided for @hcBookingFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing was booked. You can try again or pick another time.'**
+  String get hcBookingFailedBody;
+
+  /// No description provided for @hcMyAppointments.
+  ///
+  /// In en, this message translates to:
+  /// **'My appointments'**
+  String get hcMyAppointments;
+
+  /// No description provided for @hcTabUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get hcTabUpcoming;
+
+  /// No description provided for @hcTabPast.
+  ///
+  /// In en, this message translates to:
+  /// **'Past'**
+  String get hcTabPast;
+
+  /// No description provided for @hcTabCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get hcTabCancelled;
+
+  /// No description provided for @hcNoUpcomingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming appointments'**
+  String get hcNoUpcomingTitle;
+
+  /// No description provided for @hcNoUpcomingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Find a clinic, choose a doctor and book a visit — it will appear here.'**
+  String get hcNoUpcomingBody;
+
+  /// No description provided for @hcNoPastTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No past appointments'**
+  String get hcNoPastTitle;
+
+  /// No description provided for @hcNoPastBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Visits you complete will show up here.'**
+  String get hcNoPastBody;
+
+  /// No description provided for @hcNoCancelledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing cancelled'**
+  String get hcNoCancelledTitle;
+
+  /// No description provided for @hcNoCancelledBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointments you cancel will be listed here.'**
+  String get hcNoCancelledBody;
+
+  /// No description provided for @hcAppointmentsSignInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to see your appointments'**
+  String get hcAppointmentsSignInTitle;
+
+  /// No description provided for @hcAppointmentsSignInBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your appointments are stored in your clinic account.'**
+  String get hcAppointmentsSignInBody;
+
+  /// No description provided for @hcStatusRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested'**
+  String get hcStatusRequested;
+
+  /// No description provided for @hcStatusConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed'**
+  String get hcStatusConfirmed;
+
+  /// No description provided for @hcStatusCheckedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked in'**
+  String get hcStatusCheckedIn;
+
+  /// No description provided for @hcStatusWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get hcStatusWaiting;
+
+  /// No description provided for @hcStatusInConsultation.
+  ///
+  /// In en, this message translates to:
+  /// **'In consultation'**
+  String get hcStatusInConsultation;
+
+  /// No description provided for @hcStatusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get hcStatusCompleted;
+
+  /// No description provided for @hcStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get hcStatusCancelled;
+
+  /// No description provided for @hcStatusNoShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed'**
+  String get hcStatusNoShow;
+
+  /// No description provided for @hcStatusRescheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Rescheduled'**
+  String get hcStatusRescheduled;
+
+  /// No description provided for @hcStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get hcStatusUnknown;
+
+  /// No description provided for @hcWhen.
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get hcWhen;
+
+  /// No description provided for @hcWhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Where'**
+  String get hcWhere;
+
+  /// No description provided for @hcDoctorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctor'**
+  String get hcDoctorLabel;
+
+  /// No description provided for @hcReasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason'**
+  String get hcReasonLabel;
+
+  /// No description provided for @hcNotesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get hcNotesLabel;
+
+  /// No description provided for @hcCancelAppointment.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel appointment'**
+  String get hcCancelAppointment;
+
+  /// No description provided for @hcKeepAppointment.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep appointment'**
+  String get hcKeepAppointment;
+
+  /// No description provided for @hcCancelConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this appointment?'**
+  String get hcCancelConfirmTitle;
+
+  /// No description provided for @hcCancelReasonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional)'**
+  String get hcCancelReasonHint;
+
+  /// No description provided for @hcAppointmentCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment cancelled'**
+  String get hcAppointmentCancelled;
+
+  /// No description provided for @hcRescheduleAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reschedule'**
+  String get hcRescheduleAction;
+
+  /// No description provided for @hcRescheduleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a new time'**
+  String get hcRescheduleTitle;
+
+  /// No description provided for @hcRescheduledMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment moved'**
+  String get hcRescheduledMessage;
+
+  /// No description provided for @hcSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has ended. Please sign in again.'**
+  String get hcSessionExpired;
+
+  /// No description provided for @hcQueueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your queue'**
+  String get hcQueueTitle;
+
+  /// No description provided for @hcQueueToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Token {token}'**
+  String hcQueueToken(int token);
+
+  /// No description provided for @hcQueueAhead.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 patient ahead of you} other{{count} patients ahead of you}}'**
+  String hcQueueAhead(int count);
+
+  /// No description provided for @hcQueueYouAreNext.
+  ///
+  /// In en, this message translates to:
+  /// **'You are next in line'**
+  String get hcQueueYouAreNext;
+
+  /// No description provided for @hcQueueCheckInNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check in at the clinic reception when you arrive. Your token appears here once they add you to the queue.'**
+  String get hcQueueCheckInNote;
+
+  /// No description provided for @hcQueueCalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Please go to the doctor\'s room'**
+  String get hcQueueCalled;
+
+  /// No description provided for @hcQueueInConsultation.
+  ///
+  /// In en, this message translates to:
+  /// **'You are with the doctor now'**
+  String get hcQueueInConsultation;
+
+  /// No description provided for @hcQueueFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'This visit is finished'**
+  String get hcQueueFinished;
+
+  /// No description provided for @hcSignInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to book'**
+  String get hcSignInTitle;
+
+  /// No description provided for @hcSignInBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking uses your clinic account — the same email and password you use on the clinic website.'**
+  String get hcSignInBody;
+
+  /// No description provided for @hcSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get hcSignIn;
+
+  /// No description provided for @hcSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get hcSignOut;
+
+  /// No description provided for @hcEmailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get hcEmailLabel;
+
+  /// No description provided for @hcPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get hcPasswordLabel;
+
+  /// No description provided for @hcFullNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Full name'**
+  String get hcFullNameLabel;
+
+  /// No description provided for @hcCreateAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get hcCreateAccount;
+
+  /// No description provided for @hcHaveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account? Sign in'**
+  String get hcHaveAccount;
+
+  /// No description provided for @hcNoAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'New here? Create an account'**
+  String get hcNoAccount;
+
+  /// No description provided for @hcSignedInAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as {name}'**
+  String hcSignedInAs(String name);
+
+  /// No description provided for @hcSignInFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t sign you in. Check your email and password.'**
+  String get hcSignInFailed;
+
+  /// No description provided for @hcApiSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinic server (QA)'**
+  String get hcApiSettingsTitle;
+
+  /// No description provided for @hcApiSettingsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Base address of the clinic platform API'**
+  String get hcApiSettingsHint;
+
+  /// No description provided for @hcApiSettingsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Server address saved'**
+  String get hcApiSettingsSaved;
+
+  /// No description provided for @hcApiSettingsReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to default'**
+  String get hcApiSettingsReset;
+
+  /// No description provided for @hcFiltersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get hcFiltersTitle;
+
+  /// No description provided for @hcCityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'City'**
+  String get hcCityLabel;
+
+  /// No description provided for @hcCityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Jaipur'**
+  String get hcCityHint;
+
+  /// No description provided for @hcApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get hcApply;
+
+  /// No description provided for @hcClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get hcClear;
+
+  /// No description provided for @hcRelInMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'In {minutes} min'**
+  String hcRelInMinutes(int minutes);
+
+  /// No description provided for @hcRelInHours.
+  ///
+  /// In en, this message translates to:
+  /// **'In {hours} h'**
+  String hcRelInHours(int hours);
+
+  /// No description provided for @hcRelStartingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting soon'**
+  String get hcRelStartingSoon;
+
+  /// No description provided for @hcRelToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get hcRelToday;
+
+  /// No description provided for @hcRelTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get hcRelTomorrow;
+
+  /// No description provided for @hcTimeUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Time to be confirmed'**
+  String get hcTimeUnknown;
+
+  /// No description provided for @hcUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This provider is no longer listed'**
+  String get hcUnavailableTitle;
+
+  /// No description provided for @hcUnavailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been unpublished. Go back and choose another provider.'**
+  String get hcUnavailableBody;
 }
 
 class _AppLocalizationsDelegate

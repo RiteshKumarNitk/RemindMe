@@ -1008,4 +1008,503 @@ class AppLocalizationsEn extends AppLocalizations {
   String elapsedHourMinAgo(int hours, int minutes) {
     return '${hours}h ${minutes}m ago';
   }
+
+  @override
+  String get hcCareSection => 'Care';
+
+  @override
+  String get hcFindTitle => 'Find healthcare';
+
+  @override
+  String get hcFindSubtitle => 'Search clinics, hospitals and doctors';
+
+  @override
+  String get hcUpcomingAppointment => 'Upcoming appointment';
+
+  @override
+  String get hcNoUpcomingAppointment => 'No upcoming appointment';
+
+  @override
+  String get hcViewAllAppointments => 'My appointments';
+
+  @override
+  String get hcSearchHint => 'Clinic, hospital or doctor';
+
+  @override
+  String get hcSearchAction => 'Search';
+
+  @override
+  String get hcAllTypes => 'All';
+
+  @override
+  String get hcFilterType => 'Provider type';
+
+  @override
+  String get hcTypeHospital => 'Hospitals';
+
+  @override
+  String get hcTypeClinic => 'Clinics';
+
+  @override
+  String get hcTypePolyclinic => 'Polyclinics';
+
+  @override
+  String get hcTypeDiagnostic => 'Diagnostic centres';
+
+  @override
+  String get hcTypeOther => 'Other providers';
+
+  @override
+  String get hcProvidersTitle => 'Clinics & hospitals';
+
+  @override
+  String get hcDoctorsTitle => 'Doctors';
+
+  @override
+  String get hcSearchEmptyTitle => 'No healthcare providers found';
+
+  @override
+  String get hcSearchEmptyBody =>
+      'Try a different name, provider type or city.';
+
+  @override
+  String get hcNoDoctorsTitle => 'No doctors listed';
+
+  @override
+  String get hcNoDoctorsBody =>
+      'This provider has not published any bookable doctors yet.';
+
+  @override
+  String get hcNoDoctorsShort => 'No doctors listed';
+
+  @override
+  String get hcLoadFailedTitle => 'We couldn\'t load this';
+
+  @override
+  String get hcLoadFailedBody =>
+      'Check your internet connection and try again.';
+
+  @override
+  String get hcOfflineTitle => 'You are offline';
+
+  @override
+  String get hcRetry => 'Try again';
+
+  @override
+  String get hcLoadMore => 'Load more';
+
+  @override
+  String get hcVerified => 'Verified';
+
+  @override
+  String hcDoctorCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count doctors',
+      one: '1 doctor',
+      zero: 'No doctors listed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get hcAbout => 'About';
+
+  @override
+  String get hcContact => 'Contact';
+
+  @override
+  String get hcLocations => 'Locations';
+
+  @override
+  String get hcCall => 'Call';
+
+  @override
+  String get hcEmail => 'Email';
+
+  @override
+  String get hcWebsite => 'Website';
+
+  @override
+  String get hcBookAppointment => 'Book appointment';
+
+  @override
+  String get hcChooseBranchTitle => 'Choose a branch';
+
+  @override
+  String get hcChooseBranchBody =>
+      'This provider has more than one location. Pick the one you are visiting.';
+
+  @override
+  String get hcBranch => 'Branch';
+
+  @override
+  String get hcSpecialty => 'Speciality';
+
+  @override
+  String get hcQualifications => 'Qualifications';
+
+  @override
+  String hcExperience(int years) {
+    String _temp0 = intl.Intl.pluralLogic(
+      years,
+      locale: localeName,
+      other: '$years years experience',
+      one: '1 year experience',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get hcLanguages => 'Languages';
+
+  @override
+  String hcConsultationFee(String fee) {
+    return '$fee per visit';
+  }
+
+  @override
+  String get hcRegistration => 'Registration';
+
+  @override
+  String get hcSelectDateTitle => 'Pick a date';
+
+  @override
+  String get hcSelectTimeTitle => 'Pick a time';
+
+  @override
+  String hcClinicTimeNote(String zone) {
+    return 'Times are in the clinic\'s time zone ($zone).';
+  }
+
+  @override
+  String get hcNoSlotsTitle => 'No available appointments';
+
+  @override
+  String get hcNoSlotsBody =>
+      'There are no free times on this day. Try another date.';
+
+  @override
+  String get hcSlotsLoadFailed =>
+      'We couldn\'t check this day. Please try again.';
+
+  @override
+  String get hcContinue => 'Continue';
+
+  @override
+  String get hcYourDetailsTitle => 'Your details';
+
+  @override
+  String get hcYourDetailsBody =>
+      'The clinic registers you as a patient with these details.';
+
+  @override
+  String get hcFirstName => 'First name';
+
+  @override
+  String get hcLastName => 'Last name';
+
+  @override
+  String get hcPhone => 'Phone number';
+
+  @override
+  String get hcOptional => 'Optional';
+
+  @override
+  String get hcReasonTitle => 'Reason for visit';
+
+  @override
+  String get hcReasonHint => 'e.g. fever since two days';
+
+  @override
+  String get hcReviewTitle => 'Check and confirm';
+
+  @override
+  String get hcConfirmBooking => 'Confirm appointment';
+
+  @override
+  String get hcBookingConfirmedTitle => 'Appointment confirmed';
+
+  @override
+  String get hcBookingRequestedTitle => 'Appointment requested';
+
+  @override
+  String get hcBookingPendingBody =>
+      'The clinic will confirm your appointment. You can follow it in My appointments.';
+
+  @override
+  String get hcBookingReferenceLabel => 'Reference';
+
+  @override
+  String get hcViewAppointment => 'View appointment';
+
+  @override
+  String get hcDone => 'Done';
+
+  @override
+  String get hcSlotTakenTitle => 'That time was just taken';
+
+  @override
+  String get hcSlotTakenBody =>
+      'Someone else booked it first. Please choose another time.';
+
+  @override
+  String get hcFieldRequired => 'This is needed.';
+
+  @override
+  String get hcEmailInvalid => 'Enter a valid email address.';
+
+  @override
+  String get hcPasswordTooShort => 'Use at least 10 characters.';
+
+  @override
+  String get hcBookingFailedTitle => 'We couldn\'t book this appointment';
+
+  @override
+  String get hcBookingFailedBody =>
+      'Nothing was booked. You can try again or pick another time.';
+
+  @override
+  String get hcMyAppointments => 'My appointments';
+
+  @override
+  String get hcTabUpcoming => 'Upcoming';
+
+  @override
+  String get hcTabPast => 'Past';
+
+  @override
+  String get hcTabCancelled => 'Cancelled';
+
+  @override
+  String get hcNoUpcomingTitle => 'No upcoming appointments';
+
+  @override
+  String get hcNoUpcomingBody =>
+      'Find a clinic, choose a doctor and book a visit — it will appear here.';
+
+  @override
+  String get hcNoPastTitle => 'No past appointments';
+
+  @override
+  String get hcNoPastBody => 'Visits you complete will show up here.';
+
+  @override
+  String get hcNoCancelledTitle => 'Nothing cancelled';
+
+  @override
+  String get hcNoCancelledBody =>
+      'Appointments you cancel will be listed here.';
+
+  @override
+  String get hcAppointmentsSignInTitle => 'Sign in to see your appointments';
+
+  @override
+  String get hcAppointmentsSignInBody =>
+      'Your appointments are stored in your clinic account.';
+
+  @override
+  String get hcStatusRequested => 'Requested';
+
+  @override
+  String get hcStatusConfirmed => 'Confirmed';
+
+  @override
+  String get hcStatusCheckedIn => 'Checked in';
+
+  @override
+  String get hcStatusWaiting => 'Waiting';
+
+  @override
+  String get hcStatusInConsultation => 'In consultation';
+
+  @override
+  String get hcStatusCompleted => 'Completed';
+
+  @override
+  String get hcStatusCancelled => 'Cancelled';
+
+  @override
+  String get hcStatusNoShow => 'Missed';
+
+  @override
+  String get hcStatusRescheduled => 'Rescheduled';
+
+  @override
+  String get hcStatusUnknown => 'Unknown';
+
+  @override
+  String get hcWhen => 'When';
+
+  @override
+  String get hcWhere => 'Where';
+
+  @override
+  String get hcDoctorLabel => 'Doctor';
+
+  @override
+  String get hcReasonLabel => 'Reason';
+
+  @override
+  String get hcNotesLabel => 'Notes';
+
+  @override
+  String get hcCancelAppointment => 'Cancel appointment';
+
+  @override
+  String get hcKeepAppointment => 'Keep appointment';
+
+  @override
+  String get hcCancelConfirmTitle => 'Cancel this appointment?';
+
+  @override
+  String get hcCancelReasonHint => 'Reason (optional)';
+
+  @override
+  String get hcAppointmentCancelled => 'Appointment cancelled';
+
+  @override
+  String get hcRescheduleAction => 'Reschedule';
+
+  @override
+  String get hcRescheduleTitle => 'Choose a new time';
+
+  @override
+  String get hcRescheduledMessage => 'Appointment moved';
+
+  @override
+  String get hcSessionExpired =>
+      'Your session has ended. Please sign in again.';
+
+  @override
+  String get hcQueueTitle => 'Your queue';
+
+  @override
+  String hcQueueToken(int token) {
+    return 'Token $token';
+  }
+
+  @override
+  String hcQueueAhead(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count patients ahead of you',
+      one: '1 patient ahead of you',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get hcQueueYouAreNext => 'You are next in line';
+
+  @override
+  String get hcQueueCheckInNote =>
+      'Please check in at the clinic reception when you arrive. Your token appears here once they add you to the queue.';
+
+  @override
+  String get hcQueueCalled => 'Please go to the doctor\'s room';
+
+  @override
+  String get hcQueueInConsultation => 'You are with the doctor now';
+
+  @override
+  String get hcQueueFinished => 'This visit is finished';
+
+  @override
+  String get hcSignInTitle => 'Sign in to book';
+
+  @override
+  String get hcSignInBody =>
+      'Booking uses your clinic account — the same email and password you use on the clinic website.';
+
+  @override
+  String get hcSignIn => 'Sign in';
+
+  @override
+  String get hcSignOut => 'Sign out';
+
+  @override
+  String get hcEmailLabel => 'Email';
+
+  @override
+  String get hcPasswordLabel => 'Password';
+
+  @override
+  String get hcFullNameLabel => 'Full name';
+
+  @override
+  String get hcCreateAccount => 'Create account';
+
+  @override
+  String get hcHaveAccount => 'Already have an account? Sign in';
+
+  @override
+  String get hcNoAccount => 'New here? Create an account';
+
+  @override
+  String hcSignedInAs(String name) {
+    return 'Signed in as $name';
+  }
+
+  @override
+  String get hcSignInFailed =>
+      'We couldn\'t sign you in. Check your email and password.';
+
+  @override
+  String get hcApiSettingsTitle => 'Clinic server (QA)';
+
+  @override
+  String get hcApiSettingsHint => 'Base address of the clinic platform API';
+
+  @override
+  String get hcApiSettingsSaved => 'Server address saved';
+
+  @override
+  String get hcApiSettingsReset => 'Reset to default';
+
+  @override
+  String get hcFiltersTitle => 'Filters';
+
+  @override
+  String get hcCityLabel => 'City';
+
+  @override
+  String get hcCityHint => 'e.g. Jaipur';
+
+  @override
+  String get hcApply => 'Apply';
+
+  @override
+  String get hcClear => 'Clear';
+
+  @override
+  String hcRelInMinutes(int minutes) {
+    return 'In $minutes min';
+  }
+
+  @override
+  String hcRelInHours(int hours) {
+    return 'In $hours h';
+  }
+
+  @override
+  String get hcRelStartingSoon => 'Starting soon';
+
+  @override
+  String get hcRelToday => 'Today';
+
+  @override
+  String get hcRelTomorrow => 'Tomorrow';
+
+  @override
+  String get hcTimeUnknown => 'Time to be confirmed';
+
+  @override
+  String get hcUnavailableTitle => 'This provider is no longer listed';
+
+  @override
+  String get hcUnavailableBody =>
+      'It may have been unpublished. Go back and choose another provider.';
 }

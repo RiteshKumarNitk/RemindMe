@@ -13,6 +13,7 @@ import '../../data/models/food_instruction.dart';
 import '../../services/auth_service.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
+import '../healthcare/widgets/home_care_section.dart';
 import '../settings/settings_screen.dart';
 import '../widgets/big_button.dart';
 import '../widgets/permission_banner.dart';
@@ -213,6 +214,12 @@ class _HomeScreenState extends State<HomeScreen> {
             _SectionLabel(l10n.homeDailyProgress),
             const SizedBox(height: 12),
             _ProgressSummary(stats: stats, l10n: l10n),
+
+            const SizedBox(height: 24),
+            // Healthcare discovery + the patient's next real appointment,
+            // grouped under its own heading so the medicine dashboard above
+            // keeps its focus.
+            const HomeCareSection(),
 
             const SizedBox(height: 24),
             _SectionLabel(l10n.homeQuickActions),

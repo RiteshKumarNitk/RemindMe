@@ -428,5 +428,199 @@
       "hours": {"type": "int"},
       "minutes": {"type": "int"}
     }
-  }
+  },
+
+  "hcCareSection": "Care",
+  "hcFindTitle": "Find healthcare",
+  "hcFindSubtitle": "Search clinics, hospitals and doctors",
+  "hcUpcomingAppointment": "Upcoming appointment",
+  "hcNoUpcomingAppointment": "No upcoming appointment",
+  "hcViewAllAppointments": "My appointments",
+  "hcSearchHint": "Clinic, hospital or doctor",
+  "hcSearchAction": "Search",
+  "hcAllTypes": "All",
+  "hcFilterType": "Provider type",
+  "hcTypeHospital": "Hospitals",
+  "hcTypeClinic": "Clinics",
+  "hcTypePolyclinic": "Polyclinics",
+  "hcTypeDiagnostic": "Diagnostic centres",
+  "hcTypeOther": "Other providers",
+  "hcProvidersTitle": "Clinics & hospitals",
+  "hcDoctorsTitle": "Doctors",
+  "hcSearchEmptyTitle": "No healthcare providers found",
+  "hcSearchEmptyBody": "Try a different name, provider type or city.",
+  "hcNoDoctorsTitle": "No doctors listed",
+  "hcNoDoctorsBody": "This provider has not published any bookable doctors yet.",
+  "hcNoDoctorsShort": "No doctors listed",
+  "hcLoadFailedTitle": "We couldn't load this",
+  "hcLoadFailedBody": "Check your internet connection and try again.",
+  "hcOfflineTitle": "You are offline",
+  "hcRetry": "Try again",
+  "hcLoadMore": "Load more",
+  "hcVerified": "Verified",
+  "hcDoctorCount": "{count, plural, =0{No doctors listed} =1{1 doctor} other{{count} doctors}}",
+  "@hcDoctorCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "hcAbout": "About",
+  "hcContact": "Contact",
+  "hcLocations": "Locations",
+  "hcCall": "Call",
+  "hcEmail": "Email",
+  "hcWebsite": "Website",
+  "hcBookAppointment": "Book appointment",
+  "hcChooseBranchTitle": "Choose a branch",
+  "hcChooseBranchBody": "This provider has more than one location. Pick the one you are visiting.",
+  "hcBranch": "Branch",
+  "hcSpecialty": "Speciality",
+  "hcQualifications": "Qualifications",
+  "hcExperience": "{years, plural, =1{1 year experience} other{{years} years experience}}",
+  "@hcExperience": {
+    "placeholders": {
+      "years": {"type": "int"}
+    }
+  },
+  "hcLanguages": "Languages",
+  "hcConsultationFee": "{fee} per visit",
+  "@hcConsultationFee": {
+    "placeholders": {
+      "fee": {"type": "String"}
+    }
+  },
+  "hcRegistration": "Registration",
+  "hcSelectDateTitle": "Pick a date",
+  "hcSelectTimeTitle": "Pick a time",
+  "hcClinicTimeNote": "Times are in the clinic's time zone ({zone}).",
+  "@hcClinicTimeNote": {
+    "placeholders": {
+      "zone": {"type": "String"}
+    }
+  },
+  "hcNoSlotsTitle": "No available appointments",
+  "hcNoSlotsBody": "There are no free times on this day. Try another date.",
+  "hcSlotsLoadFailed": "We couldn't check this day. Please try again.",
+  "hcContinue": "Continue",
+  "hcYourDetailsTitle": "Your details",
+  "hcYourDetailsBody": "The clinic registers you as a patient with these details.",
+  "hcFirstName": "First name",
+  "hcLastName": "Last name",
+  "hcPhone": "Phone number",
+  "hcOptional": "Optional",
+  "hcReasonTitle": "Reason for visit",
+  "hcReasonHint": "e.g. fever since two days",
+  "hcReviewTitle": "Check and confirm",
+  "hcConfirmBooking": "Confirm appointment",
+  "hcBookingConfirmedTitle": "Appointment confirmed",
+  "hcBookingRequestedTitle": "Appointment requested",
+  "hcBookingPendingBody": "The clinic will confirm your appointment. You can follow it in My appointments.",
+  "hcBookingReferenceLabel": "Reference",
+  "hcViewAppointment": "View appointment",
+  "hcDone": "Done",
+  "hcSlotTakenTitle": "That time was just taken",
+  "hcSlotTakenBody": "Someone else booked it first. Please choose another time.",
+  "hcFieldRequired": "This is needed.",
+  "hcEmailInvalid": "Enter a valid email address.",
+  "hcPasswordTooShort": "Use at least 10 characters.",
+  "hcBookingFailedTitle": "We couldn't book this appointment",
+  "hcBookingFailedBody": "Nothing was booked. You can try again or pick another time.",
+  "hcMyAppointments": "My appointments",
+  "hcTabUpcoming": "Upcoming",
+  "hcTabPast": "Past",
+  "hcTabCancelled": "Cancelled",
+  "hcNoUpcomingTitle": "No upcoming appointments",
+  "hcNoUpcomingBody": "Find a clinic, choose a doctor and book a visit — it will appear here.",
+  "hcNoPastTitle": "No past appointments",
+  "hcNoPastBody": "Visits you complete will show up here.",
+  "hcNoCancelledTitle": "Nothing cancelled",
+  "hcNoCancelledBody": "Appointments you cancel will be listed here.",
+  "hcAppointmentsSignInTitle": "Sign in to see your appointments",
+  "hcAppointmentsSignInBody": "Your appointments are stored in your clinic account.",
+  "hcStatusRequested": "Requested",
+  "hcStatusConfirmed": "Confirmed",
+  "hcStatusCheckedIn": "Checked in",
+  "hcStatusWaiting": "Waiting",
+  "hcStatusInConsultation": "In consultation",
+  "hcStatusCompleted": "Completed",
+  "hcStatusCancelled": "Cancelled",
+  "hcStatusNoShow": "Missed",
+  "hcStatusRescheduled": "Rescheduled",
+  "hcStatusUnknown": "Unknown",
+  "hcWhen": "When",
+  "hcWhere": "Where",
+  "hcDoctorLabel": "Doctor",
+  "hcReasonLabel": "Reason",
+  "hcNotesLabel": "Notes",
+  "hcCancelAppointment": "Cancel appointment",
+  "hcKeepAppointment": "Keep appointment",
+  "hcCancelConfirmTitle": "Cancel this appointment?",
+  "hcCancelReasonHint": "Reason (optional)",
+  "hcAppointmentCancelled": "Appointment cancelled",
+  "hcRescheduleAction": "Reschedule",
+  "hcRescheduleTitle": "Choose a new time",
+  "hcRescheduledMessage": "Appointment moved",
+  "hcSessionExpired": "Your session has ended. Please sign in again.",
+  "hcQueueTitle": "Your queue",
+  "hcQueueToken": "Token {token}",
+  "@hcQueueToken": {
+    "placeholders": {
+      "token": {"type": "int"}
+    }
+  },
+  "hcQueueAhead": "{count, plural, =1{1 patient ahead of you} other{{count} patients ahead of you}}",
+  "@hcQueueAhead": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "hcQueueYouAreNext": "You are next in line",
+  "hcQueueCheckInNote": "Please check in at the clinic reception when you arrive. Your token appears here once they add you to the queue.",
+  "hcQueueCalled": "Please go to the doctor's room",
+  "hcQueueInConsultation": "You are with the doctor now",
+  "hcQueueFinished": "This visit is finished",
+  "hcSignInTitle": "Sign in to book",
+  "hcSignInBody": "Booking uses your clinic account — the same email and password you use on the clinic website.",
+  "hcSignIn": "Sign in",
+  "hcSignOut": "Sign out",
+  "hcEmailLabel": "Email",
+  "hcPasswordLabel": "Password",
+  "hcFullNameLabel": "Full name",
+  "hcCreateAccount": "Create account",
+  "hcHaveAccount": "Already have an account? Sign in",
+  "hcNoAccount": "New here? Create an account",
+  "hcSignedInAs": "Signed in as {name}",
+  "@hcSignedInAs": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "hcSignInFailed": "We couldn't sign you in. Check your email and password.",
+  "hcApiSettingsTitle": "Clinic server (QA)",
+  "hcApiSettingsHint": "Base address of the clinic platform API",
+  "hcApiSettingsSaved": "Server address saved",
+  "hcApiSettingsReset": "Reset to default",
+  "hcFiltersTitle": "Filters",
+  "hcCityLabel": "City",
+  "hcCityHint": "e.g. Jaipur",
+  "hcApply": "Apply",
+  "hcClear": "Clear",
+  "hcRelInMinutes": "In {minutes} min",
+  "@hcRelInMinutes": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "hcRelInHours": "In {hours} h",
+  "@hcRelInHours": {
+    "placeholders": {
+      "hours": {"type": "int"}
+    }
+  },
+  "hcRelStartingSoon": "Starting soon",
+  "hcRelToday": "Today",
+  "hcRelTomorrow": "Tomorrow",
+  "hcTimeUnknown": "Time to be confirmed",
+  "hcUnavailableTitle": "This provider is no longer listed",
+  "hcUnavailableBody": "It may have been unpublished. Go back and choose another provider."
 }

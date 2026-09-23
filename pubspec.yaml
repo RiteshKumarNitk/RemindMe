@@ -17,6 +17,11 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_local_notifications: ^20.1.0
+  # Healthcare discovery/booking talks to the clinic platform's REST API.
+  http: ^1.2.2
+  # Keeps the platform session (bearer + rotating refresh token) in the OS
+  # keystore instead of plain preferences.
+  flutter_secure_storage: ^9.2.4
   flutter_localizations:
     sdk: flutter
   flutter_timezone: ^5.1.0
@@ -28,12 +33,16 @@ dependencies:
   path_provider: ^2.1.5
   qr_flutter: ^4.1.0
   share_plus: ^10.1.4
-  intl: ^0.20.3
+  # Pinned: flutter_localizations (Flutter 3.35 stable) requires exactly
+  # 0.20.2 — a caret range here fails pub resolution on this SDK.
+  intl: 0.20.2
   provider: ^6.1.5+1
   shared_preferences: ^2.5.5
   sqflite: ^2.4.2
   sqflite_common_ffi_web: ^1.0.2
   timezone: ^0.10.1
+  # Calling a clinic / opening its website from the organization profile.
+  url_launcher: ^6.3.1
   firebase_crashlytics: ^5.4.0
 
 dev_dependencies:

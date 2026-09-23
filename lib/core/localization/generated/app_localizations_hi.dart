@@ -1008,4 +1008,498 @@ class AppLocalizationsHi extends AppLocalizations {
   String elapsedHourMinAgo(int hours, int minutes) {
     return '$hoursघ $minutesमि पहले';
   }
+
+  @override
+  String get hcCareSection => 'देखभाल';
+
+  @override
+  String get hcFindTitle => 'इलाज खोजें';
+
+  @override
+  String get hcFindSubtitle => 'क्लिनिक, अस्पताल और डॉक्टर खोजें';
+
+  @override
+  String get hcUpcomingAppointment => 'आने वाली अपॉइंटमेंट';
+
+  @override
+  String get hcNoUpcomingAppointment => 'कोई आने वाली अपॉइंटमेंट नहीं';
+
+  @override
+  String get hcViewAllAppointments => 'मेरी अपॉइंटमेंट';
+
+  @override
+  String get hcSearchHint => 'क्लिनिक, अस्पताल या डॉक्टर';
+
+  @override
+  String get hcSearchAction => 'खोजें';
+
+  @override
+  String get hcAllTypes => 'सभी';
+
+  @override
+  String get hcFilterType => 'संस्थान का प्रकार';
+
+  @override
+  String get hcTypeHospital => 'अस्पताल';
+
+  @override
+  String get hcTypeClinic => 'क्लिनिक';
+
+  @override
+  String get hcTypePolyclinic => 'पॉलीक्लिनिक';
+
+  @override
+  String get hcTypeDiagnostic => 'डायग्नोस्टिक सेंटर';
+
+  @override
+  String get hcTypeOther => 'अन्य';
+
+  @override
+  String get hcProvidersTitle => 'क्लिनिक और अस्पताल';
+
+  @override
+  String get hcDoctorsTitle => 'डॉक्टर';
+
+  @override
+  String get hcSearchEmptyTitle => 'कोई इलाज केंद्र नहीं मिला';
+
+  @override
+  String get hcSearchEmptyBody => 'दूसरा नाम, प्रकार या शहर आज़माएँ।';
+
+  @override
+  String get hcNoDoctorsTitle => 'कोई डॉक्टर सूचीबद्ध नहीं';
+
+  @override
+  String get hcNoDoctorsBody =>
+      'इस केंद्र ने अभी तक कोई बुकिंग योग्य डॉक्टर प्रकाशित नहीं किया है।';
+
+  @override
+  String get hcNoDoctorsShort => 'कोई डॉक्टर सूचीबद्ध नहीं';
+
+  @override
+  String get hcLoadFailedTitle => 'यह लोड नहीं हो सका';
+
+  @override
+  String get hcLoadFailedBody => 'इंटरनेट कनेक्शन जाँचें और फिर कोशिश करें।';
+
+  @override
+  String get hcOfflineTitle => 'आप ऑफ़लाइन हैं';
+
+  @override
+  String get hcRetry => 'फिर कोशिश करें';
+
+  @override
+  String get hcLoadMore => 'और दिखाएँ';
+
+  @override
+  String get hcVerified => 'सत्यापित';
+
+  @override
+  String hcDoctorCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count डॉक्टर',
+      one: '1 डॉक्टर',
+      zero: 'कोई डॉक्टर सूचीबद्ध नहीं',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get hcAbout => 'परिचय';
+
+  @override
+  String get hcContact => 'संपर्क';
+
+  @override
+  String get hcLocations => 'स्थान';
+
+  @override
+  String get hcCall => 'कॉल करें';
+
+  @override
+  String get hcEmail => 'ईमेल';
+
+  @override
+  String get hcWebsite => 'वेबसाइट';
+
+  @override
+  String get hcBookAppointment => 'अपॉइंटमेंट बुक करें';
+
+  @override
+  String get hcChooseBranchTitle => 'शाखा चुनें';
+
+  @override
+  String get hcChooseBranchBody =>
+      'इस केंद्र की एक से अधिक शाखाएँ हैं। जिसमें जाना है उसे चुनें।';
+
+  @override
+  String get hcBranch => 'शाखा';
+
+  @override
+  String get hcSpecialty => 'विशेषज्ञता';
+
+  @override
+  String get hcQualifications => 'योग्यता';
+
+  @override
+  String hcExperience(int years) {
+    String _temp0 = intl.Intl.pluralLogic(
+      years,
+      locale: localeName,
+      other: '$years वर्ष का अनुभव',
+      one: '1 वर्ष का अनुभव',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get hcLanguages => 'भाषाएँ';
+
+  @override
+  String hcConsultationFee(String fee) {
+    return '$fee प्रति विज़िट';
+  }
+
+  @override
+  String get hcRegistration => 'पंजीकरण';
+
+  @override
+  String get hcSelectDateTitle => 'तारीख चुनें';
+
+  @override
+  String get hcSelectTimeTitle => 'समय चुनें';
+
+  @override
+  String hcClinicTimeNote(String zone) {
+    return 'समय क्लिनिक के समय क्षेत्र ($zone) में हैं।';
+  }
+
+  @override
+  String get hcNoSlotsTitle => 'कोई उपलब्ध अपॉइंटमेंट नहीं';
+
+  @override
+  String get hcNoSlotsBody => 'इस दिन कोई खाली समय नहीं है। दूसरी तारीख देखें।';
+
+  @override
+  String get hcSlotsLoadFailed => 'यह दिन जाँचा नहीं जा सका। फिर कोशिश करें।';
+
+  @override
+  String get hcContinue => 'आगे बढ़ें';
+
+  @override
+  String get hcYourDetailsTitle => 'आपकी जानकारी';
+
+  @override
+  String get hcYourDetailsBody =>
+      'क्लिनिक इन विवरणों से आपको मरीज़ के रूप में दर्ज करता है।';
+
+  @override
+  String get hcFirstName => 'पहला नाम';
+
+  @override
+  String get hcLastName => 'उपनाम';
+
+  @override
+  String get hcPhone => 'फ़ोन नंबर';
+
+  @override
+  String get hcOptional => 'वैकल्पिक';
+
+  @override
+  String get hcReasonTitle => 'आने का कारण';
+
+  @override
+  String get hcReasonHint => 'जैसे दो दिन से बुखार';
+
+  @override
+  String get hcReviewTitle => 'जाँचें और पुष्टि करें';
+
+  @override
+  String get hcConfirmBooking => 'अपॉइंटमेंट पक्की करें';
+
+  @override
+  String get hcBookingConfirmedTitle => 'अपॉइंटमेंट पक्की हो गई';
+
+  @override
+  String get hcBookingRequestedTitle => 'अपॉइंटमेंट का अनुरोध भेजा गया';
+
+  @override
+  String get hcBookingPendingBody =>
+      'क्लिनिक आपकी अपॉइंटमेंट की पुष्टि करेगा। इसे \'मेरी अपॉइंटमेंट\' में देख सकते हैं।';
+
+  @override
+  String get hcBookingReferenceLabel => 'संदर्भ';
+
+  @override
+  String get hcViewAppointment => 'अपॉइंटमेंट देखें';
+
+  @override
+  String get hcDone => 'ठीक है';
+
+  @override
+  String get hcSlotTakenTitle => 'यह समय अभी बुक हो गया';
+
+  @override
+  String get hcSlotTakenBody =>
+      'किसी और ने पहले बुक कर लिया। कृपया दूसरा समय चुनें।';
+
+  @override
+  String get hcFieldRequired => 'यह ज़रूरी है।';
+
+  @override
+  String get hcEmailInvalid => 'सही ईमेल पता डालें।';
+
+  @override
+  String get hcPasswordTooShort => 'कम से कम 10 अक्षर रखें।';
+
+  @override
+  String get hcBookingFailedTitle => 'अपॉइंटमेंट बुक नहीं हो सकी';
+
+  @override
+  String get hcBookingFailedBody =>
+      'कुछ बुक नहीं हुआ। फिर कोशिश करें या दूसरा समय चुनें।';
+
+  @override
+  String get hcMyAppointments => 'मेरी अपॉइंटमेंट';
+
+  @override
+  String get hcTabUpcoming => 'आने वाली';
+
+  @override
+  String get hcTabPast => 'पिछली';
+
+  @override
+  String get hcTabCancelled => 'रद्द';
+
+  @override
+  String get hcNoUpcomingTitle => 'कोई आने वाली अपॉइंटमेंट नहीं';
+
+  @override
+  String get hcNoUpcomingBody =>
+      'क्लिनिक खोजें, डॉक्टर चुनें और विज़िट बुक करें — वह यहाँ दिखेगी।';
+
+  @override
+  String get hcNoPastTitle => 'कोई पिछली अपॉइंटमेंट नहीं';
+
+  @override
+  String get hcNoPastBody => 'पूरी हुई विज़िट यहाँ दिखेंगी।';
+
+  @override
+  String get hcNoCancelledTitle => 'कुछ रद्द नहीं';
+
+  @override
+  String get hcNoCancelledBody => 'रद्द की गई अपॉइंटमेंट यहाँ दिखेंगी।';
+
+  @override
+  String get hcAppointmentsSignInTitle =>
+      'अपॉइंटमेंट देखने के लिए साइन इन करें';
+
+  @override
+  String get hcAppointmentsSignInBody =>
+      'आपकी अपॉइंटमेंट आपके क्लिनिक खाते में रहती हैं।';
+
+  @override
+  String get hcStatusRequested => 'अनुरोध भेजा';
+
+  @override
+  String get hcStatusConfirmed => 'पक्की';
+
+  @override
+  String get hcStatusCheckedIn => 'चेक-इन हो गया';
+
+  @override
+  String get hcStatusWaiting => 'इंतज़ार में';
+
+  @override
+  String get hcStatusInConsultation => 'डॉक्टर के पास';
+
+  @override
+  String get hcStatusCompleted => 'पूरी हुई';
+
+  @override
+  String get hcStatusCancelled => 'रद्द';
+
+  @override
+  String get hcStatusNoShow => 'नहीं आए';
+
+  @override
+  String get hcStatusRescheduled => 'दूसरे समय पर';
+
+  @override
+  String get hcStatusUnknown => 'अज्ञात';
+
+  @override
+  String get hcWhen => 'कब';
+
+  @override
+  String get hcWhere => 'कहाँ';
+
+  @override
+  String get hcDoctorLabel => 'डॉक्टर';
+
+  @override
+  String get hcReasonLabel => 'कारण';
+
+  @override
+  String get hcNotesLabel => 'टिप्पणी';
+
+  @override
+  String get hcCancelAppointment => 'अपॉइंटमेंट रद्द करें';
+
+  @override
+  String get hcKeepAppointment => 'अपॉइंटमेंट रखें';
+
+  @override
+  String get hcCancelConfirmTitle => 'यह अपॉइंटमेंट रद्द करें?';
+
+  @override
+  String get hcCancelReasonHint => 'कारण (वैकल्पिक)';
+
+  @override
+  String get hcAppointmentCancelled => 'अपॉइंटमेंट रद्द कर दी गई';
+
+  @override
+  String get hcRescheduleAction => 'समय बदलें';
+
+  @override
+  String get hcRescheduleTitle => 'नया समय चुनें';
+
+  @override
+  String get hcRescheduledMessage => 'अपॉइंटमेंट दूसरे समय पर कर दी गई';
+
+  @override
+  String get hcSessionExpired =>
+      'आपका सत्र समाप्त हो गया। कृपया फिर साइन इन करें।';
+
+  @override
+  String get hcQueueTitle => 'आपकी कतार';
+
+  @override
+  String hcQueueToken(int token) {
+    return 'टोकन $token';
+  }
+
+  @override
+  String hcQueueAhead(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'आपसे पहले $count मरीज़ हैं',
+      one: 'आपसे पहले 1 मरीज़ है',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get hcQueueYouAreNext => 'अगली बारी आपकी है';
+
+  @override
+  String get hcQueueCheckInNote =>
+      'पहुँचने पर क्लिनिक के रिसेप्शन पर चेक-इन करें। कतार में जुड़ते ही आपका टोकन यहाँ दिखेगा।';
+
+  @override
+  String get hcQueueCalled => 'कृपया डॉक्टर के कमरे में जाएँ';
+
+  @override
+  String get hcQueueInConsultation => 'आप अब डॉक्टर के पास हैं';
+
+  @override
+  String get hcQueueFinished => 'यह विज़िट पूरी हो गई';
+
+  @override
+  String get hcSignInTitle => 'बुक करने के लिए साइन इन करें';
+
+  @override
+  String get hcSignInBody =>
+      'बुकिंग आपके क्लिनिक खाते से होती है — वही ईमेल और पासवर्ड जो क्लिनिक की वेबसाइट पर है।';
+
+  @override
+  String get hcSignIn => 'साइन इन';
+
+  @override
+  String get hcSignOut => 'साइन आउट';
+
+  @override
+  String get hcEmailLabel => 'ईमेल';
+
+  @override
+  String get hcPasswordLabel => 'पासवर्ड';
+
+  @override
+  String get hcFullNameLabel => 'पूरा नाम';
+
+  @override
+  String get hcCreateAccount => 'खाता बनाएँ';
+
+  @override
+  String get hcHaveAccount => 'खाता है? साइन इन करें';
+
+  @override
+  String get hcNoAccount => 'नए हैं? खाता बनाएँ';
+
+  @override
+  String hcSignedInAs(String name) {
+    return '$name के रूप में साइन इन';
+  }
+
+  @override
+  String get hcSignInFailed => 'साइन इन नहीं हो सका। ईमेल और पासवर्ड जाँचें।';
+
+  @override
+  String get hcApiSettingsTitle => 'क्लिनिक सर्वर (QA)';
+
+  @override
+  String get hcApiSettingsHint => 'क्लिनिक प्लेटफ़ॉर्म API का पता';
+
+  @override
+  String get hcApiSettingsSaved => 'सर्वर पता सहेजा गया';
+
+  @override
+  String get hcApiSettingsReset => 'डिफ़ॉल्ट पर लौटें';
+
+  @override
+  String get hcFiltersTitle => 'फ़िल्टर';
+
+  @override
+  String get hcCityLabel => 'शहर';
+
+  @override
+  String get hcCityHint => 'जैसे जयपुर';
+
+  @override
+  String get hcApply => 'लागू करें';
+
+  @override
+  String get hcClear => 'हटाएँ';
+
+  @override
+  String hcRelInMinutes(int minutes) {
+    return '$minutes मिनट में';
+  }
+
+  @override
+  String hcRelInHours(int hours) {
+    return '$hours घंटे में';
+  }
+
+  @override
+  String get hcRelStartingSoon => 'अभी शुरू होने वाली है';
+
+  @override
+  String get hcRelToday => 'आज';
+
+  @override
+  String get hcRelTomorrow => 'कल';
+
+  @override
+  String get hcTimeUnknown => 'समय की पुष्टि होनी है';
+
+  @override
+  String get hcUnavailableTitle => 'यह केंद्र अब सूचीबद्ध नहीं है';
+
+  @override
+  String get hcUnavailableBody =>
+      'यह हटा दिया गया हो सकता है। वापस जाकर दूसरा केंद्र चुनें।';
 }

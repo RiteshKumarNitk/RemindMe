@@ -14,8 +14,11 @@ import 'features/profile/profile_screen.dart';
 import 'features/splash/splash_screen.dart';
 import 'data/models/dose_entry.dart';
 import 'data/models/dose_status.dart';
+import 'data/repositories/appointment_repository.dart';
+import 'data/repositories/healthcare_repository.dart';
 import 'services/account_deletion_service.dart';
 import 'services/auth_service.dart';
+import 'services/platform_auth_service.dart';
 import 'services/settings_controller.dart';
 import 'services/sync/sync_service.dart';
 import 'state/app_state.dart';
@@ -28,6 +31,9 @@ class MediReminderApp extends StatelessWidget {
     required this.sync,
     required this.auth,
     required this.accountDeletion,
+    required this.platformAuth,
+    required this.healthcare,
+    required this.appointments,
   });
 
   final AppState appState;
@@ -35,6 +41,12 @@ class MediReminderApp extends StatelessWidget {
   final SyncService sync;
   final AuthService auth;
   final AccountDeletionService accountDeletion;
+
+  /// Healthcare-platform account (clinic bookings) — separate from the
+  /// Firebase account that powers family sync.
+  final PlatformAuthService platformAuth;
+  final HealthcareRepository healthcare;
+  final AppointmentRepository appointments;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +57,9 @@ class MediReminderApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: sync),
         ChangeNotifierProvider.value(value: auth),
         Provider<AccountDeletionService>.value(value: accountDeletion),
+        ChangeNotifierProvider<PlatformAuthService>.value(value: platformAuth),
+        Provider<HealthcareRepository>.value(value: healthcare),
+        Provider<AppointmentRepository>.value(value: appointments),
       ],
       child: Consumer<SettingsController>(
         builder: (context, s, _) {
