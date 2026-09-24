@@ -369,10 +369,9 @@ class _VitalTile extends StatelessWidget {
             ),
             child: Text(
               label,
-              style: TextStyle(
+              style: theme.textTheme.labelMedium?.copyWith(
                 color: color,
                 fontWeight: FontWeight.w700,
-                fontSize: 12,
               ),
             ),
           ),

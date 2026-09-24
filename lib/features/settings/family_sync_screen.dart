@@ -6,12 +6,14 @@ import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../core/utilities/date_utils.dart';
 import '../../services/auth_service.dart';
 import '../../services/settings_controller.dart';
 import '../../services/sync/invitation_service.dart';
 import '../../services/sync/sync_service.dart';
 import '../caregiver/caregiver_dashboard_screen.dart';
+import '../widgets/app_scaffold.dart';
 import '../widgets/big_button.dart';
 import 'family_qr_scan_screen.dart';
 import 'family_qr_show_screen.dart';
@@ -31,7 +33,11 @@ import 'family_qr_show_screen.dart';
 ///   - Caregiver dashboard
 ///   - Sync controls
 class FamilySyncScreen extends StatefulWidget {
-  const FamilySyncScreen({super.key});
+  const FamilySyncScreen({super.key, this.embedded = false});
+
+  /// True when hosted inside the main shell's Family tab (no AppBar, extra
+  /// bottom clearance for the navigation bar).
+  final bool embedded;
 
   @override
   State<FamilySyncScreen> createState() => _FamilySyncScreenState();
@@ -213,16 +219,34 @@ class _FamilySyncScreenState extends State<FamilySyncScreen> {
     final auth = context.watch<AuthService>();
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-        title: Text(l10n.familySync),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        children: [
+      // When hosted as the "Family" tab of the main shell there is no back
+      // button to show and the page title lives in the page header instead.
+      appBar: widget.embedded
+          ? null
+          : AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
+              title: Text(l10n.familySync),
+            ),
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            8,
+            20,
+            widget.embedded ? 120 : 32,
+          ),
+          children: [
+          if (widget.embedded) ...[
+            AppPageHeader(
+              title: l10n.familySync,
+              subtitle: l10n.familySyncDesc,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
           // Firebase not configured warning
           if (!auth.firebaseAvailable) ...[
             Card(
@@ -542,7 +566,8 @@ class _FamilySyncScreenState extends State<FamilySyncScreen> {
             const SizedBox(height: 20),
             _SyncErrorCard(raw: sync.lastError!, l10n: l10n),
           ],
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -557,13 +582,13 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(
+        top: AppSpacing.xs,
+        bottom: AppSpacing.xs,
+      ),
       child: Text(
         text,
-        style: theme.textTheme.titleMedium?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w700,
-        ),
+        style: theme.textTheme.titleLarge,
       ),
     );
   }

@@ -3,14 +3,23 @@ import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../core/utilities/date_utils.dart';
+import '../../data/models/adherence_stats.dart';
 import '../../data/models/dose_entry.dart';
-import '../../data/models/dose_status.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
+import '../widgets/app_states.dart';
+import '../widgets/app_status.dart';
+import '../widgets/app_surfaces.dart';
+import '../widgets/dose_list_tile.dart';
 
-/// Weekly calendar view showing all medicines at a glance.
-/// Each day column shows medicines as colored dots/tiles.
+/// A week at a glance — without shrinking the text to fit seven columns.
+///
+/// The strip across the top carries the day, the date and a row of status dots
+/// (a second, non-textual cue); the day you pick is listed underneath at normal
+/// reading size. This is the whole reason a 7-column grid of 9pt labels was
+/// replaced: on a phone it was unreadable, which for this app means unusable.
 class WeeklyCalendarScreen extends StatefulWidget {
   const WeeklyCalendarScreen({super.key});
 
@@ -20,11 +29,13 @@ class WeeklyCalendarScreen extends StatefulWidget {
 
 class _WeeklyCalendarScreenState extends State<WeeklyCalendarScreen> {
   late DateTime _weekStart;
+  DateTime? _selectedDay;
 
   @override
   void initState() {
     super.initState();
     _weekStart = AppDateUtils.startOfWeek(DateTime.now());
+    _selectedDay = AppDateUtils.startOfDay(DateTime.now());
   }
 
   @override
@@ -46,129 +57,138 @@ class _WeeklyCalendarScreenState extends State<WeeklyCalendarScreen> {
           IconButton(
             onPressed: () => setState(() {
               _weekStart = _weekStart.subtract(const Duration(days: 7));
+              _selectedDay = _weekStart;
             }),
+            tooltip: l10n.histThisWeek,
             icon: const Icon(Icons.chevron_left_rounded),
           ),
           TextButton(
             onPressed: () => setState(() {
               _weekStart = AppDateUtils.startOfWeek(now);
+              _selectedDay = AppDateUtils.startOfDay(now);
             }),
             child: Text(l10n.histToday),
           ),
           IconButton(
             onPressed: () => setState(() {
               _weekStart = _weekStart.add(const Duration(days: 7));
+              _selectedDay = _weekStart;
             }),
+            tooltip: l10n.histAll,
             icon: const Icon(Icons.chevron_right_rounded),
           ),
         ],
       ),
-      body: FutureBuilder<List<DoseEntry>>(
-        future: appState
-            .historyFor(_weekStart, _weekStart.add(const Duration(days: 7)))
-            .then((r) => r.$1),
+      body: FutureBuilder<(List<DoseEntry>, AdherenceStats)>(
+        future: appState.historyFor(_weekStart, _weekStart.add(const Duration(days: 7))),
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return const SkeletonList(rows: 4);
           }
-          final allEntries = snapshot.data ?? [];
+          final allEntries = snapshot.data?.$1 ?? const <DoseEntry>[];
 
-          // Group entries by day
           final dayMap = <DateTime, List<DoseEntry>>{};
           for (final day in days) {
-            final dayKey = AppDateUtils.startOfDay(day);
-            dayMap[dayKey] = allEntries
-                .where(
-                  (e) => AppDateUtils.startOfDay(e.dose.scheduledAt) == dayKey,
-                )
+            final key = AppDateUtils.startOfDay(day);
+            dayMap[key] = allEntries
+                .where((e) => AppDateUtils.startOfDay(e.dose.scheduledAt) == key)
                 .toList()
-              ..sort(
-                (a, b) => a.dose.scheduledAt.compareTo(b.dose.scheduledAt),
-              );
+              ..sort((a, b) => a.dose.scheduledAt.compareTo(b.dose.scheduledAt));
           }
 
-          return Column(
+          final selected = _selectedDay ?? AppDateUtils.startOfDay(now);
+          final selectedEntries = dayMap[selected] ?? const <DoseEntry>[];
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              AppSpacing.xl,
+            ),
             children: [
-              // Day headers
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Row(
-                  children: [
-                    for (final day in days) ...[
-                      Expanded(
-                        child: _DayHeader(
-                          day: day,
-                          isToday: AppDateUtils.sameDay(day, now),
+              // ── Week strip ─────────────────────────────────────────────
+              Row(
+                children: [
+                  for (final day in days) ...[
+                    Expanded(
+                      child: _DayTile(
+                        day: day,
+                        entries: dayMap[AppDateUtils.startOfDay(day)] ?? const [],
+                        selected: AppDateUtils.sameDay(day, selected),
+                        isToday: AppDateUtils.sameDay(day, now),
+                        locale: locale,
+                        grace: grace,
+                        now: now,
+                        onTap: () => setState(
+                          () => _selectedDay = AppDateUtils.startOfDay(day),
+                        ),
+                      ),
+                    ),
+                    if (day != days.last) const SizedBox(width: AppSpacing.xxs),
+                  ],
+                ],
+              ),
+
+              const SizedBox(height: AppSpacing.lg),
+              AppSectionHeader(
+                title: AppDateUtils.sameDay(selected, now)
+                    ? l10n.histToday
+                    : AppDateUtils.dayLabel(selected, locale),
+                subtitle: l10n.histShowing(
+                  l10n.histToday,
+                  selectedEntries.length,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              if (selectedEntries.isEmpty)
+                EmptyState(
+                  compact: true,
+                  icon: Icons.event_available_rounded,
+                  title: l10n.homeEmptySchedule,
+                  message: l10n.histEmpty,
+                )
+              else
+                AppCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < selectedEntries.length; i++) ...[
+                        DoseListTile(
+                          entry: selectedEntries[i],
+                          grace: grace,
                           locale: locale,
                         ),
-                      ),
-                      if (day != days.last) const SizedBox(width: 2),
+                        if (i != selectedEntries.length - 1)
+                          const AppDivider(indent: AppSpacing.md),
+                      ],
                     ],
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-
-              // Day columns with medicine tiles
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final day in days) ...[
-                      Expanded(
-                        child: _DayColumn(
-                          day: day,
-                          entries: dayMap[AppDateUtils.startOfDay(day)] ?? [],
-                          isToday: AppDateUtils.sameDay(day, now),
-                          grace: grace,
-                          now: now,
-                          l10n: l10n,
-                        ),
-                      ),
-                      if (day != days.last)
-                        Container(
-                          width: 1,
-                          color: theme.colorScheme.outlineVariant
-                              .withValues(alpha: 0.3),
-                        ),
-                    ],
-                  ],
-                ),
-              ),
-
-              // Legend
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  border: Border(
-                    top: BorderSide(
-                      color: theme.colorScheme.outlineVariant
-                          .withValues(alpha: 0.3),
-                    ),
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _LegendDot(color: theme.successColor, label: l10n.statusTaken),
-                    const SizedBox(width: 16),
-                    _LegendDot(color: theme.missedColor, label: l10n.statusMissed),
-                    const SizedBox(width: 16),
-                    _LegendDot(
-                      color: theme.colorScheme.outline,
-                      label: l10n.statusSkipped,
-                    ),
-                    const SizedBox(width: 16),
-                    _LegendDot(
-                      color: theme.pendingColor,
-                      label: l10n.statusPending,
-                    ),
-                  ],
-                ),
+
+              const SizedBox(height: AppSpacing.lg),
+              Wrap(
+                spacing: AppSpacing.md,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  _LegendDot(
+                    color: theme.palette.success,
+                    label: l10n.statusTaken,
+                  ),
+                  _LegendDot(
+                    color: theme.colorScheme.error,
+                    label: l10n.statusMissed,
+                  ),
+                  _LegendDot(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    label: l10n.statusSkipped,
+                  ),
+                  _LegendDot(
+                    color: theme.palette.warning,
+                    label: l10n.statusPending,
+                  ),
+                ],
               ),
             ],
           );
@@ -178,173 +198,103 @@ class _WeeklyCalendarScreenState extends State<WeeklyCalendarScreen> {
   }
 }
 
-class _DayHeader extends StatelessWidget {
-  const _DayHeader({
-    required this.day,
-    required this.isToday,
-    required this.locale,
-  });
-
-  final DateTime day;
-  final bool isToday;
-  final String locale;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      children: [
-        Text(
-          AppDateUtils.weekdayShort(day.weekday, locale),
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: isToday ? theme.colorScheme.primary : Colors.transparent,
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(
-              '${day.day}',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: isToday
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DayColumn extends StatelessWidget {
-  const _DayColumn({
+/// One day in the week strip: weekday, date, and a dot per dose.
+class _DayTile extends StatelessWidget {
+  const _DayTile({
     required this.day,
     required this.entries,
+    required this.selected,
     required this.isToday,
+    required this.locale,
     required this.grace,
     required this.now,
-    required this.l10n,
+    required this.onTap,
   });
 
   final DateTime day;
   final List<DoseEntry> entries;
+  final bool selected;
   final bool isToday;
+  final String locale;
   final Duration grace;
   final DateTime now;
-  final AppLocalizations l10n;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    if (entries.isEmpty) {
-      return Container(
-        height: 200,
-        alignment: Alignment.topCenter,
-        padding: const EdgeInsets.only(top: 12),
-        child: Icon(
-          Icons.check_circle_outline_rounded,
-          size: 20,
-          color: theme.colorScheme.outline.withValues(alpha: 0.4),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-      child: Column(
-        children: [
-          for (final entry in entries) ...[
-            _MedicineChip(
-              entry: entry,
-              status: entry.effectiveStatus(grace, now),
-              l10n: l10n,
-            ),
-            const SizedBox(height: 4),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _MedicineChip extends StatelessWidget {
-  const _MedicineChip({
-    required this.entry,
-    required this.status,
-    required this.l10n,
-  });
-
-  final DoseEntry entry;
-  final DoseStatus status;
-  final AppLocalizations l10n;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    final (Color bgColor, Color textColor, IconData icon) = switch (status) {
-      DoseStatus.taken => (
-        theme.successColor.withValues(alpha: 0.15),
-        theme.successColor,
-        Icons.check_rounded,
-      ),
-      DoseStatus.missed => (
-        theme.missedColor.withValues(alpha: 0.15),
-        theme.missedColor,
-        Icons.close_rounded,
-      ),
-      DoseStatus.skipped => (
-        theme.colorScheme.surfaceContainerHighest,
-        theme.colorScheme.onSurfaceVariant,
-        Icons.remove_rounded,
-      ),
-      DoseStatus.pending => (
-        theme.pendingColor.withValues(alpha: 0.15),
-        theme.pendingColor,
-        Icons.schedule_rounded,
-      ),
-    };
-
-    // Show first 6 chars of medicine name for compact display
-    final shortName = entry.medicine.name.length > 8
-        ? '${entry.medicine.name.substring(0, 7)}…'
-        : entry.medicine.name;
-
-    return Tooltip(
-      message:
-          '${entry.medicine.name}\n${entry.medicine.doseLabel}\n${status.name}',
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: textColor),
-            const SizedBox(height: 2),
-            Text(
-              shortName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                color: textColor,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: AppDateUtils.dayLabel(day, locale),
+      child: Material(
+        color: selected
+            ? theme.colorScheme.primaryContainer
+            : theme.colorScheme.surfaceContainerLow,
+        borderRadius: AppRadius.controlRadius,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.controlRadius,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+            decoration: BoxDecoration(
+              borderRadius: AppRadius.controlRadius,
+              border: Border.all(
+                color: isToday
+                    ? theme.colorScheme.primary
+                    : theme.cardBorder,
+                width: isToday ? 2 : 1,
               ),
             ),
-          ],
+            child: Column(
+              children: [
+                Text(
+                  AppDateUtils.weekdayShort(day.weekday, locale),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${day.day}',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: selected
+                        ? theme.colorScheme.onPrimaryContainer
+                        : theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                // Dots: a non-textual cue for how the day went. Limited to four
+                // so the strip stays legible; the count is in the list below.
+                SizedBox(
+                  height: 8,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (final e in entries.take(4))
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 1),
+                          child: Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: doseVisual(
+                                theme,
+                                e.effectiveStatus(grace, now),
+                              ).color,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -353,6 +303,7 @@ class _MedicineChip extends StatelessWidget {
 
 class _LegendDot extends StatelessWidget {
   const _LegendDot({required this.color, required this.label});
+
   final Color color;
   final String label;
 
@@ -363,17 +314,12 @@ class _LegendDot extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: 10,
+          height: 10,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
+        const SizedBox(width: AppSpacing.xxs),
+        Text(label, style: theme.textTheme.labelMedium),
       ],
     );
   }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../core/utilities/date_utils.dart';
 import '../../data/models/food_instruction.dart';
 import '../../data/models/medicine.dart';
@@ -10,10 +12,17 @@ import '../../data/models/medicine_schedule.dart';
 import '../../services/interaction_checker.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
-import '../widgets/big_button.dart';
+import '../widgets/app_buttons.dart';
+import '../widgets/app_dialogs.dart';
+import '../widgets/app_surfaces.dart';
+import '../widgets/app_time_picker.dart';
 
-/// Add / edit medicine form. Designed for one-handed elderly use: large
-/// fields, big chips, no hidden options.
+/// Add / edit a medicine.
+///
+/// Ordered the way a person would say it out loud — *what*, *how much*, *when*,
+/// *how often* — with optional extras tucked at the end. One screen, no wizard,
+/// but grouped into blocks so it never reads as one giant form. The save button
+/// stays pinned to the bottom so it is always reachable.
 class MedicineFormScreen extends StatefulWidget {
   const MedicineFormScreen({super.key, this.medicine});
 
@@ -73,138 +82,186 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final locale = context.watch<SettingsController>().settings.locale;
+    final isEdit = widget.medicine != null;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.medicine == null ? l10n.medAdd : l10n.medEdit),
+        title: Text(isEdit ? l10n.medEdit : l10n.medAdd),
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded),
+          tooltip: l10n.btnCancel,
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.lg,
+            AppSpacing.xl,
+          ),
           children: [
-            _SectionLabel(l10n.medName),
+            // ── What is it ────────────────────────────────────────────────
+            _FieldLabel(l10n.medName),
             TextFormField(
               controller: _name,
               textInputAction: TextInputAction.next,
+              textCapitalization: TextCapitalization.words,
               style: theme.textTheme.titleMedium,
               decoration: InputDecoration(hintText: l10n.medNameHint),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? l10n.medName : null,
             ),
-            const SizedBox(height: 20),
-            _SectionLabel(l10n.medDose),
+
+            const SizedBox(height: AppSpacing.xl),
+
+            // ── How much ──────────────────────────────────────────────────
+            _FieldLabel(l10n.medDose),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: TextFormField(
                     controller: _dose,
-                    keyboardType: TextInputType.number,
-                    style: theme.textTheme.titleMedium,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall,
                     decoration: InputDecoration(hintText: l10n.medDoseHint),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   flex: 2,
                   child: TextFormField(
                     controller: _unit,
                     style: theme.textTheme.titleMedium,
-                    decoration: InputDecoration(hintText: l10n.medDoseUnitHint),
+                    decoration: InputDecoration(
+                      hintText: l10n.medDoseUnitHint,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
               children: [
                 for (final unit in _quickUnits(l10n))
                   ActionChip(
-                    avatar: Icon(unit.icon, size: 20),
-                    label: Text(unit.label, style: theme.textTheme.labelLarge),
-                    onPressed: () => setState(() {
-                      _unit.text = unit.value;
-                    }),
+                    avatar: Icon(unit.icon, size: AppSizes.iconSm),
+                    label: Text(unit.label),
+                    onPressed: () => setState(() => _unit.text = unit.value),
                   ),
               ],
             ),
-            const SizedBox(height: 20),
-            _SectionLabel(l10n.medFoodInstruction),
+
+            const SizedBox(height: AppSpacing.xl),
+
+            // ── When ──────────────────────────────────────────────────────
+            _FieldLabel(l10n.medReminderTime),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
               children: [
-                for (final food in FoodInstruction.values)
-                  ChoiceChip(
-                    label: Text(_foodLabel(l10n, food)),
-                    selected: _food == food,
-                    onSelected: (_) => setState(() => _food = food),
+                for (var i = 0; i < _times.length; i++)
+                  InputChip(
+                    avatar: const Icon(
+                      Icons.schedule_rounded,
+                      size: AppSizes.iconMd,
+                    ),
+                    label: Text(
+                      AppDateUtils.timeLabel(
+                        DateTime(
+                          2024,
+                          1,
+                          1,
+                          _times[i].hour,
+                          _times[i].minute,
+                        ),
+                        locale,
+                      ),
+                      style: theme.textTheme.labelLarge,
+                    ),
+                    onPressed: () => _pickTime(i),
+                    onDeleted: _times.length > 1
+                        ? () => setState(() => _times.removeAt(i))
+                        : null,
+                    deleteButtonTooltipMessage: l10n.medDelete,
                   ),
               ],
             ),
-            const SizedBox(height: 20),
-            _SectionLabel(l10n.medFrequency),
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                Expanded(
+                  child: AppButton.secondary(
+                    label: l10n.medAddAnotherTime,
+                    icon: Icons.add_rounded,
+                    height: 52,
+                    onPressed: _addTime,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+            _FieldLabel(l10n.medQuickTimes),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                for (final slot in _timeSlots(l10n))
+                  FilterChip(
+                    showCheckmark: false,
+                    avatar: Icon(
+                      slot.icon,
+                      size: AppSizes.iconMd,
+                      color: _hasTime(slot.time)
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    label: Text(slot.label),
+                    selected: _hasTime(slot.time),
+                    onSelected: (_) => setState(() => _toggleSlot(slot.time)),
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: AppSpacing.xl),
+
+            // ── How often ─────────────────────────────────────────────────
+            _FieldLabel(l10n.medFrequency),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
               children: [
                 _freqChip(l10n.freqEveryDay, MedicineFrequency.daily),
-                _freqChip(
-                  l10n.freqSpecificDays,
-                  MedicineFrequency.specificDays,
-                ),
+                _freqChip(l10n.freqSpecificDays, MedicineFrequency.specificDays),
                 _freqChip(l10n.freqOnce, MedicineFrequency.once),
                 _freqChip(l10n.freqMultiple, MedicineFrequency.multiple),
               ],
             ),
+
             if (_frequency == MedicineFrequency.specificDays) ...[
-              const SizedBox(height: 20),
-              _SectionLabel(l10n.medSelectDays),
+              const SizedBox(height: AppSpacing.lg),
+              _FieldLabel(l10n.medSelectDays),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ActionChip(
-                    avatar: const Icon(Icons.work_rounded, size: 20),
-                    label: Text(
-                      l10n.medPresetWeekdays,
-                      style: theme.textTheme.labelLarge,
-                    ),
-                    onPressed: () => setState(() {
-                      _selectedDays = [1, 2, 3, 4, 5];
-                    }),
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.weekend_rounded, size: 20),
-                    label: Text(
-                      l10n.medPresetWeekends,
-                      style: theme.textTheme.labelLarge,
-                    ),
-                    onPressed: () => setState(() {
-                      _selectedDays = [6, 7];
-                    }),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
                 children: [
                   for (var d = DateTime.monday; d <= DateTime.sunday; d++)
                     FilterChip(
-                      label: Text(
-                        AppDateUtils.weekdayShort(d, locale),
-                        style: theme.textTheme.labelLarge,
-                      ),
+                      showCheckmark: false,
+                      label: Text(AppDateUtils.weekdayShort(d, locale)),
                       selected: _selectedDays.contains(d),
                       onSelected: (sel) => setState(() {
                         if (sel) {
-                          _selectedDays = {..._selectedDays, d}.toList()
-                            ..sort();
+                          _selectedDays = {..._selectedDays, d}.toList()..sort();
                         } else {
                           _selectedDays.remove(d);
                         }
@@ -212,182 +269,165 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
                     ),
                 ],
               ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppButton.secondary(
+                      label: l10n.medPresetWeekdays,
+                      icon: Icons.work_rounded,
+                      height: 52,
+                      onPressed: () =>
+                          setState(() => _selectedDays = [1, 2, 3, 4, 5]),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: AppButton.secondary(
+                      label: l10n.medPresetWeekends,
+                      icon: Icons.weekend_rounded,
+                      height: 52,
+                      onPressed: () => setState(() => _selectedDays = [6, 7]),
+                    ),
+                  ),
+                ],
+              ),
             ],
+
             if (_frequency == MedicineFrequency.once) ...[
-              const SizedBox(height: 20),
-              _SectionLabel(l10n.medOnceDate),
-              BigButton(
+              const SizedBox(height: AppSpacing.lg),
+              _FieldLabel(l10n.medOnceDate),
+              AppButton.secondary(
                 label: _onceDate == null
                     ? l10n.medOnceDate
                     : AppDateUtils.dateLabel(_onceDate!, locale),
                 icon: Icons.calendar_month_rounded,
-                height: 60,
-                outlined: true,
                 onPressed: _pickDate,
               ),
             ],
-            const SizedBox(height: 20),
-            _SectionLabel(l10n.medReminderTime),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (var i = 0; i < _times.length; i++)
-                  InputChip(
-                    label: Text(
-                      AppDateUtils.timeLabel(
-                        DateTime(2024, 1, 1, _times[i].hour, _times[i].minute),
-                        locale,
-                      ),
-                      style: theme.textTheme.labelLarge,
-                    ),
-                    avatar: const Icon(Icons.schedule_rounded, size: 22),
-                    onPressed: () => _pickTime(i),
-                    onDeleted: _times.length > 1
-                        ? () => setState(() => _times.removeAt(i))
-                        : null,
-                  ),
-                ActionChip(
-                  avatar: const Icon(Icons.add_rounded, size: 22),
-                  label: Text(
-                    l10n.medAddAnotherTime,
-                    style: theme.textTheme.labelLarge,
-                  ),
-                  onPressed: _addTime,
-                ),
-              ],
+
+            const SizedBox(height: AppSpacing.xxl),
+            AppSectionHeader(
+              title: l10n.medOptional,
+              subtitle: l10n.medNotes,
             ),
-            const SizedBox(height: 12),
-            _SectionLabel(l10n.medQuickTimes),
+
+            const SizedBox(height: AppSpacing.md),
+            _FieldLabel(l10n.medFoodInstruction),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
               children: [
-                for (final slot in _timeSlots(l10n))
-                  InputChip(
-                    avatar: Icon(
-                      slot.icon,
-                      size: 22,
-                      color: _times.any(
-                            (t) =>
-                                t.hour == slot.time.hour &&
-                                t.minute == slot.time.minute,
-                          )
-                          ? slot.color
-                          : null,
-                    ),
-                    label: Text(
-                      slot.label,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: _times.any(
-                              (t) =>
-                                  t.hour == slot.time.hour &&
-                                  t.minute == slot.time.minute,
-                            )
-                            ? slot.color
-                            : null,
-                        fontWeight: _times.any(
-                              (t) =>
-                                  t.hour == slot.time.hour &&
-                                  t.minute == slot.time.minute,
-                            )
-                            ? FontWeight.w700
-                            : null,
-                      ),
-                    ),
-                    selected: _times.any(
-                      (t) =>
-                          t.hour == slot.time.hour &&
-                          t.minute == slot.time.minute,
-                    ),
+                for (final food in FoodInstruction.values)
+                  ChoiceChip(
+                    label: Text(_foodLabel(l10n, food)),
+                    selected: _food == food,
                     showCheckmark: false,
-                    onPressed: () => setState(() => _toggleSlot(slot.time)),
+                    onSelected: (_) => setState(() => _food = food),
                   ),
               ],
             ),
-            const SizedBox(height: 20),
-            _SectionLabel(l10n.medNotes),
+
+            const SizedBox(height: AppSpacing.lg),
+            _FieldLabel(l10n.medNotes),
             TextFormField(
               controller: _notes,
               maxLines: 3,
               style: theme.textTheme.bodyLarge,
               decoration: InputDecoration(hintText: l10n.medNotes),
             ),
-            const SizedBox(height: 20),
-            _SectionLabel(l10n.medStockTracking),
+
+            const SizedBox(height: AppSpacing.lg),
+            _FieldLabel(l10n.medStockTracking),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: TextFormField(
                     controller: _stockCount,
                     keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
                     style: theme.textTheme.titleMedium,
                     decoration: InputDecoration(
                       hintText: l10n.medStockCountHint,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: TextFormField(
                     controller: _refillAt,
                     keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
                     style: theme.textTheme.titleMedium,
-                    decoration: InputDecoration(hintText: l10n.medRefillAtHint),
+                    decoration: InputDecoration(
+                      hintText: l10n.medRefillAtHint,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 28),
-            BigButton(
-              label: l10n.medSave,
-              icon: Icons.save_rounded,
-              onPressed: _saving ? null : _save,
-            ),
           ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.xs,
+          AppSpacing.lg,
+          AppSpacing.md,
+        ),
+        child: AppButton(
+          label: l10n.medSave,
+          icon: Icons.check_rounded,
+          busy: _saving,
+          onPressed: _saving ? null : _save,
         ),
       ),
     );
   }
 
   Widget _freqChip(String label, MedicineFrequency frequency) {
-    final theme = Theme.of(context);
     return ChoiceChip(
-      label: Text(label, style: theme.textTheme.labelLarge),
+      label: Text(label),
+      showCheckmark: false,
       selected: _frequency == frequency,
       onSelected: (_) => setState(() => _frequency = frequency),
     );
   }
 
+  bool _hasTime(TimeOfDay t) =>
+      _times.any((x) => x.hour == t.hour && x.minute == t.minute);
+
   Future<void> _pickTime(int index) async {
-    final l10n = AppLocalizations.of(context);
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _times[index],
-      helpText: l10n.medReminderTime,
-      cancelText: l10n.btnCancel,
-      confirmText: l10n.permOk,
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
-          child: child!,
-        );
-      },
+    final picked = await showAppTimePicker(
+      context,
+      initial: _times[index],
+      title: AppLocalizations.of(context).medReminderTime,
     );
     if (picked != null && mounted) {
       setState(() => _times[index] = picked);
     }
   }
 
+  Future<void> _addTime() async {
+    final picked = await showAppTimePicker(
+      context,
+      initial: const TimeOfDay(hour: 8, minute: 0),
+      title: AppLocalizations.of(context).medReminderTime,
+    );
+    if (picked != null && mounted) {
+      setState(() => _times = [..._times, picked]);
+    }
+  }
+
   /// Toggles a quick time slot: adds it when absent, removes it when present.
   void _toggleSlot(TimeOfDay t) {
-    final exists = _times.any((x) => x.hour == t.hour && x.minute == t.minute);
-    if (exists) {
+    if (_hasTime(t)) {
       _times.removeWhere((x) => x.hour == t.hour && x.minute == t.minute);
     } else {
       _times.add(t);
     }
-    // Keep reminder times in chronological order.
     _times.sort((a, b) {
       final c = a.hour.compareTo(b.hour);
       return c != 0 ? c : a.minute.compareTo(b.minute);
@@ -412,17 +452,12 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
         icon: Icons.medication_liquid_rounded,
       ),
       (label: l10n.medUnitDrop, value: 'drop', icon: Icons.grain_rounded),
-      (
-        label: l10n.medUnitSpoon,
-        value: 'spoon',
-        icon: Icons.restaurant_rounded,
-      ),
+      (label: l10n.medUnitSpoon, value: 'spoon', icon: Icons.restaurant_rounded),
     ];
   }
 
-  /// One-tap time slots for common dosing windows, with color coding
-  /// so elderly users can visually associate each slot with a time of day.
-  List<({String label, TimeOfDay time, IconData icon, Color color})> _timeSlots(
+  /// One-tap time slots for common dosing windows.
+  List<({String label, TimeOfDay time, IconData icon})> _timeSlots(
     AppLocalizations l10n,
   ) {
     return [
@@ -430,25 +465,21 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
         label: l10n.medTimeSlotMorning,
         time: const TimeOfDay(hour: 8, minute: 0),
         icon: Icons.wb_sunny_rounded,
-        color: const Color(0xFFFF9800), // Warm orange
       ),
       (
         label: l10n.medTimeSlotAfternoon,
         time: const TimeOfDay(hour: 13, minute: 0),
         icon: Icons.light_mode_rounded,
-        color: const Color(0xFFFFC107), // Bright amber
       ),
       (
         label: l10n.medTimeSlotEvening,
         time: const TimeOfDay(hour: 18, minute: 0),
         icon: Icons.wb_twilight_rounded,
-        color: const Color(0xFFFF5722), // Deep orange
       ),
       (
         label: l10n.medTimeSlotNight,
         time: const TimeOfDay(hour: 21, minute: 0),
         icon: Icons.nights_stay_rounded,
-        color: const Color(0xFF5C6BC0), // Indigo
       ),
     ];
   }
@@ -463,32 +494,12 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
       if (med.id == widget.medicine?.id) continue;
       for (final s in med.schedules) {
         final key = '${s.hour}:${s.minute.toString().padLeft(2, '0')}';
-        if (currentTimes.contains(key)) {
-          if (!conflicts.contains(med.name)) conflicts.add(med.name);
+        if (currentTimes.contains(key) && !conflicts.contains(med.name)) {
+          conflicts.add(med.name);
         }
       }
     }
     return conflicts;
-  }
-
-  Future<void> _addTime() async {
-    final l10n = AppLocalizations.of(context);
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: const TimeOfDay(hour: 8, minute: 0),
-      helpText: l10n.medReminderTime,
-      cancelText: l10n.btnCancel,
-      confirmText: l10n.permOk,
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && mounted) {
-      setState(() => _times.add(picked));
-    }
   }
 
   Future<void> _pickDate() async {
@@ -502,6 +513,16 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
       helpText: l10n.medOnceDate,
       cancelText: l10n.btnCancel,
       confirmText: l10n.permOk,
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          datePickerTheme: DatePickerThemeData(
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.sheetRadius,
+            ),
+          ),
+        ),
+        child: child!,
+      ),
     );
     if (picked != null && mounted) {
       setState(() => _onceDate = picked);
@@ -524,32 +545,25 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
       return;
     }
 
-    // Check for schedule conflicts with other medicines.
     if (!mounted) return;
     final appState = context.read<AppState>();
+
+    // Schedule conflict warning (another medicine at the same time).
     final conflicts = _findConflicts(appState.medicines);
     if (conflicts.isNotEmpty && mounted) {
-      final proceed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(l10n.medConflictTitle),
-          content: Text(l10n.medConflictBody(conflicts.join(', '))),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text(l10n.btnCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: Text(l10n.medSave),
-            ),
-          ],
-        ),
+      final proceed = await showAppConfirmDialog(
+        context,
+        title: l10n.medConflictTitle,
+        message: l10n.medConflictBody(conflicts.join(', ')),
+        confirmLabel: l10n.medSave,
+        cancelLabel: l10n.btnCancel,
+        destructive: false,
+        icon: Icons.schedule_rounded,
       );
-      if (proceed != true) return;
+      if (!proceed) return;
     }
 
-    // Check for drug interactions with other medicines.
+    // Drug interaction warning.
     final otherMeds = appState.medicines
         .where((m) => m.id != widget.medicine?.id)
         .map((m) => m.name)
@@ -559,57 +573,8 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
       otherMeds,
     );
     if (interactions.isNotEmpty && mounted) {
-      final proceed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('⚠️ Drug Interaction Warning'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final w in interactions) ...[
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: w.severity == InteractionSeverity.high
-                        ? Colors.red.withValues(alpha: 0.1)
-                        : Colors.orange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${w.medicine1} + ${w.medicine2}',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(w.warning),
-                    ],
-                  ),
-                ),
-              ],
-              const SizedBox(height: 8),
-              const Text(
-                'Please consult your doctor before saving.',
-                style: TextStyle(fontStyle: FontStyle.italic),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text(l10n.btnCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: Text(l10n.medSave),
-            ),
-          ],
-        ),
-      );
-      if (proceed != true) return;
+      final proceed = await _confirmInteractions(interactions, l10n);
+      if (!proceed) return;
     }
 
     setState(() => _saving = true);
@@ -640,12 +605,80 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
     );
 
     if (!mounted) return;
-    await context.read<AppState>().saveMedicine(medicine);
+    await appState.saveMedicine(medicine);
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(l10n.medSaved)));
     Navigator.of(context).pop();
+  }
+
+  Future<bool> _confirmInteractions(
+    List<InteractionWarning> interactions,
+    AppLocalizations l10n,
+  ) async {
+    final theme = Theme.of(context);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(
+          Icons.warning_amber_rounded,
+          color: theme.palette.warning,
+          size: AppSizes.iconXl,
+        ),
+        title: const Text('Drug interaction warning'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final w in interactions) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: w.severity == InteractionSeverity.high
+                      ? theme.colorScheme.errorContainer
+                      : theme.palette.warningContainer,
+                  borderRadius: AppRadius.controlRadius,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${w.medicine1} + ${w.medicine2}',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(w.warning, style: theme.textTheme.bodyMedium),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Please consult your doctor before saving.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          AppButton.secondary(
+            label: l10n.btnCancel,
+            height: 52,
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+          ),
+          AppButton(
+            label: l10n.medSave,
+            height: 52,
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+          ),
+        ],
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+      ),
+    );
+    return result ?? false;
   }
 
   void _showMessage(String text) {
@@ -662,8 +695,9 @@ class _MedicineFormScreenState extends State<MedicineFormScreen> {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
+/// Section label above a field or a group of chips.
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text);
 
   final String text;
 
@@ -671,7 +705,7 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
       child: Text(
         text,
         style: theme.textTheme.titleMedium?.copyWith(

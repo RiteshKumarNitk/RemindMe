@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../services/backup_service.dart';
+import '../widgets/app_states.dart';
 
 /// Screen for managing backups: create, restore, and delete.
 class BackupScreen extends StatefulWidget {
@@ -157,7 +158,7 @@ class _BackupScreenState extends State<BackupScreen> {
         title: const Text('Backup & Restore'),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const SkeletonList(rows: 3)
           : _loadError != null
           ? _LoadErrorView(message: _loadError!, onRetry: _loadBackups)
           : ListView(

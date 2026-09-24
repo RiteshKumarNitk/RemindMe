@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
-import '../widgets/big_button.dart';
+import '../widgets/app_buttons.dart';
+import '../widgets/app_surfaces.dart';
 
-/// First-run two-step setup: welcome → permissions.
-/// Each step has a clear explanation so elderly users understand WHY each
-/// permission is needed.
+/// First-run setup in two short steps: welcome (and your name), then the two
+/// permissions reminders actually need. Each step explains *why* in one plain
+/// sentence, and every action stays at the bottom where a thumb can reach it.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key, this.onComplete});
 
@@ -22,7 +24,7 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _nameController = TextEditingController();
   bool _busy = false;
-  int _step = 0; // 0=welcome, 1=permissions
+  int _step = 0; // 0 = welcome, 1 = permissions
 
   @override
   void dispose() {
@@ -40,7 +42,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await settings.setUserName(name);
     }
 
-    // Grant permissions
     await appState.requestAllPermissions();
     await appState.requestExactAlarms();
 
@@ -50,122 +51,102 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     widget.onComplete?.call();
   }
 
-  void _next() {
-    if (_step < 1) {
-      setState(() => _step++);
-    } else {
-      _finish();
-    }
+  Future<void> _skip() async {
+    await context.read<SettingsController>().setOnboardingDone(true);
+    if (!mounted) return;
+    widget.onComplete?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final isLast = _step == 1;
 
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(28, 32, 28, 32),
-          children: [
-            // Step indicator dots
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < 2; i++)
-                  Container(
-                    width: i == _step ? 32 : 12,
-                    height: 12,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: i <= _step
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            // Step content
-            if (_step == 0) ..._buildWelcome(l10n, theme),
-            if (_step == 1) ..._buildPermissions(l10n, theme),
-
-            const SizedBox(height: 32),
-
-            // Action buttons
-            if (_step < 1)
-              BigButton(
-                label: _busy ? '…' : l10n.obStart,
-                icon: Icons.arrow_forward_rounded,
-                onPressed: _busy ? null : _next,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _StepDots(step: _step, count: 2),
+              const SizedBox(height: AppSpacing.xl),
+              Expanded(
+                child: ListView(
+                  children: _step == 0
+                      ? _welcome(l10n, theme)
+                      : _permissions(l10n, theme),
+                ),
               ),
-            if (_step == 1)
-              BigButton(
-                label: _busy ? '…' : l10n.obStart,
-                icon: Icons.check_rounded,
-                onPressed: _busy ? null : _finish,
+              const SizedBox(height: AppSpacing.md),
+              AppButton(
+                label: isLast ? l10n.obStart : l10n.obStart,
+                icon: isLast ? Icons.check_rounded : Icons.arrow_forward_rounded,
+                busy: _busy,
+                onPressed: _busy
+                    ? null
+                    : (isLast ? _finish : () => setState(() => _step = 1)),
               ),
-            const SizedBox(height: 8),
-            BigTextButton(
-              label: l10n.obSkip,
-              onPressed: _busy ? null : () async {
-                final settings = context.read<SettingsController>();
-                await settings.setOnboardingDone(true);
-                if (!mounted) return;
-                widget.onComplete?.call();
-              },
-            ),
-          ],
+              const SizedBox(height: AppSpacing.xs),
+              AppButton.quiet(
+                label: l10n.obSkip,
+                onPressed: _busy ? null : _skip,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  List<Widget> _buildWelcome(AppLocalizations l10n, ThemeData theme) {
+  List<Widget> _welcome(AppLocalizations l10n, ThemeData theme) {
     return [
-      // Large decorative icon with background circle
       Center(
         child: Container(
-          width: 140,
-          height: 140,
+          width: 104,
+          height: 104,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
             color: theme.colorScheme.primaryContainer,
+            shape: BoxShape.circle,
           ),
           child: Icon(
             Icons.medication_rounded,
-            size: 72,
+            size: 52,
             color: theme.colorScheme.primary,
           ),
         ),
       ),
-      const SizedBox(height: 28),
+      const SizedBox(height: AppSpacing.lg),
       Text(
         l10n.obWelcome,
         style: theme.textTheme.displaySmall,
         textAlign: TextAlign.center,
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpacing.xxs),
       Text(
         l10n.obTitle,
-        style: theme.textTheme.headlineMedium?.copyWith(
+        style: theme.textTheme.titleLarge?.copyWith(
           color: theme.colorScheme.primary,
         ),
         textAlign: TextAlign.center,
       ),
-      const SizedBox(height: 20),
+      const SizedBox(height: AppSpacing.md),
       Text(
         l10n.obBody,
         style: theme.textTheme.bodyLarge,
         textAlign: TextAlign.center,
       ),
-      const SizedBox(height: 32),
+      const SizedBox(height: AppSpacing.xxl),
       TextField(
         controller: _nameController,
-        style: theme.textTheme.titleMedium,
         textCapitalization: TextCapitalization.words,
+        style: theme.textTheme.titleMedium,
         decoration: InputDecoration(
           labelText: l10n.obName,
           hintText: l10n.obNameHint,
@@ -175,99 +156,94 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ];
   }
 
-  List<Widget> _buildPermissions(AppLocalizations l10n, ThemeData theme) {
+  List<Widget> _permissions(AppLocalizations l10n, ThemeData theme) {
     return [
-      Icon(
-        Icons.notifications_active_rounded,
-        size: 64,
-        color: theme.colorScheme.primary,
+      Center(
+        child: Container(
+          width: 104,
+          height: 104,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.notifications_active_rounded,
+            size: 52,
+            color: theme.colorScheme.primary,
+          ),
+        ),
       ),
-      const SizedBox(height: 20),
+      const SizedBox(height: AppSpacing.lg),
       Text(
         l10n.setPermissions,
         style: theme.textTheme.headlineMedium,
         textAlign: TextAlign.center,
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpacing.xs),
       Text(
         l10n.setNotifDesc,
         style: theme.textTheme.bodyLarge,
         textAlign: TextAlign.center,
       ),
-      const SizedBox(height: 24),
-      _PermissionCard(
-        icon: Icons.notifications_active_rounded,
-        title: l10n.setNotifyPermission,
-        subtitle: l10n.setNotifDesc,
-        color: theme.colorScheme.primary,
-      ),
-      const SizedBox(height: 12),
-      _PermissionCard(
-        icon: Icons.alarm_add_rounded,
-        title: l10n.setExactAlarm,
-        subtitle: l10n.setExactDesc,
-        color: theme.colorScheme.secondary,
-      ),
-    ];
-  }
-
-
-}
-
-class _PermissionCard extends StatelessWidget {
-  const _PermissionCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
+      const SizedBox(height: AppSpacing.xl),
+      AppCard(
+        padding: EdgeInsets.zero,
+        child: Column(
           children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
+            AppListRow(
+              title: l10n.setNotifyPermission,
+              subtitle: Text(l10n.setNotifDesc),
+              leading: AppIconBubble(
+                icon: Icons.notifications_active_rounded,
+                color: theme.colorScheme.primary,
               ),
-              child: Icon(icon, size: 28, color: color),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+            const AppDivider(indent: AppSpacing.md),
+            AppListRow(
+              title: l10n.setExactAlarm,
+              subtitle: Text(l10n.setExactDesc),
+              leading: AppIconBubble(
+                icon: Icons.alarm_add_rounded,
+                color: theme.colorScheme.primary,
               ),
             ),
           ],
         ),
       ),
+      const SizedBox(height: AppSpacing.md),
+      AppInfoNote(
+        tone: AppNoteTone.info,
+        message: l10n.permExactBody,
+      ),
+    ];
+  }
+}
+
+class _StepDots extends StatelessWidget {
+  const _StepDots({required this.step, required this.count});
+
+  final int step;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < count; i++)
+          Container(
+            width: i == step ? 28 : 10,
+            height: 10,
+            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
+            decoration: BoxDecoration(
+              color: i <= step
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outlineVariant,
+              borderRadius: AppRadius.pillRadius,
+            ),
+          ),
+      ],
     );
   }
 }

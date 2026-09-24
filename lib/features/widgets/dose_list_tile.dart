@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../core/utilities/date_utils.dart';
 import '../../data/models/dose_entry.dart';
 import '../../data/models/dose_status.dart';
-import 'status_view.dart';
+import 'app_status.dart';
 
-/// One dose row: medicine name, time and outcome chip. Shared by the History
-/// screen and the caregiver dashboard.
+/// One resolved dose, as a plain row: medicine, time, outcome.
+/// Shared by the History screen and the caregiver dashboard.
 class DoseListTile extends StatelessWidget {
   const DoseListTile({
     super.key,
@@ -25,38 +26,44 @@ class DoseListTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final status = entry.effectiveStatus(grace, DateTime.now());
-    final (icon, color) = statusVisual(theme, status);
+    final visual = doseVisual(theme, status);
     final statusLabel = switch (status) {
       DoseStatus.taken => l10n.statusTaken,
       DoseStatus.skipped => l10n.statusSkipped,
       DoseStatus.missed => l10n.statusMissed,
       DoseStatus.pending => l10n.statusPending,
     };
+    final dose = entry.medicine.doseLabel;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            Icon(icon, size: 28, color: color),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(entry.medicine.name, style: theme.textTheme.titleMedium),
-                  Text(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(visual.icon, size: AppSizes.iconLg, color: visual.color),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.medicine.name,
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  [
                     AppDateUtils.timeLabel(entry.dose.scheduledAt, locale),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
+                    if (dose.isNotEmpty) dose,
+                  ].join(' · '),
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ],
             ),
-            StatusChip(status: status, label: statusLabel),
-          ],
-        ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          DoseStatusBadge(status: status, label: statusLabel, dense: true),
+        ],
       ),
     );
   }

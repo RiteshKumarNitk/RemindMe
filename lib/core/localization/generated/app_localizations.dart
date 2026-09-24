@@ -110,6 +110,12 @@ abstract class AppLocalizations {
   /// **'Home'**
   String get navHome;
 
+  /// No description provided for @navFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'Family'**
+  String get navFamily;
+
   /// No description provided for @greetingMorning.
   ///
   /// In en, this message translates to:
@@ -203,8 +209,80 @@ abstract class AppLocalizations {
   /// No description provided for @homeDailyProgress.
   ///
   /// In en, this message translates to:
-  /// **'Daily Progress'**
+  /// **'Today\'s progress'**
   String get homeDailyProgress;
+
+  /// No description provided for @homeProgressOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{taken} of {total} medicines taken'**
+  String homeProgressOf(int taken, int total);
+
+  /// No description provided for @homeMissedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You missed this medicine'**
+  String get homeMissedTitle;
+
+  /// No description provided for @homeMissedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'If you haven\'t taken it yet, follow your normal medication instructions.'**
+  String get homeMissedBody;
+
+  /// No description provided for @homeMoreTools.
+  ///
+  /// In en, this message translates to:
+  /// **'More tools'**
+  String get homeMoreTools;
+
+  /// No description provided for @homeEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your first medicine and DoseWise will remind you when it is time to take it.'**
+  String get homeEmptyBody;
+
+  /// No description provided for @errorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get errorTitle;
+
+  /// No description provided for @errorBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t load your medicines. Please try again.'**
+  String get errorBody;
+
+  /// No description provided for @errorRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get errorRetry;
+
+  /// No description provided for @medConfirmTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm time'**
+  String get medConfirmTime;
+
+  /// No description provided for @medOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional details'**
+  String get medOptional;
+
+  /// No description provided for @medDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Medicine details'**
+  String get medDetailsTitle;
+
+  /// No description provided for @setGroupReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get setGroupReminders;
 
   /// No description provided for @homeQuickActions.
   ///

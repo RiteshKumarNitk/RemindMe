@@ -10,6 +10,7 @@ import '../../data/models/adherence_stats.dart';
 import '../../data/models/dose_entry.dart';
 import '../../data/models/dose_status.dart';
 import '../../state/app_state.dart';
+import '../widgets/app_states.dart';
 
 /// Adherence report with weekly bar charts, streak tracking, and
 /// per-medicine breakdown. Designed for elderly users and their caregivers.
@@ -53,7 +54,7 @@ class _AdherenceReportScreenState extends State<AdherenceReportScreen> {
         future: appState.historyFor(weekStart, weekEnd).then((r) => r.$1),
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return const SkeletonList(rows: 4);
           }
           final entries = snapshot.data ?? [];
           if (entries.isEmpty) {

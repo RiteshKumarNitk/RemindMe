@@ -10,6 +10,7 @@ import '../../core/localization/generated/app_localizations.dart';
 import '../../services/auth_service.dart';
 import '../../services/sync/invitation_service.dart';
 import '../../services/sync/sync_service.dart';
+import '../widgets/app_states.dart';
 
 /// Displays a QR code that family members can scan to connect.
 ///
@@ -97,7 +98,7 @@ class _FamilyQrShowScreenState extends State<FamilyQrShowScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const SkeletonList(rows: 3)
           : _error != null
               ? _buildError(theme)
               : _buildQrContent(theme),

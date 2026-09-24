@@ -4,13 +4,23 @@ import 'package:provider/provider.dart';
 
 import '../../app.dart' show RootScreen;
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../services/account_deletion_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
 import '../settings/settings_screen.dart';
+import '../widgets/app_buttons.dart';
+import '../widgets/app_dialogs.dart';
+import '../widgets/app_scaffold.dart';
+import '../widgets/app_status.dart';
+import '../widgets/app_surfaces.dart';
 
-/// Profile screen: shows user info, allows editing name/age, and logout.
+/// Who you are and what happens to your account.
+///
+/// One screen, four blocks: identity, personal details, sign-in state, and the
+/// destructive zone — which stays last, in red, behind a confirmation.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -48,369 +58,263 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
-    return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-          children: [
-            Text(l10n.profileTitle, style: theme.textTheme.headlineMedium),
-            const SizedBox(height: 24),
+    return AppPage(
+      title: l10n.profileTitle,
+      children: [
+        _Identity(
+          auth: auth,
+          settings: settings,
+          l10n: l10n,
+        ),
 
-            // Profile header with photo/avatar
-            Center(
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 52,
-                    backgroundColor: theme.colorScheme.primaryContainer,
-                    backgroundImage: auth.photoUrl.isNotEmpty
-                        ? NetworkImage(auth.photoUrl)
-                        : null,
-                    child: auth.photoUrl.isEmpty
-                        ? Icon(
-                            Icons.person_rounded,
-                            size: 52,
-                            color: theme.colorScheme.primary,
-                          )
-                        : null,
+        const SizedBox(height: AppSpacing.xl),
+        AppSectionHeader(title: l10n.profilePersonalInfo),
+        const SizedBox(height: AppSpacing.sm),
+
+        if (_editing)
+          AppCard(
+            child: Column(
+              children: [
+                TextField(
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: l10n.obName,
+                    hintText: l10n.obNameHint,
                   ),
-                  const SizedBox(height: 16),
-                  if (auth.isSignedIn) ...[
-                    Text(
-                      auth.displayName.isNotEmpty ? auth.displayName : l10n.profileNoName,
-                      style: theme.textTheme.headlineSmall,
-                    ),
-                    if (auth.email.isNotEmpty)
-                      Text(
-                        auth.email,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        l10n.profileSignedIn,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    Text(
-                      settings.userName.isNotEmpty
-                          ? settings.userName
-                          : l10n.profileGuestUser,
-                      style: theme.textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        l10n.profileOfflineMode,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Personal info section
-            _SectionHeader(l10n.profilePersonalInfo),
-            const SizedBox(height: 8),
-
-            // Name field
-            if (_editing) ...[
-              TextField(
-                controller: _nameController,
-                style: theme.textTheme.titleMedium,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  labelText: l10n.obName,
-                  hintText: l10n.obNameHint,
-                  prefixIcon: const Icon(Icons.person_rounded),
-                  border: const OutlineInputBorder(),
                 ),
-              ),
-              const SizedBox(height: 12),
-
-              // Age field
-              TextField(
-                controller: _ageController,
-                style: theme.textTheme.titleMedium,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: l10n.profileAge,
-                  hintText: l10n.profileAgeHint,
-                  prefixIcon: const Icon(Icons.cake_rounded),
-                  border: const OutlineInputBorder(),
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: _ageController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: l10n.profileAge,
+                    hintText: l10n.profileAgeHint,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Save / Cancel buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        setState(() {
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppButton.secondary(
+                        label: l10n.btnCancel,
+                        height: 52,
+                        onPressed: () => setState(() {
                           _editing = false;
                           _nameController.text = settings.userName;
                           _ageController.text =
                               settings.settings.userAge?.toString() ?? '';
-                        });
-                      },
-                      child: Text(l10n.btnCancel),
+                        }),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _saving ? null : _saveProfile,
-                      child: _saving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(l10n.btnSave),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: AppButton(
+                        label: l10n.btnSave,
+                        height: 52,
+                        busy: _saving,
+                        onPressed: _saving ? null : _saveProfile,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          )
+        else ...[
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                if (_details(auth, settings, l10n).isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      children: [
+                        Text(
+                          l10n.profileNoInfoYet,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        AppButton.secondary(
+                          label: l10n.profileEditInfo,
+                          icon: Icons.edit_rounded,
+                          height: 52,
+                          onPressed: () => setState(() => _editing = true),
+                        ),
+                      ],
+                    ),
+                  )
+                else ...[
+                  for (final row in _details(auth, settings, l10n)) ...[
+                    AppListRow(
+                      title: row.label,
+                      subtitle: Text(row.value),
+                      leading: AppIconBubble(
+                        icon: row.icon,
+                        color: theme.colorScheme.primary,
+                      ),
+                      dense: true,
+                    ),
+                    const AppDivider(indent: AppSpacing.md),
+                  ],
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: AppButton.secondary(
+                      label: l10n.profileEditInfo,
+                      icon: Icons.edit_rounded,
+                      height: 52,
+                      onPressed: () => setState(() => _editing = true),
                     ),
                   ),
                 ],
-              ),
-            ] else ...[
-              // Display mode — only render fields we actually have.
-              Builder(
-                builder: (context) {
-                  final rows = <Widget>[];
-                  void add(IconData icon, String label, String? value) {
-                    if (value == null || value.trim().isEmpty) return;
-                    if (rows.isNotEmpty) rows.add(const Divider());
-                    rows.add(_InfoRow(icon: icon, label: label, value: value));
-                  }
-
-                  final name = settings.userName.isNotEmpty
-                      ? settings.userName
-                      : (auth.displayName.isNotEmpty ? auth.displayName : null);
-                  add(Icons.person_rounded, l10n.obName, name);
-                  add(
-                    Icons.cake_rounded,
-                    l10n.profileAge,
-                    settings.settings.userAge?.toString(),
-                  );
-                  if (auth.isSignedIn) {
-                    add(Icons.email_rounded, l10n.profileEmail, auth.email);
-                  }
-
-                  if (rows.isEmpty) {
-                    return Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: theme.colorScheme.outlineVariant),
-                      ),
-                      child: Text(
-                        l10n.profileNoInfoYet,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    );
-                  }
-                  return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(children: rows),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => setState(() => _editing = true),
-                  icon: const Icon(Icons.edit_rounded),
-                  label: Text(l10n.profileEditInfo),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 24),
-
-            // Account section
-            _SectionHeader(l10n.profileAccount),
-            const SizedBox(height: 8),
-
-            if (auth.isSignedIn) ...[
-              // Sign out button
-              Card(
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  minTileHeight: 60,
-                  leading: Icon(
-                    Icons.logout_rounded,
-                    size: 28,
-                    color: theme.colorScheme.error,
-                  ),
-                  title: Text(
-                    l10n.profileSignOut,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                  subtitle: Text(l10n.profileSignOutDesc),
-                  onTap: () => _confirmSignOut(context, auth, l10n),
-                ),
-              ),
-            ] else ...[
-              // Sign in prompt
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.cloud_off_rounded,
-                        size: 40,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        l10n.profileSignInPrompt,
-                        style: theme.textTheme.bodyLarge,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12),
-                      if (auth.firebaseAvailable)
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: () async {
-                              final messenger = ScaffoldMessenger.of(context);
-                              final user = await auth.signInWithGoogle();
-                              if (user != null && mounted) {
-                                messenger.showSnackBar(
-                                  SnackBar(content: Text(l10n.profileWelcomeBack)),
-                                );
-                              }
-                            },
-                            icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
-                            label: Text(l10n.syncGoogleSignIn),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-
-            // Firebase diagnostics — debug builds only, never in production.
-            if (kDebugMode && !auth.isSignedIn) ...[
-              const SizedBox(height: 16),
-              _DiagnosticCard(auth: auth),
-            ],
-            const SizedBox(height: 24),
-
-            // Settings link
-            _SectionHeader(l10n.setTitle),
-            Card(
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                minTileHeight: 60,
-                leading: Icon(
-                  Icons.settings_rounded,
-                  size: 28,
-                  color: theme.colorScheme.primary,
-                ),
-                title: Text(l10n.setTitle, style: theme.textTheme.titleMedium),
-                subtitle: Text(
-                  l10n.familySyncDesc,
-                  style: theme.textTheme.bodyMedium,
-                ),
-                trailing: Icon(
-                  Icons.chevron_right_rounded,
-                  size: 30,
-                  color: theme.colorScheme.outline,
-                ),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const SettingsScreen(),
-                  ),
-                ),
-              ),
+              ],
             ),
-            const SizedBox(height: 24),
+          ),
+        ],
 
-            // App info
-            _SectionHeader(l10n.setAbout),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${l10n.appTitle} · v1.0.0',
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(l10n.aboutBody, style: theme.textTheme.bodyMedium),
-                  ],
-                ),
+        const SizedBox(height: AppSpacing.xl),
+        AppSectionHeader(title: l10n.profileAccount),
+        const SizedBox(height: AppSpacing.sm),
+
+        if (auth.isSignedIn)
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: AppListRow(
+              title: l10n.profileSignOut,
+              titleColor: theme.colorScheme.error,
+              subtitle: Text(l10n.profileSignOutDesc),
+              leading: AppIconBubble(
+                icon: Icons.logout_rounded,
+                color: theme.colorScheme.error,
+                background: theme.colorScheme.errorContainer,
               ),
+              onTap: () => _confirmSignOut(context, auth, l10n),
             ),
-            const SizedBox(height: 24),
-
-            // Danger zone
-            _SectionHeader(l10n.profileDangerZone),
-            Card(
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                minTileHeight: 60,
-                leading: Icon(
-                  Icons.delete_forever_rounded,
-                  size: 28,
-                  color: theme.colorScheme.error,
+          )
+        else
+          AppCard(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.cloud_off_rounded,
+                  size: 40,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-                title: Text(
-                  l10n.profileDeleteAccount,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.error,
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  l10n.profileSignInPrompt,
+                  style: theme.textTheme.bodyLarge,
+                  textAlign: TextAlign.center,
+                ),
+                if (auth.firebaseAvailable) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  AppButton.secondary(
+                    label: l10n.syncGoogleSignIn,
+                    icon: Icons.g_mobiledata_rounded,
+                    height: 52,
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      final user = await auth.signInWithGoogle();
+                      if (user != null && mounted) {
+                        messenger.showSnackBar(
+                          SnackBar(content: Text(l10n.profileWelcomeBack)),
+                        );
+                      }
+                    },
                   ),
-                ),
-                subtitle: Text(l10n.profileDeleteAccountDesc),
-                onTap: () => _confirmDeleteAccount(context, auth, l10n),
-              ),
+                ],
+              ],
             ),
-          ],
+          ),
+
+        if (kDebugMode && !auth.isSignedIn) ...[
+          const SizedBox(height: AppSpacing.md),
+          _DiagnosticCard(auth: auth),
+        ],
+
+        const SizedBox(height: AppSpacing.xl),
+        AppSectionHeader(title: l10n.setTitle),
+        const SizedBox(height: AppSpacing.sm),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: AppListRow(
+            title: l10n.setTitle,
+            subtitle: Text(l10n.setGroupReminders),
+            leading: AppIconBubble(
+              icon: Icons.settings_rounded,
+              color: theme.colorScheme.primary,
+            ),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+            ),
+          ),
         ),
-      ),
+
+        const SizedBox(height: AppSpacing.xl),
+        AppSectionHeader(title: l10n.setAbout),
+        const SizedBox(height: AppSpacing.sm),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${l10n.appTitle} · 1.0.1',
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: AppSpacing.xxs),
+              Text(l10n.aboutBody, style: theme.textTheme.bodyMedium),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: AppSpacing.xxl),
+        AppSectionHeader(title: l10n.profileDangerZone),
+        const SizedBox(height: AppSpacing.sm),
+        AppButton(
+          label: l10n.profileDeleteAccount,
+          icon: Icons.delete_forever_rounded,
+          tone: AppButtonTone.danger,
+          onPressed: () => _confirmDeleteAccount(context, auth, l10n),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          l10n.profileDeleteAccountDesc,
+          style: theme.textTheme.bodySmall,
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
+  }
+
+  List<({IconData icon, String label, String value})> _details(
+    AuthService auth,
+    SettingsController settings,
+    AppLocalizations l10n,
+  ) {
+    final rows = <({IconData icon, String label, String value})>[];
+    final name = settings.userName.isNotEmpty
+        ? settings.userName
+        : auth.displayName;
+    if (name.trim().isNotEmpty) {
+      rows.add((icon: Icons.person_rounded, label: l10n.obName, value: name));
+    }
+    final age = settings.settings.userAge;
+    if (age != null) {
+      rows.add((
+        icon: Icons.cake_rounded,
+        label: l10n.profileAge,
+        value: '$age',
+      ));
+    }
+    if (auth.isSignedIn && auth.email.isNotEmpty) {
+      rows.add((
+        icon: Icons.email_rounded,
+        label: l10n.profileEmail,
+        value: auth.email,
+      ));
+    }
+    return rows;
   }
 
   Future<void> _saveProfile() async {
@@ -421,60 +325,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final name = _nameController.text.trim();
     if (name.isNotEmpty) {
       await settings.setUserName(name);
-      // Also update Firebase display name if signed in
       if (auth.isSignedIn) {
         await auth.updateDisplayName(name);
       }
     }
+    await settings.setUserAge(int.tryParse(_ageController.text.trim()));
 
-    final ageText = _ageController.text.trim();
-    final age = int.tryParse(ageText);
-    await settings.setUserAge(age);
-
-    if (mounted) {
-      setState(() {
-        _saving = false;
-        _editing = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).profileSaved)),
-      );
-    }
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      _editing = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppLocalizations.of(context).profileSaved)),
+    );
   }
 
-  void _confirmSignOut(
+  Future<void> _confirmSignOut(
     BuildContext context,
     AuthService auth,
     AppLocalizations l10n,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.profileSignOut),
-        content: Text(l10n.profileSignOutConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.btnCancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.profileSignOut),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: l10n.profileSignOut,
+      message: l10n.profileSignOutConfirm,
+      confirmLabel: l10n.profileSignOut,
+      cancelLabel: l10n.btnCancel,
+      icon: Icons.logout_rounded,
     );
-    if (confirmed == true && context.mounted) {
-      await auth.signOut();
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.profileSignedOut)),
-        );
-      }
-    }
+    if (!confirmed || !context.mounted) return;
+    await auth.signOut();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.profileSignedOut)));
   }
 
   Future<void> _confirmDeleteAccount(
@@ -482,31 +367,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     AuthService auth,
     AppLocalizations l10n,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.profileDeleteAccountConfirmTitle),
-        content: Text(
-          auth.isSignedIn
-              ? '${l10n.profileDeleteAccountConfirmBody}\n\n${l10n.profileDeleteAccountConfirmBodySignedIn}'
-              : l10n.profileDeleteAccountConfirmBody,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.btnCancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.profileDeleteAccountButton),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: l10n.profileDeleteAccountConfirmTitle,
+      message: auth.isSignedIn
+          ? '${l10n.profileDeleteAccountConfirmBody}\n\n${l10n.profileDeleteAccountConfirmBodySignedIn}'
+          : l10n.profileDeleteAccountConfirmBody,
+      confirmLabel: l10n.profileDeleteAccountButton,
+      cancelLabel: l10n.btnCancel,
+      icon: Icons.delete_forever_rounded,
     );
-    if (confirmed != true || !context.mounted) return;
+    if (!confirmed || !context.mounted) return;
     await _runDeletion(context, l10n);
   }
 
@@ -526,54 +397,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.of(context, rootNavigator: true).pop(); // close the spinner
 
     if (result.requiresRecentLogin) {
-      final retry = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(l10n.profileDeleteAccountReauthTitle),
-          content: Text(l10n.profileDeleteAccountReauthBody),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(l10n.btnCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(l10n.profileDeleteAccountReauthButton),
-            ),
-          ],
-        ),
+      final retry = await showAppConfirmDialog(
+        context,
+        title: l10n.profileDeleteAccountReauthTitle,
+        message: l10n.profileDeleteAccountReauthBody,
+        confirmLabel: l10n.profileDeleteAccountReauthButton,
+        cancelLabel: l10n.btnCancel,
+        destructive: false,
+        icon: Icons.lock_reset_rounded,
       );
-      if (retry == true && context.mounted) {
+      if (retry && context.mounted) {
         final user = await auth.signInWithGoogle();
         if (user != null && context.mounted) {
           await _runDeletion(context, l10n);
         }
       }
       // Local data was NOT wiped on a requires-recent-login outcome (the
-      // cloud steps ran first and this path returns before local wipe would
-      // make sense to retry blind) — nothing further to do if declined.
+      // cloud steps ran first and this path returns before a local wipe would
+      // make sense) — nothing further to do if the user declines.
       return;
     }
 
     if (!context.mounted) return;
 
     final messages = <String>[
-      result.fullyCleaned ? l10n.profileDeleteAccountDone : l10n.profileDeleteAccountPartial,
+      result.fullyCleaned
+          ? l10n.profileDeleteAccountDone
+          : l10n.profileDeleteAccountPartial,
       if (!result.householdPresenceRemoved) l10n.profileDeleteAccountOwnerNote,
     ];
 
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.profileDeleteAccountConfirmTitle),
-        content: Text(messages.join('\n\n')),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(l10n.btnClose),
-          ),
-        ],
-      ),
+    await showAppInfoDialog(
+      context,
+      title: l10n.profileDeleteAccountConfirmTitle,
+      content: Text(messages.join('\n\n')),
+      closeLabel: l10n.btnClose,
+      icon: Icons.check_circle_rounded,
     );
 
     if (!context.mounted) return;
@@ -581,8 +440,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Local settings/DB are now empty on disk — reload the in-memory
     // controllers to match, then rebuild the whole app from a fresh
     // RootScreen so it re-evaluates signed-in/onboarding state (both now
-    // false) and lands back on Login, not a stale Home screen. Captured
-    // before the awaits below, not read from `context` after one.
+    // false) and lands back on Login, not a stale Home screen.
     final settingsCtrl = context.read<SettingsController>();
     final appStateCtrl = context.read<AppState>();
     await settingsCtrl.load();
@@ -595,64 +453,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        text,
-        style: theme.textTheme.titleMedium?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
+class _Identity extends StatelessWidget {
+  const _Identity({
+    required this.auth,
+    required this.settings,
+    required this.l10n,
   });
 
-  final IconData icon;
-  final String label;
-  final String value;
+  final AuthService auth;
+  final SettingsController settings;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
+    final name = settings.userName.isNotEmpty
+        ? settings.userName
+        : (auth.displayName.isNotEmpty
+              ? auth.displayName
+              : (auth.isSignedIn ? l10n.profileNoName : l10n.profileGuestUser));
+
+    return Column(
       children: [
-        Icon(icon, size: 24, color: theme.colorScheme.primary),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              Text(value, style: theme.textTheme.titleMedium),
-            ],
+        CircleAvatar(
+          radius: 44,
+          backgroundColor: theme.colorScheme.surfaceContainer,
+          backgroundImage: auth.photoUrl.isNotEmpty
+              ? NetworkImage(auth.photoUrl)
+              : null,
+          child: auth.photoUrl.isEmpty
+              ? Icon(
+                  Icons.person_rounded,
+                  size: 44,
+                  color: theme.colorScheme.primary,
+                )
+              : null,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Text(name, style: theme.textTheme.headlineSmall, textAlign: TextAlign.center),
+        if (auth.isSignedIn && auth.email.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xxs),
+          Text(
+            auth.email,
+            style: theme.textTheme.bodyMedium,
+            textAlign: TextAlign.center,
           ),
+        ],
+        const SizedBox(height: AppSpacing.sm),
+        AppPill(
+          label: auth.isSignedIn ? l10n.profileSignedIn : l10n.profileOfflineMode,
+          icon: auth.isSignedIn
+              ? Icons.cloud_done_rounded
+              : Icons.cloud_off_rounded,
+          color: auth.isSignedIn
+              ? theme.palette.success
+              : theme.colorScheme.onSurfaceVariant,
+          background: auth.isSignedIn
+              ? theme.palette.successContainer
+              : theme.palette.neutralContainer,
         ),
       ],
     );
   }
 }
 
+/// Debug-only Firebase diagnostics. Never shown in release builds.
 class _DiagnosticCard extends StatefulWidget {
   const _DiagnosticCard({required this.auth});
 
@@ -686,85 +551,62 @@ class _DiagnosticCardState extends State<_DiagnosticCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.build_circle_rounded,
-                  size: 24,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Firebase Diagnostics',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                if (_running)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (_results.isEmpty && !_running)
-              Text(
-                'Tap to check Firebase configuration',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              )
-            else
-              for (final entry in _results.entries)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        entry.key,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        entry.value,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: entry.value.startsWith('✅')
-                              ? theme.colorScheme.primary
-                              : entry.value.startsWith('❌')
-                              ? theme.colorScheme.error
-                              : theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _running ? null : _runDiagnostics,
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Re-run Diagnostics'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(40),
+    return AppCard(
+      color: theme.colorScheme.surfaceContainerLow,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.build_circle_rounded,
+                size: AppSizes.iconLg,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  'Firebase diagnostics',
+                  style: theme.textTheme.titleMedium,
                 ),
               ),
+              if (_running)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          for (final entry in _results.entries)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(entry.key, style: theme.textTheme.labelLarge),
+                  Text(
+                    entry.value,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: entry.value.startsWith('✅')
+                          ? theme.palette.success
+                          : entry.value.startsWith('❌')
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          const SizedBox(height: AppSpacing.xs),
+          AppButton.secondary(
+            label: 'Re-run diagnostics',
+            icon: Icons.refresh_rounded,
+            height: 52,
+            onPressed: _running ? null : _runDiagnostics,
+          ),
+        ],
       ),
     );
   }

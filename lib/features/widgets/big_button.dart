@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 
-/// Extra-large filled button for primary actions (e.g. "TAKE MEDICINE").
+import 'app_buttons.dart';
+
+/// Backwards-compatible wrapper around [AppButton].
+///
+/// Kept because a dozen screens already speak this API; new code should use
+/// [AppButton] directly, which exposes tones (primary / secondary / danger /
+/// quiet) instead of a single `outlined` flag.
 class BigButton extends StatelessWidget {
   const BigButton({
     super.key,
     required this.label,
     required this.onPressed,
     this.icon,
-    this.height = 56,
+    this.height = 60,
     this.outlined = false,
   });
 
@@ -19,53 +25,37 @@ class BigButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = ButtonStyle(
-      minimumSize: WidgetStatePropertyAll(Size.fromHeight(height)),
-      shape: WidgetStatePropertyAll(
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
-      textStyle: WidgetStatePropertyAll(
-        Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.5,
-        ),
-      ),
+    return AppButton(
+      label: label,
+      icon: icon,
+      height: height,
+      onPressed: onPressed,
+      tone: outlined ? AppButtonTone.secondary : AppButtonTone.primary,
     );
-    final child = Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (icon != null) ...[Icon(icon, size: 24), const SizedBox(width: 10)],
-        Flexible(child: Text(label, textAlign: TextAlign.center)),
-      ],
-    );
-    if (outlined) {
-      return OutlinedButton(style: style, onPressed: onPressed, child: child);
-    }
-    return FilledButton(style: style, onPressed: onPressed, child: child);
   }
 }
 
-/// Compact but still large text button (used for "Skip").
+/// Quiet full-width text action (Skip / Not now).
 class BigTextButton extends StatelessWidget {
   const BigTextButton({
     super.key,
     required this.label,
     required this.onPressed,
+    this.icon,
   });
 
   final String label;
   final VoidCallback? onPressed;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(
-      style: TextButton.styleFrom(
-        minimumSize: const Size.fromHeight(56),
-        textStyle: Theme.of(context).textTheme.titleMedium,
-      ),
+    return AppButton(
+      label: label,
+      icon: icon,
+      tone: AppButtonTone.quiet,
+      height: 56,
       onPressed: onPressed,
-      child: Text(label),
     );
   }
 }

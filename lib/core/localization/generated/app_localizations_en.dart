@@ -15,6 +15,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navHome => 'Home';
 
   @override
+  String get navFamily => 'Family';
+
+  @override
   String get greetingMorning => 'Good Morning';
 
   @override
@@ -60,7 +63,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeLogNow => 'Log Now';
 
   @override
-  String get homeDailyProgress => 'Daily Progress';
+  String get homeDailyProgress => 'Today\'s progress';
+
+  @override
+  String homeProgressOf(int taken, int total) {
+    return '$taken of $total medicines taken';
+  }
+
+  @override
+  String get homeMissedTitle => 'You missed this medicine';
+
+  @override
+  String get homeMissedBody =>
+      'If you haven\'t taken it yet, follow your normal medication instructions.';
+
+  @override
+  String get homeMoreTools => 'More tools';
+
+  @override
+  String get homeEmptyBody =>
+      'Add your first medicine and DoseWise will remind you when it is time to take it.';
+
+  @override
+  String get errorTitle => 'Something went wrong';
+
+  @override
+  String get errorBody => 'We couldn\'t load your medicines. Please try again.';
+
+  @override
+  String get errorRetry => 'Try again';
+
+  @override
+  String get medConfirmTime => 'Confirm time';
+
+  @override
+  String get medOptional => 'Optional details';
+
+  @override
+  String get medDetailsTitle => 'Medicine details';
+
+  @override
+  String get setGroupReminders => 'Reminders';
 
   @override
   String get homeQuickActions => 'Quick actions';

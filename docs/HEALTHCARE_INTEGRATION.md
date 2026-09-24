@@ -210,7 +210,48 @@ override the address at runtime from the healthcare screen's overflow menu →
 
 ---
 
-## 6. Known limitations / open items
+## 6. Live end-to-end verification (2026-09-23)
+
+Run against the local platform dev server (`:3100`) and its real database,
+using the same URLs, headers and bodies this app builds. The synthetic demo
+clinic was published temporarily (see “restored” below).
+
+| Step | Call | Observed |
+|---|---|---|
+| Publish gate | `POST /api/orgs/{id}/publish` with a bare profile | Rejected — readiness needs `orgType`, `tagline`, `about`, `publicPhone`, `publicEmail` and ≥1 active location |
+| Hidden by default | `GET /api/public/organizations` | `{"data":[],"total":0}` while all 3 seeded organizations are unlisted |
+| No leak | `GET /api/public/organizations/demo-clinic` | `404 NOT_FOUND` |
+| Discovery | `GET /api/public/organizations` after publishing | The clinic appears: `orgType: CLINIC`, `locations:[{city:"Bengaluru"}]`, `_count.doctorProfiles: 1` |
+| Search | `GET /api/public/organizations?q=demo` | Same row, `total: 1` |
+| Organization profile | `GET /api/public/organizations/demo-clinic` | Real about/contact fields, locations and `doctorProfiles` |
+| Doctors | `GET /api/public/doctors?q=sharma` | `Dr. Demo Sharma`, with the owning-organization stub |
+| Doctor profile | `GET /api/public/doctors/{id}` | Full public profile plus the clinic and its locations |
+| Availability | `GET /api/public/doctors/{id}/slots?date=2026-09-24` | 09:00–13:00 IST in 15-minute steps; the slot occupied by an existing `CONFIRMED` appointment (`04:45Z`) is omitted |
+| Weekend | `…/slots?date=2026-09-26` | `{"slots":[],"timezone":"Asia/Kolkata","durationMinutes":15}` — no rule, no slots |
+| Sign-in | `POST /api/auth/login` with `X-Client: app` | Tokens in the response body (never a web cookie) |
+| Register → sign in | `POST /api/auth/register` → login | `201`, then `200` |
+| Booking | `POST /api/patient/appointments` | `201`, `bookingSource: "PATIENT_APP"`, `status: CONFIRMED`, `timezone: Asia/Kolkata` |
+| Double booking | The same slot again | `409 APPOINTMENT_SLOT_TAKEN` — the code the app maps to “that slot is no longer available” |
+| My appointments | `GET /api/orgs/{id}/appointments` as the patient | Exactly the caller's own row (the same call as staff returned other patients' rows) |
+| Refresh rotation | `POST /api/auth/refresh`, then replay the old token | New pair; replay `401 REFRESH_REUSE_DETECTED` — confirming why the client refreshes in single-flight |
+| Cancel | `POST …/appointments/{id}/cancel` | `200`, `status: "CANCELLED"` |
+
+**Restored afterwards:** the two appointments, two synthetic patients and the
+throwaway account were deleted; the clinic's profile fields and both
+`isPubliclyListed` flags were set back to their original values; the public
+API returns empty again and the unpublished profile 404s. One residue: the
+run wrote 8 rows into the append-only `AuditLog`, and because the publication
+flags were reverted by a direct write (not through the routes) there is a
+`ORGANIZATION_PUBLISHED` event with no matching unpublish event.
+
+**Scope:** this proves the *API/contract* end-to-end with real records — the
+same requests the app issues, including the ones behind every screen. It does
+not substitute for installing the app on a device: the Flutter layer is
+covered by 91 passing tests, but the on-device journey is still untested.
+
+---
+
+## 7. Known limitations / open items
 
 * Queue “now serving” is not patient-visible (backend gap 1).
 * Check-in remains reception-driven (backend gap 2).
@@ -222,5 +263,10 @@ override the address at runtime from the healthcare screen's overflow menu →
   app uses email + password (`X-Client: app`).
 * Appointment photos/consultation summaries/prescriptions are not surfaced;
   the patient-facing endpoints for those do not exist yet.
-* `flutter build apk --release` in this checkout additionally requires
-  `android/app/google-services.json`, which is deliberately untracked.
+* The booking flow is verified against the API but not yet walked through on
+  a physical device.
+* `flutter build apk --release` cannot produce an APK from this checkout
+  as-is: `android/app/build.gradle.kts` applies the `com.google.gms.`
+  `google-services` plugin, but `android/app/google-services.json` is
+  deliberately untracked, so Gradle fails until a real Firebase config is
+  supplied. (With a placeholder config the release build does succeed.)

@@ -105,6 +105,6 @@ void main() {
     await tester.pump();
 
     expect(find.text('BP Tablet'), findsWidgets);
-    expect(find.text('Mark as Taken'), findsOneWidget);
+    expect(find.text('TAKE MEDICINE'), findsOneWidget);
   });
 }

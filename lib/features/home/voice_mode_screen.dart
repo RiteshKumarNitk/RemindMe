@@ -5,12 +5,21 @@ import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../core/utilities/date_utils.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
+import '../widgets/app_buttons.dart';
+import '../widgets/app_scaffold.dart';
+import '../widgets/app_surfaces.dart';
 
-/// Voice-first interface designed for visually impaired or low-vision users.
-/// Shows large, high-contrast buttons with TTS for every action.
+/// Voice-first screen for users who prefer to be told, not to read.
+///
+/// Everything announces itself out loud, the type is the largest in the app and
+/// each action is a full-width 76pt target. It deliberately reuses the app's
+/// own colours and spacing rather than inventing a separate dark theme — a
+/// different-looking app is exactly what confuses the people this screen is
+/// for.
 class VoiceModeScreen extends StatefulWidget {
   const VoiceModeScreen({super.key});
 
@@ -20,56 +29,53 @@ class VoiceModeScreen extends StatefulWidget {
 
 class _VoiceModeScreenState extends State<VoiceModeScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
+  late AnimationController _pulse;
   bool _isSpeaking = false;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
+    _pulse = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
 
-    // Auto-announce the current status
+    // Auto-announce the current status.
     WidgetsBinding.instance.addPostFrameCallback((_) => _announceStatus());
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    _pulse.dispose();
     super.dispose();
   }
 
-  void _speak(String text) {
+  Future<void> _speak(String text) async {
     final appState = context.read<AppState>();
     final settings = context.read<SettingsController>();
     setState(() => _isSpeaking = true);
-    appState.voice.speak(text, settings.settings.locale).then((_) {
-      if (mounted) setState(() => _isSpeaking = false);
-    });
+    await appState.voice.speak(text, settings.settings.locale);
+    if (mounted) setState(() => _isSpeaking = false);
   }
 
   void _announceStatus() {
+    if (!mounted) return;
     final appState = context.read<AppState>();
     final settings = context.read<SettingsController>();
     final l10n = AppLocalizations.of(context);
-
     if (appState.loading) return;
 
     final next = appState.nextDose;
-
     if (next == null) {
       _speak(l10n.homeNoMoreToday);
-    } else {
-      final name = next.medicine.name;
-      final dose = next.medicine.doseLabel;
-      final time = AppDateUtils.timeLabel(
-        next.dose.scheduledAt,
-        settings.settings.locale,
-      );
-      _speak('${l10n.alarmTitle} $name, $dose, scheduled for $time');
+      return;
     }
+    final time = AppDateUtils.timeLabel(
+      next.dose.scheduledAt,
+      settings.settings.locale,
+    );
+    _speak('${l10n.alarmTitle} ${next.medicine.name}, '
+        '${next.medicine.doseLabel}, $time');
   }
 
   @override
@@ -83,245 +89,130 @@ class _VoiceModeScreenState extends State<VoiceModeScreen>
     final next = appState.nextDose;
     final stats = appState.todayStats;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
-      body: SafeArea(
-        child: Column(
-          children: [
-            const Spacer(flex: 1),
-
-            // Status indicator
-            ScaleTransition(
-              scale: CurvedAnimation(
-                parent: _pulseController,
-                curve: Curves.easeInOut,
-              ),
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: _isSpeaking
-                      ? theme.colorScheme.primary.withValues(alpha: 0.3)
-                      : Colors.white.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: _isSpeaking
-                        ? theme.colorScheme.primary
-                        : Colors.white.withValues(alpha: 0.3),
-                    width: 3,
-                  ),
-                ),
-                child: Icon(
-                  _isSpeaking ? Icons.volume_up_rounded : Icons.mic_rounded,
-                  size: 40,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Current status text
-            Text(
-              _isSpeaking ? 'Speaking...' : 'Voice Mode',
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-
-            const Spacer(flex: 1),
-
-            // Next dose info card
-            if (next != null)
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 24),
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    width: 1.5,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      next.medicine.name,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      next.medicine.doseLabel,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.8),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      AppDateUtils.timeLabel(
-                        next.dose.scheduledAt,
-                        locale,
-                      ),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            const Spacer(flex: 2),
-
-            // Big action buttons
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  // TAKE button
-                  if (next != null)
-                    _VoiceButton(
-                      label: l10n.homeMarkAsTaken,
-                      icon: Icons.check_rounded,
-                      color: theme.successColor,
-                      onTap: () async {
-                        _speak('Marking ${next.medicine.name} as taken');
-                        await appState.markTaken(next);
-                        if (mounted) {
-                          await Future.delayed(const Duration(seconds: 1));
-                          _announceStatus();
-                        }
-                      },
-                    ),
-
-                  const SizedBox(height: 16),
-
-                  // SKIP button
-                  if (next != null)
-                    _VoiceButton(
-                      label: l10n.alarmLater,
-                      icon: Icons.skip_next_rounded,
-                      color: theme.colorScheme.outline,
-                      onTap: () async {
-                        _speak('Skipping ${next.medicine.name}');
-                        await appState.markSkipped(next);
-                        if (mounted) {
-                          await Future.delayed(const Duration(seconds: 1));
-                          _announceStatus();
-                        }
-                      },
-                    ),
-
-                  const SizedBox(height: 16),
-
-                  // REPEAT button
-                  _VoiceButton(
-                    label: l10n.speakReminder,
-                    icon: Icons.replay_rounded,
-                    color: theme.colorScheme.primary,
-                    onTap: _announceStatus,
-                  ),
-                ],
-              ),
-            ),
-
-            const Spacer(flex: 1),
-
-            // Today's progress
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 24),
-              padding: const EdgeInsets.all(16),
+    return AppPage(
+      title: l10n.qaVoiceMode,
+      subtitle: l10n.setVoiceOn,
+      children: [
+        const SizedBox(height: AppSpacing.lg),
+        Center(
+          child: AnimatedBuilder(
+            animation: _pulse,
+            builder: (context, child) => Container(
+              width: 96,
+              height: 96,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(16),
+                color: _isSpeaking
+                    ? theme.colorScheme.primaryContainer
+                    : theme.colorScheme.surfaceContainer,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: _isSpeaking
+                      ? theme.colorScheme.primary
+                      : theme.cardBorder,
+                  width: 3,
+                ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _ProgressStat(
-                    value: '${stats.taken}',
-                    label: l10n.homeTaken,
-                    color: theme.successColor,
-                  ),
-                  _ProgressStat(
-                    value: '${stats.pending}',
-                    label: l10n.homeRemaining,
-                    color: Colors.white,
-                  ),
-                  if (stats.missed > 0)
-                    _ProgressStat(
-                      value: '${stats.missed}',
-                      label: l10n.homeMissed,
-                      color: theme.missedColor,
-                    ),
-                ],
-              ),
+              child: child,
             ),
-
-            const SizedBox(height: 16),
-          ],
+            child: Icon(
+              _isSpeaking ? Icons.volume_up_rounded : Icons.mic_rounded,
+              size: 44,
+              color: theme.colorScheme.primary,
+            ),
+          ),
         ),
-      ),
-    );
-  }
-}
-
-class _VoiceButton extends StatelessWidget {
-  const _VoiceButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SizedBox(
-      width: double.infinity,
-      height: 80,
-      child: Material(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onTap,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: color.withValues(alpha: 0.4),
-                width: 2,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          _isSpeaking ? l10n.alarmTitle : l10n.qaVoiceMode,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        if (next != null)
+          AppCard(
+            child: Column(
               children: [
-                Icon(icon, size: 32, color: color),
-                const SizedBox(width: 16),
                 Text(
-                  label,
+                  next.medicine.name,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.headlineMedium,
+                ),
+                if (next.medicine.doseLabel.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    next.medicine.doseLabel,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  AppDateUtils.timeLabel(next.dose.scheduledAt, locale),
                   style: theme.textTheme.titleLarge?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
               ],
             ),
           ),
+        const SizedBox(height: AppSpacing.xl),
+        if (next != null) ...[
+          AppButton(
+            label: l10n.homeMarkAsTaken,
+            icon: Icons.check_rounded,
+            height: 76,
+            onPressed: () async {
+              await _speak('${l10n.homeTaken} ${next.medicine.name}');
+              await appState.markTaken(next);
+              if (mounted) _announceStatus();
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton.secondary(
+            label: l10n.alarmLater,
+            icon: Icons.skip_next_rounded,
+            height: 76,
+            onPressed: () async {
+              await appState.markSkipped(next);
+              if (mounted) _announceStatus();
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+        AppButton.secondary(
+          label: l10n.speakReminder,
+          icon: Icons.replay_rounded,
+          height: 76,
+          onPressed: _announceStatus,
         ),
-      ),
+        const SizedBox(height: AppSpacing.xl),
+        AppCard(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _ProgressStat(
+                value: '${stats.taken}',
+                label: l10n.homeTaken,
+                color: theme.palette.success,
+              ),
+              _ProgressStat(
+                value: '${stats.pending}',
+                label: l10n.homeRemaining,
+                color: theme.colorScheme.onSurface,
+              ),
+              if (stats.missed > 0)
+                _ProgressStat(
+                  value: '${stats.missed}',
+                  label: l10n.homeMissed,
+                  color: theme.colorScheme.error,
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -349,13 +240,7 @@ class _ProgressStat extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: Colors.white.withValues(alpha: 0.6),
-          ),
-        ),
+        Text(label, style: theme.textTheme.bodyMedium),
       ],
     );
   }

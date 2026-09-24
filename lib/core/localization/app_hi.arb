@@ -2,6 +2,7 @@
   "@@locale": "hi",
   "appTitle": "DoseWise",
   "navHome": "घर",
+  "navFamily": "परिवार",
   "greetingMorning": "सुप्रभात",
   "greetingAfternoon": "नमस्ते",
   "greetingEvening": "शुभ संध्या",
@@ -18,6 +19,24 @@
   "homeScheduleTitle": "आज का शेड्यूल",
   "homeLogNow": "अभी दर्ज करें",
   "homeDailyProgress": "आज की प्रगति",
+  "homeProgressOf": "{total} में से {taken} दवाएँ ली गईं",
+  "@homeProgressOf": {
+    "placeholders": {
+      "taken": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "homeMissedTitle": "यह दवा छूट गई",
+  "homeMissedBody": "अगर आपने अभी तक यह दवा नहीं ली है, तो अपने सामान्य निर्देशों का पालन करें।",
+  "homeMoreTools": "और सुविधाएँ",
+  "homeEmptyBody": "अपनी पहली दवा जोड़ें — DoseWise समय पर याद दिलाएगा।",
+  "errorTitle": "कुछ गड़बड़ हो गई",
+  "errorBody": "आपकी दवाएँ लोड नहीं हो सकीं। कृपया फिर कोशिश करें।",
+  "errorRetry": "फिर कोशिश करें",
+  "medConfirmTime": "समय सेट करें",
+  "medOptional": "वैकल्पिक जानकारी",
+  "medDetailsTitle": "दवा की जानकारी",
+  "setGroupReminders": "रिमाइंडर",
   "homeQuickActions": "त्वरित क्रियाएँ",
   "qaWeeklyCalendar": "साप्ताहिक कैलेंडर",
   "qaAdherenceReport": "अनुपालन रिपोर्ट",

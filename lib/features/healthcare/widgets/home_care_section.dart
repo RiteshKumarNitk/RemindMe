@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/localization/generated/app_localizations.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../data/repositories/appointment_repository.dart';
 import '../../../services/platform_auth_service.dart';
 import '../appointment_detail_screen.dart';
@@ -49,21 +50,21 @@ class _FindCareCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: AppRadius.cardRadius,
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const HealthcareHomeScreen(),
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: AppRadius.controlRadius,
                 ),
                 child: Icon(
                   Icons.local_hospital_rounded,
@@ -115,14 +116,14 @@ class _SignInRow extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: AppRadius.cardRadius,
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const PlatformSignInScreen(),
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             children: [
               Icon(
@@ -228,7 +229,7 @@ class _NoAppointmentCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: AppRadius.cardRadius,
         onTap: () async {
           await Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const AppointmentsScreen()),
@@ -236,7 +237,7 @@ class _NoAppointmentCard extends StatelessWidget {
           onChanged();
         },
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             children: [
               Icon(
@@ -284,7 +285,7 @@ class _AppointmentCard extends StatelessWidget {
 
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: AppRadius.cardRadius,
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => AppointmentDetailScreen(
@@ -297,7 +298,7 @@ class _AppointmentCard extends StatelessWidget {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

@@ -8,6 +8,7 @@ import '../../core/utilities/date_utils.dart';
 import '../../data/models/dose_entry.dart';
 import '../../data/models/dose_status.dart';
 import '../../state/app_state.dart';
+import '../widgets/app_states.dart';
 
 /// Generates a formatted adherence report for doctor visits.
 /// Shows a preview and allows sharing via any app.
@@ -193,7 +194,7 @@ class _DoctorReportScreenState extends State<DoctorReportScreen> {
           // Report preview
           Expanded(
             child: _reportText == null
-                ? const Center(child: CircularProgressIndicator())
+                ? const SkeletonList(rows: 4)
                 : Container(
                     margin: const EdgeInsets.symmetric(horizontal: 20),
                     padding: const EdgeInsets.all(16),

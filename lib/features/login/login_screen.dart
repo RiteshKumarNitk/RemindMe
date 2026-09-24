@@ -3,10 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../services/auth_service.dart';
-import '../widgets/big_button.dart';
+import '../widgets/app_buttons.dart';
+import '../widgets/app_surfaces.dart';
 
-/// Login screen with Google Sign-In. Users can skip to use the app offline.
+/// Sign in with Google, or use the app entirely offline.
+///
+/// Offline is a first-class choice here, not a hidden escape hatch: this app
+/// reminds you about medicine without any account at all.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.onSkip, this.onSignedIn});
 
@@ -25,12 +30,9 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _busy = true);
 
     final user = await auth.signInWithGoogle();
-    if (mounted) {
-      setState(() => _busy = false);
-      if (user != null && widget.onSignedIn != null) {
-        widget.onSignedIn!();
-      }
-    }
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (user != null) widget.onSignedIn?.call();
   }
 
   @override
@@ -42,16 +44,20 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(28, 40, 28, 32),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.xxl,
+            AppSpacing.lg,
+            AppSpacing.lg,
+          ),
           children: [
-            // App icon
             Center(
               child: Container(
-                width: 120,
-                height: 120,
+                width: 116,
+                height: 116,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
                   color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
                 child: Icon(
                   Icons.medication_rounded,
@@ -60,144 +66,78 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: AppSpacing.xl),
             Text(
-              l10n.obWelcome,
+              l10n.obTitle,
               style: theme.textTheme.displaySmall,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.obTitle,
-              style: theme.textTheme.headlineMedium?.copyWith(
-                color: theme.colorScheme.primary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               l10n.loginSubtitle,
               style: theme.textTheme.bodyLarge,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.xxl),
 
-            // Google Sign-In button
             if (auth.firebaseAvailable) ...[
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _busy ? null : _signInWithGoogle,
-                  icon: _busy
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.g_mobiledata_rounded, size: 28),
-                  label: Text(l10n.loginWithGoogle),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(56),
-                  ),
-                ),
+              AppButton(
+                label: l10n.loginWithGoogle,
+                icon: Icons.g_mobiledata_rounded,
+                busy: _busy,
+                onPressed: _busy ? null : _signInWithGoogle,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
                   const Expanded(child: Divider()),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      l10n.loginOr,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
                     ),
+                    child: Text(l10n.loginOr, style: theme.textTheme.bodyMedium),
                   ),
                   const Expanded(child: Divider()),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
             ],
 
-            // Skip button (always available)
-            BigButton(
+            AppButton.secondary(
               label: l10n.loginSkip,
               icon: Icons.arrow_forward_rounded,
-              outlined: true,
               onPressed: _busy ? null : widget.onSkip,
             ),
 
-            // Error message with retry
             if (auth.hasError) ...[
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.error_outline_rounded,
-                          color: theme.colorScheme.onErrorContainer,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            auth.error!,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onErrorContainer,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (kDebugMode && auth.debugInfo != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        auth.debugInfo!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onErrorContainer.withValues(
-                            alpha: 0.7,
-                          ),
-                          fontFamily: 'monospace',
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          auth.clearError();
-                          _signInWithGoogle();
-                        },
-                        icon: const Icon(Icons.refresh_rounded, size: 18),
-                        label: const Text('Try Again'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: theme.colorScheme.onErrorContainer,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              const SizedBox(height: AppSpacing.lg),
+              AppInfoNote(
+                tone: AppNoteTone.danger,
+                title: l10n.loginWithGoogle,
+                message: auth.error!,
+                actionLabel: l10n.errorRetry,
+                actionIcon: Icons.refresh_rounded,
+                onAction: () {
+                  auth.clearError();
+                  _signInWithGoogle();
+                },
               ),
+              if (kDebugMode && auth.debugInfo != null) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  auth.debugInfo!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                  ),
+                ),
+              ],
             ],
 
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             Text(
               l10n.loginOfflineNote,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
           ],

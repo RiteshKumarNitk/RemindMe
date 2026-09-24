@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/localization/generated/app_localizations.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../data/api/api_exception.dart';
 import '../../../data/models/healthcare/appointment.dart';
 import '../../../data/models/healthcare/doctor.dart';
@@ -14,7 +15,7 @@ class HcSectionHeader extends StatelessWidget {
     required this.title,
     this.actionLabel,
     this.onAction,
-    this.padding = const EdgeInsets.only(bottom: 8),
+    this.padding = const EdgeInsets.only(bottom: AppSpacing.xs),
   });
 
   final String title;
@@ -64,13 +65,13 @@ class HcSkeletonList extends StatelessWidget {
       children: [
         for (var i = 0; i < rows; i++)
           Container(
-            margin: const EdgeInsets.only(bottom: 12),
+            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
             height: rowHeight,
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest.withValues(
                 alpha: 0.55,
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: AppRadius.cardRadius,
             ),
           ),
       ],
@@ -129,7 +130,10 @@ class HcErrorView extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 28),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xs,
+          vertical: AppSpacing.xxl,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -190,12 +194,15 @@ class HcEmptyView extends StatelessWidget {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 32),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xs,
+          vertical: AppSpacing.xxl,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               decoration: BoxDecoration(
                 color: theme.colorScheme.primaryContainer.withValues(
                   alpha: 0.5,
@@ -277,10 +284,13 @@ class HcStatusChip extends StatelessWidget {
       HcTone.neutral => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xxs,
+      ),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.chipRadius,
       ),
       child: Text(
         label,
@@ -313,12 +323,12 @@ class HcOrganizationCard extends StatelessWidget {
     ].join(' · ');
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: AppRadius.cardRadius,
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -400,12 +410,12 @@ class HcDoctorCard extends StatelessWidget {
     ];
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: AppRadius.cardRadius,
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             children: [
               _Logo(url: doctor.photoUrl, fallbackIcon: Icons.person_rounded, circular: true),
@@ -469,7 +479,9 @@ class _Logo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final radius = BorderRadius.circular(circular ? 40 : 16);
+    final radius = BorderRadius.circular(
+      circular ? AppRadius.pill : AppRadius.sm,
+    );
     final placeholder = Container(
       width: 56,
       height: 56,
@@ -506,7 +518,12 @@ class HcAsyncView<T> extends StatefulWidget {
     required this.load,
     required this.builder,
     this.skeleton,
-    this.padding = const EdgeInsets.fromLTRB(20, 8, 20, 32),
+    this.padding = const EdgeInsets.fromLTRB(
+      AppSpacing.lg,
+      AppSpacing.xs,
+      AppSpacing.lg,
+      AppSpacing.xxl,
+    ),
   });
 
   final Future<T> Function() load;
