@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../data/api/api_exception.dart';
 import '../../data/models/healthcare/appointment.dart';
 import '../../data/repositories/appointment_repository.dart';
@@ -58,7 +59,12 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           final queue = appointment.queueEntry;
 
           return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              AppSpacing.xxxl,
+            ),
             children: [
               Row(
                 children: [
@@ -73,14 +79,14 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 appointment.doctorName ?? widget.doctorName ?? '',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xxs),
               Text(widget.organizationName, style: theme.textTheme.bodyLarge),
               if (widget.locationName != null)
                 Text(
@@ -89,10 +95,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.xl),
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -103,7 +109,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                             '${HealthcareFormat.time(appointment.scheduledStart, appointment.timezone, locale)}',
                       ),
                       if (relative != null) ...[
-                        const SizedBox(height: 6),
+                        const SizedBox(height: AppSpacing.xxs + 2),
                         Text(
                           relative,
                           style: theme.textTheme.titleMedium?.copyWith(
@@ -145,12 +151,12 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                 ),
               ),
               if (queue != null) ...[
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xl),
                 HcSectionHeader(title: l10n.hcQueueTitle),
                 _QueueCard(entry: queue, l10n: l10n),
               ] else if (appointment.status == AppointmentStatus.confirmed ||
                   appointment.status == AppointmentStatus.checkedIn) ...[
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   l10n.hcQueueCheckInNote,
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -159,11 +165,11 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                 ),
               ],
               if (appointment.status == AppointmentStatus.cancelled) ...[
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.lg),
                 Card(
                   color: theme.colorScheme.errorContainer,
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpacing.md),
                     child: Text(
                       appointment.cancellationReason ?? l10n.hcStatusCancelled,
                       style: theme.textTheme.bodyLarge?.copyWith(
@@ -173,7 +179,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: 28),
+              const SizedBox(height: AppSpacing.xxl),
               if (appointment.status.canReschedule)
                 SizedBox(
                   width: double.infinity,
@@ -184,7 +190,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                   ),
                 ),
               if (appointment.status.canCancel) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.sm),
                 SizedBox(
                   width: double.infinity,
                   child: TextButton.icon(
@@ -223,7 +229,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
               '${HealthcareFormat.dayShort(appointment.scheduledStart, appointment.timezone, Localizations.localeOf(context).languageCode)} · '
               '${HealthcareFormat.time(appointment.scheduledStart, appointment.timezone, Localizations.localeOf(context).languageCode)}',
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: reasonController,
               maxLength: 200,
@@ -327,7 +333,7 @@ class _Row extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: AppSpacing.xxs - 2),
         Text(value, style: theme.textTheme.bodyLarge),
       ],
     );
@@ -357,7 +363,7 @@ class _QueueCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -366,9 +372,9 @@ class _QueueCard extends StatelessWidget {
                 Icon(
                   Icons.confirmation_number_rounded,
                   color: theme.colorScheme.primary,
-                  size: 28,
+                  size: AppSizes.iconXl - 4,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
                 Text(
                   l10n.hcQueueToken(entry.tokenNumber),
                   style: theme.textTheme.headlineSmall?.copyWith(
@@ -377,9 +383,9 @@ class _QueueCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Text(stateText, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             HcStatusChip(
               label: HealthcareFormat.queueStateLabel(entry.state, l10n),
               tone: entry.isCalled || entry.isInConsultation

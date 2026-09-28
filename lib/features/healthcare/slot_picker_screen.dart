@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../data/api/api_exception.dart';
 import '../../data/models/healthcare/availability.dart';
 import '../../data/models/healthcare/clinic_location.dart';
@@ -99,7 +100,12 @@ class _SlotPickerScreenState extends State<SlotPickerScreen> {
         builder: (context, snapshot) {
           final availability = snapshot.data;
           return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              AppSpacing.xxl,
+            ),
             children: [
               Text(
                 widget.organizationName,
@@ -108,7 +114,7 @@ class _SlotPickerScreenState extends State<SlotPickerScreen> {
                 ),
               ),
               if (widget.branch != null) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpacing.xxs + 2),
                 Text(
                   '${l10n.hcBranch}: ${widget.branch!.name}',
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -116,14 +122,14 @@ class _SlotPickerScreenState extends State<SlotPickerScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.lg),
               HcSectionHeader(title: l10n.hcSelectDateTitle),
               SizedBox(
                 height: 84,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: _daysAhead,
-                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.xs),
                   itemBuilder: (context, index) {
                     final day = DateTime.now().add(Duration(days: index));
                     final normalized = DateTime(day.year, day.month, day.day);
@@ -138,11 +144,11 @@ class _SlotPickerScreenState extends State<SlotPickerScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.lg),
               HcSectionHeader(title: l10n.hcSelectTimeTitle),
               if (availability != null)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: Text(
                     l10n.hcClinicTimeNote(availability.timezone),
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -166,7 +172,7 @@ class _SlotPickerScreenState extends State<SlotPickerScreen> {
                 )
               else
                 Wrap(
-                  spacing: 10,
+                  spacing: AppSpacing.xs,
                   runSpacing: 10,
                   children: [
                     for (final slot in availability.slots)

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { optionalWebUser } from "@/lib/web-context.js";
 import { safeNextPath } from "@/lib/safe-redirect.js";
-import { Button, Card, ErrorNote, Field } from "../dashboard/ui.js";
+import { Button, Card, CardTitle, Field, Input, Notice } from "@/components/ui/index.js";
 import { registerAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -16,36 +16,54 @@ export default async function RegisterPage({
   if (await optionalWebUser()) redirect(safeNextPath(next));
 
   return (
-    <main style={{ maxWidth: 400, margin: "80px auto", padding: "0 20px" }}>
-      <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
-        <span
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 9,
-            background: "linear-gradient(135deg, var(--indigo), var(--coral))",
-          }}
-          aria-hidden
-        />
-        <strong style={{ fontSize: 18 }}>DoseWise Platform</strong>
+    <main className="flex min-h-[80vh] flex-col items-center justify-center px-5 py-12">
+      <div className="w-full max-w-sm">
+        <Link href="/" className="mb-7 flex items-center gap-2.5 no-underline">
+          <span
+            className="inline-block h-8 w-8 rounded-lg"
+            style={{ background: "linear-gradient(135deg, var(--indigo), var(--coral))" }}
+            aria-hidden
+          />
+          <strong className="text-base text-ink">DoseWise</strong>
+        </Link>
+
+        <Card>
+          <CardTitle as="h1" className="text-lg">Create an account</CardTitle>
+          <p className="mt-1 text-sm text-ink-muted">
+            Already registered?{" "}
+            <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="text-indigo">
+              Sign in
+            </Link>
+          </p>
+
+          {error ? <div className="mt-4"><Notice tone="down">{error}</Notice></div> : null}
+
+          <form action={registerAction} className="mt-5 flex flex-col gap-4">
+            {next ? <input type="hidden" name="next" value={next} /> : null}
+            <Field label="Full name">
+              <Input name="fullName" autoComplete="name" required className="w-full" />
+            </Field>
+            <Field label="Email">
+              <Input name="email" type="email" autoComplete="email" required className="w-full" />
+            </Field>
+            <Field label="Password" hint="At least 10 characters.">
+              <Input
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                minLength={10}
+                required
+                className="w-full"
+              />
+            </Field>
+            <Button type="submit" size="lg" className="w-full">Create account</Button>
+          </form>
+        </Card>
+
+        <p className="mt-6 text-center text-sm text-ink-muted">
+          An account is only needed to book — browsing doctors and hospitals is open to everyone.
+        </p>
       </div>
-      <Card>
-        <h1 style={{ fontSize: 20, margin: "0 0 18px" }}>Create an account</h1>
-        <ErrorNote message={error} />
-        <form action={registerAction}>
-          {next ? <input type="hidden" name="next" value={next} /> : null}
-          <Field label="Full name" name="fullName" required />
-          <Field label="Email" name="email" type="email" required />
-          <Field label="Password" name="password" type="password" required placeholder="At least 10 characters" />
-          <div style={{ marginTop: 8 }}>
-            <Button>Create account</Button>
-          </div>
-        </form>
-      </Card>
-      <p style={{ marginTop: 16, fontSize: 13, color: "var(--ink-muted)" }}>
-        Already have an account?{" "}
-        <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}>Sign in</Link>
-      </p>
     </main>
   );
 }

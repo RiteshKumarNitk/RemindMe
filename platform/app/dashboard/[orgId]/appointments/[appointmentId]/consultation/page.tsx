@@ -1,7 +1,8 @@
 import { requireOrgContext } from "@/lib/web-context.js";
 import { getAppointment } from "@/modules/appointments/service.js";
 import { getConsultation } from "@/modules/consultations/service.js";
-import { Badge, Button, Card, CardSubtitle, EmptyState, Field, Input, Notice, Textarea } from "@/components/ui/index.js";
+import { Badge, Button, Card, CardSubtitle, EmptyState, Field, Input, Notice, Textarea, statusLabel, statusTone } from "@/components/ui/index.js";
+import { ConfirmSubmit } from "@/components/confirm-submit.js";
 import {
   addPrescriptionItemAction,
   removePrescriptionItemAction,
@@ -42,12 +43,18 @@ export default async function ConsultationPage({
           {new Date(appointment.scheduledStart).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
         </p>
         <div className="mt-2 flex gap-2">
-          <Badge tone={appointment.status === "COMPLETED" ? "ok" : "coral"}>{appointment.status}</Badge>
-          {signed ? <Badge tone="neutral">Signed</Badge> : null}
+          <Badge tone={statusTone(appointment.status)}>{statusLabel(appointment.status)}</Badge>
+          {signed ? <Badge tone="ok">Signed — record locked</Badge> : null}
         </div>
       </div>
 
       {error ? <Notice tone="down">{error}</Notice> : null}
+
+      {signed ? (
+        <Notice tone="ok">
+          This consultation was signed and completed — the clinical record is locked and can no longer be edited.
+        </Notice>
+      ) : null}
 
       {["CHECKED_IN", "WAITING"].includes(appointment.status) && canWrite && (
         <Card className="max-w-md">
@@ -159,8 +166,13 @@ export default async function ConsultationPage({
       </Card>
 
       {!signed && canWrite && appointment.status === "IN_CONSULTATION" && (
-        <form action={signAndCompleteAction.bind(null, orgId, appointmentId)}>
-          <Button>Sign &amp; complete</Button>
+        <form action={signAndCompleteAction.bind(null, orgId, appointmentId)} className="flex flex-col gap-2">
+          <ConfirmSubmit
+            label="Sign & complete"
+            confirmTitle="Sign and complete this consultation?"
+            confirmMessage="Signing locks the notes and prescription permanently — they can no longer be edited."
+          />
+          <p className="text-xs text-ink-muted">Signing locks the notes and prescription permanently.</p>
         </form>
       )}
     </div>

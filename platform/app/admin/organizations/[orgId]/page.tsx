@@ -1,15 +1,9 @@
 import type { ReactNode } from "react";
 import { requireSuperAdmin } from "@/lib/web-context.js";
 import { getOrganizationDetail } from "@/modules/superadmin/service.js";
-import { Badge, Button, Card, InitialsAvatar, Notice } from "@/components/ui/index.js";
+import { Badge, Button, Card, InitialsAvatar, Notice, statusLabel, statusTone } from "@/components/ui/index.js";
+import { ConfirmSubmit } from "@/components/confirm-submit.js";
 import { setOrganizationActiveAction, setOrganizationVerificationAction } from "./actions.js";
-
-const VERIFICATION_TONE: Record<string, "ok" | "coral" | "indigo" | "neutral"> = {
-  DRAFT: "neutral",
-  PENDING_VERIFICATION: "coral",
-  VERIFIED: "ok",
-  REJECTED: "coral",
-};
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +35,7 @@ export default async function AdminOrganizationDetailPage({
           <Row label="Status" value={<Badge tone={org.isActive ? "ok" : "coral"}>{org.isActive ? "Active" : "Suspended"}</Badge>} />
           <Row
             label="Verification"
-            value={<Badge tone={VERIFICATION_TONE[org.verificationStatus] ?? "neutral"}>{org.verificationStatus}</Badge>}
+            value={<Badge tone={statusTone(org.verificationStatus)}>{statusLabel(org.verificationStatus)}</Badge>}
           />
           <Row label="Publicly listed" value={org.isPubliclyListed ? "Yes" : "No"} />
           <Row label="Created" value={new Date(org.createdAt).toLocaleString()} />
@@ -54,9 +48,16 @@ export default async function AdminOrganizationDetailPage({
 
         <div className="mt-4 flex flex-wrap gap-2">
           <form action={setOrganizationActiveAction.bind(null, orgId, !org.isActive)}>
-            <Button variant={org.isActive ? "danger" : "primary"}>
-              {org.isActive ? "Suspend this clinic" : "Reactivate this clinic"}
-            </Button>
+            {org.isActive ? (
+              <ConfirmSubmit
+                label="Suspend this clinic"
+                variant="danger"
+                confirmTitle={`Suspend ${org.name}?`}
+                confirmMessage="All members lose access immediately, and the public profile is unpublished."
+              />
+            ) : (
+              <Button>Reactivate this clinic</Button>
+            )}
           </form>
           {org.verificationStatus === "PENDING_VERIFICATION" ? (
             <>
@@ -64,7 +65,12 @@ export default async function AdminOrganizationDetailPage({
                 <Button>Approve verification</Button>
               </form>
               <form action={setOrganizationVerificationAction.bind(null, orgId, "REJECTED")}>
-                <Button variant="danger">Reject</Button>
+                <ConfirmSubmit
+                  label="Reject"
+                  variant="danger"
+                  confirmTitle={`Reject verification for ${org.name}?`}
+                  confirmMessage="The clinic keeps operating but stays without the public Verified badge."
+                />
               </form>
             </>
           ) : null}

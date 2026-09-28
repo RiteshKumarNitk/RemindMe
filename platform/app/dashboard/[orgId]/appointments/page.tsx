@@ -4,7 +4,8 @@ import { listAppointments } from "@/modules/appointments/service.js";
 import { listDoctors } from "@/modules/doctors/service.js";
 import { listPatients } from "@/modules/patients/service.js";
 import { listMyAccess } from "@/modules/family/service.js";
-import { Badge, Button, Card, CardSubtitle, EmptyState, InitialsAvatar, LinkButton, Notice } from "@/components/ui/index.js";
+import { Badge, Button, Card, CardSubtitle, EmptyState, InitialsAvatar, LinkButton, Notice, statusLabel, statusTone } from "@/components/ui/index.js";
+import { ConfirmSubmit } from "@/components/confirm-submit.js";
 import { BookForm } from "./BookForm.js";
 import {
   bookAppointmentAction,
@@ -15,18 +16,6 @@ import {
 } from "./actions.js";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_TONE: Record<string, "indigo" | "coral" | "ok" | "neutral"> = {
-  REQUESTED: "coral",
-  CONFIRMED: "indigo",
-  CHECKED_IN: "indigo",
-  WAITING: "indigo",
-  IN_CONSULTATION: "coral",
-  COMPLETED: "ok",
-  CANCELLED: "neutral",
-  NO_SHOW: "neutral",
-  RESCHEDULED: "neutral",
-};
 
 export default async function AppointmentsPage({
   params,
@@ -108,7 +97,7 @@ export default async function AppointmentsPage({
                       {new Date(a.scheduledStart).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </div>
-                  <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>{a.status}</Badge>
+                  <Badge tone={statusTone(a.status)}>{statusLabel(a.status)}</Badge>
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
@@ -150,9 +139,13 @@ export default async function AppointmentsPage({
                   {["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING"].includes(a.status) && (
                     <form action={cancelAppointmentAction.bind(null, orgId, a.id)}>
                       <input type="hidden" name="reason" value="Cancelled from dashboard" />
-                      <Button variant="danger" size="sm">
-                        Cancel
-                      </Button>
+                      <ConfirmSubmit
+                        label="Cancel"
+                        variant="danger"
+                        size="sm"
+                        confirmTitle="Cancel this appointment?"
+                        confirmMessage="The clinic and patient will be notified, and the time slot is released for others."
+                      />
                     </form>
                   )}
                 </div>

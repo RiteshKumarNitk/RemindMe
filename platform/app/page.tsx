@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { listPublicDoctors, listPublicOrganizations } from "@/modules/public/service.js";
-import { Badge, Card, CardSubtitle, CardTitle, SearchBar } from "@/components/ui/index.js";
+import { DoctorCard, HospitalCard, SearchBar, SectionHeading } from "@/components/ui/index.js";
 import { PublicHeader } from "./public-header";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export default async function HomePage() {
           <form action="/doctors" method="get" className="w-full max-w-md">
             <SearchBar name="q" placeholder="Search doctors, hospitals, specialties…" />
           </form>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap justify-center gap-3">
             <Link
               href="/doctors"
               className="rounded-full bg-indigo px-5 py-2.5 text-sm font-medium text-white no-underline hover:bg-indigo-dark"
@@ -49,26 +49,29 @@ export default async function HomePage() {
 
         {hospitals.data.length > 0 ? (
           <section className="py-8">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-ink">Hospitals &amp; clinics</h2>
-              <Link href="/hospitals" className="text-sm text-indigo no-underline">
-                See all
-              </Link>
-            </div>
+            <SectionHeading
+              title={"Hospitals & clinics"}
+              action={
+                <Link href="/hospitals" className="text-sm text-indigo no-underline">
+                  See all
+                </Link>
+              }
+            />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               {hospitals.data.map((org) => (
-                <Link key={org.id} href={`/hospitals/${org.slug}`} className="no-underline">
-                  <Card className="h-full transition-colors hover:border-indigo">
-                    <CardTitle>{org.name}</CardTitle>
-                    <CardSubtitle className="mt-1">
-                      {org.locations[0]?.city ?? org.tagline ?? "Healthcare provider"}
-                    </CardSubtitle>
-                    <div className="mt-3 flex items-center gap-2">
-                      {org.orgType ? <Badge tone="neutral">{org.orgType.replace(/_/g, " ")}</Badge> : null}
-                      <Badge tone="indigo">{org._count.doctorProfiles} doctors</Badge>
-                    </div>
-                  </Card>
-                </Link>
+                <HospitalCard
+                  key={org.id}
+                  org={{
+                    name: org.name,
+                    slug: org.slug,
+                    tagline: org.tagline,
+                    orgType: org.orgType,
+                    verificationStatus: org.verificationStatus,
+                    logoUrl: org.logoUrl,
+                    city: org.locations[0]?.city ?? null,
+                    doctorCount: org._count.doctorProfiles,
+                  }}
+                />
               ))}
             </div>
           </section>
@@ -76,24 +79,29 @@ export default async function HomePage() {
 
         {doctors.data.length > 0 ? (
           <section className="py-8">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-ink">Doctors</h2>
-              <Link href="/doctors" className="text-sm text-indigo no-underline">
-                See all
-              </Link>
-            </div>
+            <SectionHeading
+              title="Doctors"
+              action={
+                <Link href="/doctors" className="text-sm text-indigo no-underline">
+                  See all
+                </Link>
+              }
+            />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               {doctors.data.map((doctor) => (
-                <Link key={doctor.id} href={`/doctors/${doctor.id}`} className="no-underline">
-                  <Card className="h-full transition-colors hover:border-indigo">
-                    <CardTitle>{doctor.displayName}</CardTitle>
-                    <CardSubtitle className="mt-1">
-                      {doctor.specialty ?? "General practice"}
-                      {doctor.yearsOfExperience ? ` · ${doctor.yearsOfExperience} yrs` : ""}
-                    </CardSubtitle>
-                    <p className="mt-2 text-sm text-ink-muted">{doctor.organization.name}</p>
-                  </Card>
-                </Link>
+                <DoctorCard
+                  key={doctor.id}
+                  doctor={{
+                    id: doctor.id,
+                    displayName: doctor.displayName,
+                    specialty: doctor.specialty,
+                    photoUrl: doctor.photoUrl,
+                    yearsOfExperience: doctor.yearsOfExperience,
+                    languages: doctor.languages,
+                    consultationFeeMinor: doctor.consultationFeeMinor,
+                    organization: { name: doctor.organization.name, slug: doctor.organization.slug },
+                  }}
+                />
               ))}
             </div>
           </section>

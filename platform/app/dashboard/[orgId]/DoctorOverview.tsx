@@ -14,19 +14,10 @@ import {
   LinkButton,
   SideStat,
   StatTile,
+  statusLabel,
+  statusTone,
 } from "@/components/ui/index.js";
 import { CalendarIcon, CheckIcon, ClockIcon, CloseIcon } from "@/components/dashboard-icons.js";
-
-const STATUS_TONE: Record<string, "indigo" | "ok" | "down" | "neutral"> = {
-  REQUESTED: "neutral",
-  CONFIRMED: "indigo",
-  CHECKED_IN: "indigo",
-  WAITING: "indigo",
-  IN_CONSULTATION: "indigo",
-  COMPLETED: "ok",
-  CANCELLED: "down",
-  NO_SHOW: "down",
-};
 
 export async function DoctorOverview({
   ctx,
@@ -103,7 +94,7 @@ export async function DoctorOverview({
         </HeroMain>
         <HeroSide>
           <SideStat value={waiting.length} label="Waiting" sub={nextUp ? `Next: ${nextUp.patient.firstName} ${nextUp.patient.lastName}` : "Nobody waiting"} />
-          <SideStat label="Today's pace" sub="Avg. consult time updates as the day goes." />
+          <SideStat value={completedToday} label="Completed today" sub={noShowToday > 0 ? `${noShowToday} no-show${noShowToday === 1 ? "" : "s"} today` : undefined} />
         </HeroSide>
       </Hero>
 
@@ -131,7 +122,7 @@ export async function DoctorOverview({
                       {a.patient.firstName} {a.patient.lastName}
                     </span>
                   </div>
-                  <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>{a.status}</Badge>
+                  <Badge tone={statusTone(a.status)}>{statusLabel(a.status)}</Badge>
                 </Card>
               </Link>
             ))}

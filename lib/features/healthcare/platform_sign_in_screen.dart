@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../services/platform_auth_service.dart';
+import '../widgets/app_buttons.dart';
 
 /// Sign in to the clinic platform.
 ///
@@ -83,7 +85,12 @@ class _PlatformSignInScreenState extends State<PlatformSignInScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.hcSignIn)),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.sm,
+          AppSpacing.lg,
+          AppSpacing.xxxl,
+        ),
         children: [
           Text(
             l10n.hcSignInTitle,
@@ -91,14 +98,14 @@ class _PlatformSignInScreenState extends State<PlatformSignInScreen> {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             l10n.hcSignInBody,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
           Form(
             key: _formKey,
             child: Column(
@@ -116,7 +123,7 @@ class _PlatformSignInScreenState extends State<PlatformSignInScreen> {
                         ? l10n.hcFieldRequired
                         : null,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                 ],
                 TextFormField(
                   controller: _email,
@@ -136,7 +143,7 @@ class _PlatformSignInScreenState extends State<PlatformSignInScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.sm),
                 TextFormField(
                   controller: _password,
                   obscureText: _obscure,
@@ -165,23 +172,13 @@ class _PlatformSignInScreenState extends State<PlatformSignInScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _busy ? null : _submit,
-              child: _busy
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(
-                      _registering ? l10n.hcCreateAccount : l10n.hcSignIn,
-                    ),
-            ),
+          const SizedBox(height: AppSpacing.xl),
+          AppButton(
+            label: _registering ? l10n.hcCreateAccount : l10n.hcSignIn,
+            onPressed: _submit,
+            busy: _busy,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           SizedBox(
             width: double.infinity,
             child: TextButton(

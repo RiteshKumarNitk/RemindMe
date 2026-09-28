@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { listPublicDoctors } from "@/modules/public/service.js";
-import { Card, CardSubtitle, CardTitle, EmptyState, SearchBar } from "@/components/ui/index.js";
+import { DoctorCard, EmptyState, SearchBar } from "@/components/ui/index.js";
 import { PublicHeader } from "../public-header";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +25,15 @@ export default async function DoctorsPage({
   });
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
 
+  // Pagination used to drop the specialty filter; keep it alongside the query.
+  function pageHref(nextPage: number): string {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (specialty) params.set("specialty", specialty);
+    params.set("page", String(nextPage));
+    return `/doctors?${params.toString()}`;
+  }
+
   return (
     <div>
       <PublicHeader />
@@ -37,28 +45,32 @@ export default async function DoctorsPage({
 
         <p className="mt-4 text-sm text-ink-muted">
           {result.total} {result.total === 1 ? "result" : "results"}
+          {specialty ? <> in {specialty}</> : null}
         </p>
 
         {result.data.length === 0 ? (
           <div className="mt-6">
             <EmptyState
               title="No doctors found"
-              description="Try a different search, or check back later as more doctors join."
+              description={q || specialty ? "Try a different name or specialty, or check back later as more doctors join." : "Check back later as more doctors join DoseWise."}
             />
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             {result.data.map((doctor) => (
-              <Link key={doctor.id} href={`/doctors/${doctor.id}`} className="no-underline">
-                <Card className="h-full transition-colors hover:border-indigo">
-                  <CardTitle>{doctor.displayName}</CardTitle>
-                  <CardSubtitle className="mt-1">
-                    {doctor.specialty ?? "General practice"}
-                    {doctor.yearsOfExperience ? ` · ${doctor.yearsOfExperience} yrs` : ""}
-                  </CardSubtitle>
-                  <p className="mt-2 text-sm text-ink-muted">{doctor.organization.name}</p>
-                </Card>
-              </Link>
+              <DoctorCard
+                key={doctor.id}
+                doctor={{
+                  id: doctor.id,
+                  displayName: doctor.displayName,
+                  specialty: doctor.specialty,
+                  photoUrl: doctor.photoUrl,
+                  yearsOfExperience: doctor.yearsOfExperience,
+                  languages: doctor.languages,
+                  consultationFeeMinor: doctor.consultationFeeMinor,
+                  organization: { name: doctor.organization.name, slug: doctor.organization.slug },
+                }}
+              />
             ))}
           </div>
         )}
@@ -66,17 +78,17 @@ export default async function DoctorsPage({
         {totalPages > 1 ? (
           <div className="mt-8 flex items-center justify-center gap-3 text-sm">
             {pageNum > 1 ? (
-              <Link href={`/doctors?${new URLSearchParams({ ...(q ? { q } : {}), page: String(pageNum - 1) })}`} className="text-indigo no-underline">
+              <a href={pageHref(pageNum - 1)} className="text-indigo no-underline">
                 Previous
-              </Link>
+              </a>
             ) : null}
             <span className="text-ink-muted">
               Page {pageNum} of {totalPages}
             </span>
             {pageNum < totalPages ? (
-              <Link href={`/doctors?${new URLSearchParams({ ...(q ? { q } : {}), page: String(pageNum + 1) })}`} className="text-indigo no-underline">
+              <a href={pageHref(pageNum + 1)} className="text-indigo no-underline">
                 Next
-              </Link>
+              </a>
             ) : null}
           </div>
         ) : null}

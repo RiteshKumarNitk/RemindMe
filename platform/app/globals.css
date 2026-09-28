@@ -8,6 +8,9 @@
   --card: #ffffff;
   --ink: #16182b;
   --ink-muted: #5b5f7a;
+  /* Faintest text tier — small uppercase labels, timestamps, auxiliary counts.
+     Same hue family as --ink-muted, kept ≥ 4.5:1 on white (WCAG AA). */
+  --ink-faint: #6f7490;
   --border: #e4e6f0;
   --ok: #1f9d55;
   --warn: #b45309;
@@ -31,6 +34,7 @@
   --color-card: var(--card);
   --color-ink: var(--ink);
   --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
   --color-border: var(--border);
   --color-ok: var(--ok);
   --color-warn: var(--warn);

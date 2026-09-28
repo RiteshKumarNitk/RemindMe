@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../data/models/healthcare/appointment.dart';
 import '../../data/repositories/appointment_repository.dart';
 import '../../services/platform_auth_service.dart';
@@ -144,7 +145,12 @@ class _AppointmentsList extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.lg,
+          AppSpacing.xxxl,
+        ),
         itemCount: rows.length,
         itemBuilder: (context, index) => _AppointmentTile(
           row: rows[index],
@@ -184,12 +190,12 @@ class _AppointmentTile extends StatelessWidget {
     final appointment = row.appointment;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: AppRadius.cardRadius,
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -206,7 +212,7 @@ class _AppointmentTile extends StatelessWidget {
                   HcStatusChip.forAppointment(appointment.status, l10n),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 row.location == null
                     ? row.organization.name
@@ -215,15 +221,15 @@ class _AppointmentTile extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
                   Icon(
                     Icons.event_rounded,
-                    size: 20,
+                    size: AppSizes.iconMd,
                     color: theme.colorScheme.primary,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Expanded(
                     child: Text(
                       '${HealthcareFormat.dayMedium(appointment.scheduledStart, appointment.timezone, locale)}'
@@ -234,7 +240,7 @@ class _AppointmentTile extends StatelessWidget {
                   ),
                   Icon(
                     Icons.chevron_right_rounded,
-                    size: 26,
+                    size: AppSizes.iconLg,
                     color: theme.colorScheme.outline,
                   ),
                 ],

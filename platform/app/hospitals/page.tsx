@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { listPublicOrganizations } from "@/modules/public/service.js";
-import { Badge, Card, CardSubtitle, CardTitle, EmptyState, SearchBar } from "@/components/ui/index.js";
+import { EmptyState, HospitalCard, SearchBar } from "@/components/ui/index.js";
 import { PublicHeader } from "../public-header";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +25,16 @@ export default async function HospitalsPage({
   });
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
 
+  // Pagination used to drop the active city filter; keep every filter that is
+  // currently applied so page 2 shows the same filtered result set.
+  function pageHref(nextPage: number): string {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (city) params.set("city", city);
+    params.set("page", String(nextPage));
+    return `/hospitals?${params.toString()}`;
+  }
+
   return (
     <div>
       <PublicHeader />
@@ -37,30 +46,32 @@ export default async function HospitalsPage({
 
         <p className="mt-4 text-sm text-ink-muted">
           {result.total} {result.total === 1 ? "result" : "results"}
+          {city ? <> in {city}</> : null}
         </p>
 
         {result.data.length === 0 ? (
           <div className="mt-6">
             <EmptyState
               title="No clinics found"
-              description="Try a different search, or check back later as more clinics join."
+              description={q || city ? "Try a different search or city name, or check back later as more clinics join." : "Check back later as more clinics join DoseWise."}
             />
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             {result.data.map((org) => (
-              <Link key={org.id} href={`/hospitals/${org.slug}`} className="no-underline">
-                <Card className="h-full transition-colors hover:border-indigo">
-                  <CardTitle>{org.name}</CardTitle>
-                  <CardSubtitle className="mt-1">
-                    {org.locations[0]?.city ?? org.tagline ?? "Healthcare provider"}
-                  </CardSubtitle>
-                  <div className="mt-3 flex items-center gap-2">
-                    {org.orgType ? <Badge tone="neutral">{org.orgType.replace(/_/g, " ")}</Badge> : null}
-                    <Badge tone="indigo">{org._count.doctorProfiles} doctors</Badge>
-                  </div>
-                </Card>
-              </Link>
+              <HospitalCard
+                key={org.id}
+                org={{
+                  name: org.name,
+                  slug: org.slug,
+                  tagline: org.tagline,
+                  orgType: org.orgType,
+                  verificationStatus: org.verificationStatus,
+                  logoUrl: org.logoUrl,
+                  city: org.locations[0]?.city ?? null,
+                  doctorCount: org._count.doctorProfiles,
+                }}
+              />
             ))}
           </div>
         )}
@@ -68,17 +79,17 @@ export default async function HospitalsPage({
         {totalPages > 1 ? (
           <div className="mt-8 flex items-center justify-center gap-3 text-sm">
             {pageNum > 1 ? (
-              <Link href={`/hospitals?${new URLSearchParams({ ...(q ? { q } : {}), page: String(pageNum - 1) })}`} className="text-indigo no-underline">
+              <a href={pageHref(pageNum - 1)} className="text-indigo no-underline">
                 Previous
-              </Link>
+              </a>
             ) : null}
             <span className="text-ink-muted">
               Page {pageNum} of {totalPages}
             </span>
             {pageNum < totalPages ? (
-              <Link href={`/hospitals?${new URLSearchParams({ ...(q ? { q } : {}), page: String(pageNum + 1) })}`} className="text-indigo no-underline">
+              <a href={pageHref(pageNum + 1)} className="text-indigo no-underline">
                 Next
-              </Link>
+              </a>
             ) : null}
           </div>
         ) : null}

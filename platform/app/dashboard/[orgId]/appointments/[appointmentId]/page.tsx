@@ -3,7 +3,8 @@ import { requireOrgContext } from "@/lib/web-context.js";
 import { db } from "@/lib/db.js";
 import { getAppointment } from "@/modules/appointments/service.js";
 import { hasFamilyAccess } from "@/modules/family/service.js";
-import { Badge, Button, Card, CardSubtitle, CardTitle, LinkButton, Notice } from "@/components/ui/index.js";
+import { Badge, Button, Card, CardSubtitle, CardTitle, LinkButton, Notice, statusLabel, statusTone } from "@/components/ui/index.js";
+import { ConfirmSubmit } from "@/components/confirm-submit.js";
 import {
   cancelAppointmentAction,
   checkInAppointmentAction,
@@ -12,18 +13,6 @@ import {
 } from "../actions.js";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_TONE: Record<string, "indigo" | "ok" | "down" | "neutral"> = {
-  REQUESTED: "neutral",
-  CONFIRMED: "indigo",
-  CHECKED_IN: "indigo",
-  WAITING: "indigo",
-  IN_CONSULTATION: "indigo",
-  COMPLETED: "ok",
-  CANCELLED: "down",
-  NO_SHOW: "down",
-  RESCHEDULED: "neutral",
-};
 
 export default async function AppointmentDetailPage({
   params,
@@ -75,7 +64,7 @@ export default async function AppointmentDetailPage({
               {appt.patient.firstName} {appt.patient.lastName}
             </p>
           </div>
-          <Badge tone={STATUS_TONE[appt.status] ?? "neutral"}>{appt.status}</Badge>
+          <Badge tone={statusTone(appt.status)}>{statusLabel(appt.status)}</Badge>
         </div>
 
         <p className="mt-4 text-sm font-medium text-ink">
@@ -131,7 +120,12 @@ export default async function AppointmentDetailPage({
           {["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING"].includes(appt.status) && (isStaff || canActAsPatient) && (
             <form action={cancelAppointmentAction.bind(null, orgId, appt.id)}>
               <input type="hidden" name="reason" value="Cancelled by patient" />
-              <Button variant="danger">Cancel</Button>
+              <ConfirmSubmit
+                label="Cancel appointment"
+                variant="danger"
+                confirmTitle="Cancel this appointment?"
+                confirmMessage="The clinic and patient will be notified, and the time slot is released for others."
+              />
             </form>
           )}
         </div>

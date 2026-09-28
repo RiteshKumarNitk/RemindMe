@@ -5,11 +5,53 @@ import { db } from "@/lib/db.js";
 import { optionalWebUser } from "@/lib/web-context.js";
 import { getPublicDoctor } from "@/modules/public/service.js";
 import { listMyAccessInOrg } from "@/modules/family/service.js";
-import { Badge, Button, Card, CardSubtitle, CardTitle, Field, Input, Select } from "@/components/ui/index.js";
+import { Badge, Button, Card, CardSubtitle, CardTitle, Field, Input, Notice, Select } from "@/components/ui/index.js";
 import { PublicHeader } from "../../../public-header";
 import { confirmBookingAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Three-step booking flow across two screens: step 1 (doctor, date, time)
+ * happens on the doctor profile; this page is step 2 (details + review);
+ * confirmation after submit is step 3. The indicator is presentational —
+ * the actual booking mechanics (server action + hidden inputs) are unchanged.
+ */
+function BookingSteps({ current }: { current: 2 | 3 }) {
+  const steps = ["Doctor & time", "Your details", "Confirmation"];
+  return (
+    <ol className="flex flex-wrap items-center gap-2 text-sm" aria-label="Booking progress">
+      {steps.map((label, i) => {
+        const step = i + 1;
+        const state = step < current ? "done" : step === current ? "current" : "todo";
+        return (
+          <li key={label} className="flex items-center gap-2">
+            <span
+              aria-current={state === "current" ? "step" : undefined}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 ${
+                state === "current"
+                  ? "border-indigo bg-indigo font-semibold text-white"
+                  : state === "done"
+                    ? "border-ok/30 bg-ok/10 text-ok"
+                    : "border-border bg-card text-ink-muted"
+              }`}
+            >
+              {state === "done" ? (
+                <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor">
+                  <path fillRule="evenodd" d="M13.7 4.3a1 1 0 0 1 0 1.4l-6.5 6.5a1 1 0 0 1-1.4 0l-3-3a1 1 0 1 1 1.4-1.4L6.5 10l5.8-5.7a1 1 0 0 1 1.4 0Z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <span className="tabular-nums">{step}</span>
+              )}
+              {label}
+            </span>
+            {step < steps.length ? <span aria-hidden className="text-ink-faint">→</span> : null}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 
 export default async function BookAppointmentPage({
   params,
@@ -41,7 +83,8 @@ export default async function BookAppointmentPage({
     <div>
       <PublicHeader />
       <main className="mx-auto max-w-lg px-5 py-10">
-        <h1 className="text-xl font-semibold text-ink">Review your appointment</h1>
+        <BookingSteps current={2} />
+        <h1 className="mt-5 text-xl font-semibold text-ink">Review your appointment</h1>
 
         <Card className="mt-4">
           <CardSubtitle>Appointment with</CardSubtitle>
@@ -65,8 +108,8 @@ export default async function BookAppointmentPage({
         </Card>
 
         {error ? (
-          <div className="mt-4 rounded-control border border-down/30 bg-down/5 px-4 py-3 text-sm text-down">
-            {error}
+          <div className="mt-4">
+            <Notice tone="down">{error}</Notice>
           </div>
         ) : null}
 
@@ -76,17 +119,24 @@ export default async function BookAppointmentPage({
             <div className="mt-4 flex gap-3">
               <Link
                 href={`/login?next=${encodeURIComponent(currentPath)}`}
-                className="rounded-full bg-indigo px-5 py-2.5 text-sm font-medium text-white no-underline hover:bg-indigo-dark"
+                className="rounded-control bg-indigo px-5 py-2.5 text-sm font-medium text-white no-underline hover:bg-indigo-dark"
               >
                 Log in
               </Link>
               <Link
                 href={`/register?next=${encodeURIComponent(currentPath)}`}
-                className="rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-ink no-underline hover:bg-surface"
+                className="rounded-control border border-border bg-card px-5 py-2.5 text-sm font-medium text-ink no-underline hover:bg-surface"
               >
                 Sign up
               </Link>
             </div>
+            <p className="mt-3 text-xs text-ink-muted">
+              Changed your mind about the time?{" "}
+              <Link href={`/doctors/${doctorId}`} className="text-indigo">
+                Pick a different slot
+              </Link>
+              .
+            </p>
           </Card>
         ) : (
           <BookingForm doctorId={doctorId} slot={slot} organizationId={doctor.organization.id} userId={ctx.userId} />
@@ -133,23 +183,23 @@ async function BookingForm({
         ) : null}
         <div className="grid grid-cols-2 gap-3">
           <Field label="First name" hint="Your own details — used even when booking for a dependent above.">
-            <Input name="firstName" required defaultValue={defaultFirst} />
+            <Input name="firstName" required defaultValue={defaultFirst} className="w-full" />
           </Field>
           <Field label="Last name">
-            <Input name="lastName" required defaultValue={defaultLast} />
+            <Input name="lastName" required defaultValue={defaultLast} className="w-full" />
           </Field>
         </div>
         <Field label="Phone" hint="Optional, but helps the clinic reach you.">
-          <Input name="phone" defaultValue={user?.phone ?? ""} />
+          <Input name="phone" type="tel" autoComplete="tel" defaultValue={user?.phone ?? ""} className="w-full" />
         </Field>
         <Field label="Date of birth" hint="Optional.">
-          <Input name="dateOfBirth" type="date" />
+          <Input name="dateOfBirth" type="date" className="w-full" />
         </Field>
         <Field label="Reason for visit" hint="Optional — a short note for the clinic.">
-          <Input name="reason" maxLength={200} />
+          <Input name="reason" maxLength={200} className="w-full" />
         </Field>
         <div className="mt-1">
-          <Button type="submit">Confirm appointment</Button>
+          <Button type="submit" size="lg" className="w-full">Confirm appointment</Button>
         </div>
       </form>
     </Card>

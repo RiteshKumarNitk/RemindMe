@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../data/models/healthcare/appointment.dart';
 import 'appointment_detail_screen.dart';
 import 'healthcare_format.dart';
@@ -27,30 +29,36 @@ class BookingConfirmationScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final palette = theme.palette;
     final locale = Localizations.localeOf(context).languageCode;
     final isConfirmed = appointment.status == AppointmentStatus.confirmed;
 
     return Scaffold(
       appBar: AppBar(automaticallyImplyLeading: false),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.sm,
+          AppSpacing.lg,
+          AppSpacing.xxxl,
+        ),
         children: [
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Center(
             child: Container(
               padding: const EdgeInsets.all(22),
-              decoration: const BoxDecoration(
-                color: Color(0xFFDCF2E1),
+              decoration: BoxDecoration(
+                color: palette.successContainer,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.check_rounded,
                 size: 52,
-                color: Color(0xFF14532D),
+                color: palette.onSuccessContainer,
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.lg),
           Text(
             isConfirmed
                 ? l10n.hcBookingConfirmedTitle
@@ -60,14 +68,14 @@ class BookingConfirmationScreen extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Center(
             child: HcStatusChip.forAppointment(appointment.status, l10n),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -77,7 +85,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text(organizationName, style: theme.textTheme.bodyLarge),
                   if (branchName != null)
                     Text(
@@ -118,22 +126,22 @@ class BookingConfirmationScreen extends StatelessWidget {
             ),
           ),
           if (!isConfirmed) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             Card(
-              color: const Color(0xFFFDF0D5),
+              color: palette.warningContainer,
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 child: Row(
                   children: [
-                    const Icon(Icons.schedule_rounded, color: Color(0xFF7A4A00)),
-                    const SizedBox(width: 12),
+                    Icon(Icons.schedule_rounded, color: palette.onWarningContainer),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(child: Text(l10n.hcBookingPendingBody)),
                   ],
                 ),
               ),
             ),
           ],
-          const SizedBox(height: 28),
+          const SizedBox(height: AppSpacing.xxl),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -151,7 +159,7 @@ class BookingConfirmationScreen extends StatelessWidget {
               label: Text(l10n.hcViewAppointment),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           SizedBox(
             width: double.infinity,
             child: TextButton(

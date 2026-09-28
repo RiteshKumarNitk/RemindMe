@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../data/models/healthcare/clinic_location.dart';
 import '../../data/models/healthcare/doctor.dart';
 import '../../data/models/healthcare/organization.dart';
@@ -36,7 +37,12 @@ class _OrganizationProfileScreenState extends State<OrganizationProfileScreen> {
       isScrollControlled: true,
       builder: (sheetContext) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -48,10 +54,10 @@ class _OrganizationProfileScreenState extends State<OrganizationProfileScreen> {
                   color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               for (final location in organization.locations)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
                       alignment: Alignment.centerLeft,
@@ -131,10 +137,15 @@ class _OrganizationProfileScreenState extends State<OrganizationProfileScreen> {
             });
           }
           return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              AppSpacing.xxxl,
+            ),
             children: [
               _Header(organization: organization),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.lg),
               if (organization.doctors.isEmpty)
                 HcEmptyView(
                   icon: Icons.person_off_rounded,
@@ -151,18 +162,18 @@ class _OrganizationProfileScreenState extends State<OrganizationProfileScreen> {
                   ),
                 ),
               if (organization.tagline != null) ...[
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   organization.tagline!,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ],
               if (organization.about != null) ...[
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.lg),
                 HcSectionHeader(title: l10n.hcAbout),
                 Text(organization.about!),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.xl),
               HcSectionHeader(title: l10n.hcContact),
               _ContactCard(
                 organization: organization,
@@ -176,7 +187,7 @@ class _OrganizationProfileScreenState extends State<OrganizationProfileScreen> {
                 },
               ),
               if (organization.locations.isNotEmpty) ...[
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xl),
                 HcSectionHeader(
                   title: l10n.hcLocations,
                   actionLabel: organization.locations.length > 1
@@ -193,14 +204,14 @@ class _OrganizationProfileScreenState extends State<OrganizationProfileScreen> {
                     onSelect: () => setState(() => _branch = location),
                   ),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.xl),
               Container(
                 key: _doctorsKey,
                 child: HcSectionHeader(title: l10n.hcDoctorsTitle),
               ),
               if (_branch != null && organization.locations.length > 1)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                   child: HcStatusChip(
                     label: '${l10n.hcBranch}: ${_branch!.name}',
                     tone: HcTone.positive,
@@ -252,7 +263,7 @@ class _Header extends StatelessWidget {
               errorBuilder: (_, _, _) => const SizedBox.shrink(),
             ),
           ),
-        if (cover != null && cover.isNotEmpty) const SizedBox(height: 16),
+        if (cover != null && cover.isNotEmpty) const SizedBox(height: AppSpacing.md),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -270,7 +281,7 @@ class _Header extends StatelessWidget {
               ),
             if (organization.logoUrl != null &&
                 organization.logoUrl!.isNotEmpty)
-              const SizedBox(width: 14),
+              const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../data/models/healthcare/clinic_location.dart';
 import '../../data/models/healthcare/doctor.dart';
 import '../../data/repositories/healthcare_repository.dart';
+import '../widgets/app_buttons.dart';
 import 'healthcare_format.dart';
 import 'slot_picker_screen.dart';
 import 'widgets/healthcare_widgets.dart';
@@ -42,13 +44,18 @@ class DoctorProfileScreen extends StatelessWidget {
           final theme = Theme.of(context);
 
           return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              AppSpacing.xxxl,
+            ),
             children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _Photo(url: doctor.photoUrl),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,7 +67,7 @@ class DoctorProfileScreen extends StatelessWidget {
                           ),
                         ),
                         if (doctor.specialty != null) ...[
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xxs),
                           Text(
                             doctor.specialty!,
                             style: theme.textTheme.titleMedium?.copyWith(
@@ -69,7 +76,7 @@ class DoctorProfileScreen extends StatelessWidget {
                           ),
                         ],
                         if (fee != null) ...[
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpacing.xs),
                           Text(
                             l10n.hcConsultationFee(fee),
                             style: theme.textTheme.titleMedium?.copyWith(
@@ -83,26 +90,23 @@ class DoctorProfileScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => SlotPickerScreen(
-                        doctorId: doctor.id,
-                        doctorName: doctor.displayName,
-                        organizationId: doctor.organization.id,
-                        organizationName: doctor.organization.name,
-                        branch: branch,
-                      ),
+              const SizedBox(height: AppSpacing.lg),
+              AppButton(
+                label: l10n.hcBookAppointment,
+                icon: Icons.event_available_rounded,
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => SlotPickerScreen(
+                      doctorId: doctor.id,
+                      doctorName: doctor.displayName,
+                      organizationId: doctor.organization.id,
+                      organizationName: doctor.organization.name,
+                      branch: branch,
                     ),
                   ),
-                  icon: const Icon(Icons.event_available_rounded),
-                  label: Text(l10n.hcBookAppointment),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.xl),
               _DetailCard(
                 rows: [
                   if (doctor.qualifications != null)
@@ -118,16 +122,15 @@ class DoctorProfileScreen extends StatelessWidget {
                 ],
               ),
               if (doctor.bio != null) ...[
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xl),
                 HcSectionHeader(title: l10n.hcAbout),
                 Text(doctor.bio!),
               ],
               if (doctor.organization.locations.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                HcSectionHeader(title: l10n.hcLocations),
-                for (final location in doctor.organization.locations)
+                const SizedBox(height: AppSpacing.xl),
+                HcSectionHeader(title: l10n.hcLocations),                  for (final location in doctor.organization.locations)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -200,13 +203,16 @@ class _DetailCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
         child: Column(
           children: [
             for (var i = 0; i < rows.length; i++) ...[
               if (i > 0) const Divider(height: 1),
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -218,7 +224,7 @@ class _DetailCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       flex: 2,
                       child: Text(

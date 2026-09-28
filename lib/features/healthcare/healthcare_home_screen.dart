@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/config/platform_api_config.dart';
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../data/api/api_exception.dart';
 import '../../data/models/healthcare/organization.dart';
 import '../../data/repositories/healthcare_repository.dart';
@@ -113,10 +114,10 @@ class _HealthcareHomeScreenState extends State<HealthcareHomeScreen> {
       isScrollControlled: true,
       builder: (sheetContext) => Padding(
         padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 8,
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom + 24,
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
+          top: AppSpacing.xs,
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom + AppSpacing.xl,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -133,7 +134,7 @@ class _HealthcareHomeScreenState extends State<HealthcareHomeScreen> {
                 prefixIcon: const Icon(Icons.location_city_rounded),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.lg),
             Row(
               children: [
                 Expanded(
@@ -142,7 +143,7 @@ class _HealthcareHomeScreenState extends State<HealthcareHomeScreen> {
                     child: Text(l10n.hcClear),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: FilledButton(
                     onPressed: () =>
@@ -228,7 +229,12 @@ class _HealthcareHomeScreenState extends State<HealthcareHomeScreen> {
       body: RefreshIndicator(
         onRefresh: () => _load(reset: true),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.lg,
+            AppSpacing.xxxl,
+          ),
           children: [
             if (account.isSignedIn)
               _SignedInBanner(
@@ -454,15 +460,15 @@ class _SignedInBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         children: [
           Icon(
             Icons.verified_user_rounded,
-            size: 20,
+            size: AppSizes.iconMd,
             color: theme.colorScheme.primary,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: Text(
               l10n.hcSignedInAs(name),

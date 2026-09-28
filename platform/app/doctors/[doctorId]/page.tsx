@@ -1,11 +1,10 @@
 import { cache } from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { notFound } from "next/navigation";
 import { AppError } from "@/lib/errors.js";
+import { notFound } from "next/navigation";
 import { getPublicDoctor } from "@/modules/public/service.js";
 import { getPublicDoctorSlots } from "@/modules/patient-booking/service.js";
-import { Badge, Card, CardSubtitle, CardTitle } from "@/components/ui/index.js";
+import { Badge, Card, CardSubtitle, CardTitle, InitialsAvatar } from "@/components/ui/index.js";
 import { PublicHeader } from "../../public-header";
 
 export const dynamic = "force-dynamic";
@@ -71,9 +70,15 @@ export default async function DoctorDetailPage({
     <div>
       <PublicHeader />
       <main className="mx-auto max-w-3xl px-5 py-10">
+        {/* Identity header — avatar block, name, credentials, fee. The
+            gradient-initials block stands in until a real photo is uploaded. */}
         <div className="flex items-start gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-semibold text-ink">{doctor.displayName}</h1>
+          <InitialsAvatar name={doctor.displayName} size="lg" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <h1 className="text-2xl font-semibold text-ink">{doctor.displayName}</h1>
+              {fee ? <Badge tone="indigo">₹{fee} / visit</Badge> : null}
+            </div>
             <p className="mt-1 text-sm text-ink-muted">
               {doctor.specialty ?? "General practice"}
               {doctor.yearsOfExperience ? ` · ${doctor.yearsOfExperience} years experience` : ""}
@@ -82,13 +87,12 @@ export default async function DoctorDetailPage({
               <p className="mt-1 text-sm text-ink-muted">{doctor.qualifications}</p>
             ) : null}
             {doctor.languages.length ? (
-              <p className="mt-1 text-sm text-ink-muted">{doctor.languages.join(" · ")}</p>
+              <p className="mt-1 text-sm text-ink-muted">Speaks: {doctor.languages.join(" · ")}</p>
             ) : null}
           </div>
-          {fee ? <Badge tone="indigo">₹{fee} / visit</Badge> : null}
         </div>
 
-        {doctor.bio ? <p className="mt-6 text-sm text-ink">{doctor.bio}</p> : null}
+        {doctor.bio ? <p className="mt-6 max-w-2xl text-sm text-ink">{doctor.bio}</p> : null}
 
         {doctor.registrationNumber ? (
           <p className="mt-4 text-xs text-ink-muted">Registration: {doctor.registrationNumber}</p>
@@ -96,9 +100,9 @@ export default async function DoctorDetailPage({
 
         <Card className="mt-8">
           <CardSubtitle>Practices at</CardSubtitle>
-          <Link href={`/hospitals/${doctor.organization.slug}`} className="mt-1 block no-underline">
-            <CardTitle as="p">{doctor.organization.name}</CardTitle>
-          </Link>
+          <CardTitle as="p" className="mt-1">
+            {doctor.organization.name}
+          </CardTitle>
           {doctor.organization.locations.length > 0 ? (
             <div className="mt-3 flex flex-col gap-1 text-sm text-ink-muted">
               {doctor.organization.locations.map((loc) => (
@@ -112,20 +116,23 @@ export default async function DoctorDetailPage({
         </Card>
 
         <h2 className="mt-10 text-lg font-semibold text-ink">Available appointments</h2>
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Choose a date">
           {days.map((d) => {
             const iso = isoDate(d);
             const active = iso === selectedDate;
             return (
-              <Link
+              <a
                 key={iso}
                 href={`/doctors/${doctorId}?date=${iso}`}
+                aria-current={active ? "date" : undefined}
                 className={`shrink-0 rounded-full border px-3 py-1.5 text-sm no-underline ${
-                  active ? "border-indigo bg-indigo text-white" : "border-border bg-card text-ink hover:border-indigo"
+                  active
+                    ? "border-indigo bg-indigo font-semibold text-white"
+                    : "border-border bg-card text-ink hover:border-indigo"
                 }`}
               >
                 {d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-              </Link>
+              </a>
             );
           })}
         </div>
@@ -135,17 +142,17 @@ export default async function DoctorDetailPage({
         ) : (
           <div className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
             {slots.map((slot) => (
-              <Link
+              <a
                 key={slot.start}
                 href={`/doctors/${doctorId}/book?slot=${encodeURIComponent(slot.start)}`}
-                className="rounded-control border border-border bg-card px-2 py-2 text-center text-sm text-ink no-underline hover:border-indigo hover:text-indigo"
+                className="rounded-control border border-border bg-card px-2 py-2 text-center text-sm font-medium text-ink no-underline hover:border-indigo hover:text-indigo"
               >
                 {new Date(slot.start).toLocaleTimeString(undefined, {
                   hour: "2-digit",
                   minute: "2-digit",
                   timeZone: timezone,
                 })}
-              </Link>
+              </a>
             ))}
           </div>
         )}

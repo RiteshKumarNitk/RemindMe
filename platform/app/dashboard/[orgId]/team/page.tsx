@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { listMembers } from "@/modules/clinics/service.js";
 import { Badge, Button, Card, CardSubtitle, Field, InitialsAvatar, Input, Notice, Select } from "@/components/ui/index.js";
+import { ConfirmSubmit } from "@/components/confirm-submit.js";
 import { inviteMemberAction, removeMemberAction, saveMemberAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -56,9 +57,13 @@ export default async function TeamPage({
               <Badge tone={ROLE_BADGE[m.role] ?? "neutral"}>{m.role}</Badge>
               <Badge tone={m.status === "ACTIVE" ? "ok" : "neutral"}>{m.status}</Badge>
               <form action={removeMemberAction.bind(null, orgId, m.id)}>
-                <Button variant="danger" size="sm" type="submit">
-                  Remove
-                </Button>
+                <ConfirmSubmit
+                  label="Remove"
+                  variant="danger"
+                  size="sm"
+                  confirmTitle={`Remove ${m.user.fullName} from this clinic?`}
+                  confirmMessage="They will immediately lose access to this clinic's dashboard and data."
+                />
               </form>
             </div>
 

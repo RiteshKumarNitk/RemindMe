@@ -1,19 +1,8 @@
 import Link from "next/link";
 import type { RequestContext } from "@/lib/context.js";
 import { listAppointments } from "@/modules/appointments/service.js";
-import { Badge, Card, EmptyState, InitialsAvatar, LinkButton, StatTile } from "@/components/ui/index.js";
+import { Badge, Card, EmptyState, InitialsAvatar, LinkButton, StatTile, statusLabel, statusTone } from "@/components/ui/index.js";
 import { CalendarIcon, CheckIcon, ClockIcon, CloseIcon, UsersIcon } from "@/components/dashboard-icons.js";
-
-const STATUS_TONE: Record<string, "indigo" | "ok" | "down" | "neutral"> = {
-  REQUESTED: "neutral",
-  CONFIRMED: "indigo",
-  CHECKED_IN: "indigo",
-  WAITING: "indigo",
-  IN_CONSULTATION: "indigo",
-  COMPLETED: "ok",
-  CANCELLED: "down",
-  NO_SHOW: "down",
-};
 
 export async function ReceptionOverview({ ctx, orgId }: { ctx: RequestContext; orgId: string }) {
   const todayStart = new Date();
@@ -76,7 +65,7 @@ export async function ReceptionOverview({ ctx, orgId }: { ctx: RequestContext; o
                   </div>
                   <div className="truncate text-[11.5px] text-ink-muted">{a.doctor.displayName}</div>
                 </div>
-                <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>{a.status}</Badge>
+                <Badge tone={statusTone(a.status)}>{statusLabel(a.status)}</Badge>
                 <span className="w-14 shrink-0 text-right text-[11.5px] tabular-nums text-ink-faint">
                   {new Date(a.scheduledStart).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                 </span>

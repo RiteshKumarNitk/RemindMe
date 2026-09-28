@@ -1,6 +1,13 @@
 import type { InputHTMLAttributes } from "react";
 
+/**
+ * Rounded search input used by public discovery and staff search. `name` is
+ * also the fallback accessible name — placeholder-only inputs were previously
+ * announced with no purpose by screen readers, and placeholders disappear on
+ * input in every browser.
+ */
 export function SearchBar({
+  name = "search",
   className = "",
   ...rest
 }: InputHTMLAttributes<HTMLInputElement>) {
@@ -19,6 +26,7 @@ export function SearchBar({
       </svg>
       <input
         type="search"
+        aria-label="Search"
         className="h-12 w-full bg-transparent text-sm text-ink placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         {...rest}
       />

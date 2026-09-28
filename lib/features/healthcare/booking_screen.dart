@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/generated/app_localizations.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../data/api/api_exception.dart';
 import '../../data/models/healthcare/availability.dart';
 import '../../data/models/healthcare/clinic_location.dart';
 import '../../data/repositories/appointment_repository.dart';
 import '../../services/platform_auth_service.dart';
+import '../widgets/app_buttons.dart';
 import 'booking_confirmation_screen.dart';
 import 'healthcare_format.dart';
 import 'platform_sign_in_screen.dart';
@@ -84,7 +86,12 @@ class _BookingScreenState extends State<BookingScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.hcBookAppointment)),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.sm,
+          AppSpacing.lg,
+          AppSpacing.xxxl,
+        ),
         children: [
           _SummaryCard(
             organizationName: widget.organizationName,
@@ -101,7 +108,7 @@ class _BookingScreenState extends State<BookingScreen> {
               locale,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.lg),
           if (!account.isSignedIn)
             _SignInGate(
               onSignIn: () => Navigator.of(context).push(
@@ -123,7 +130,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   TextFormField(
                     controller: _firstName,
                     textCapitalization: TextCapitalization.words,
@@ -136,7 +143,7 @@ class _BookingScreenState extends State<BookingScreen> {
                         ? l10n.hcFieldRequired
                         : null,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   TextFormField(
                     controller: _lastName,
                     textCapitalization: TextCapitalization.words,
@@ -149,7 +156,7 @@ class _BookingScreenState extends State<BookingScreen> {
                         ? l10n.hcFieldRequired
                         : null,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   TextFormField(
                     controller: _phone,
                     keyboardType: TextInputType.phone,
@@ -159,13 +166,13 @@ class _BookingScreenState extends State<BookingScreen> {
                       prefixIcon: const Icon(Icons.call_rounded),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   _DateOfBirthField(
                     value: _dateOfBirth,
                     onChanged: (value) =>
                         setState(() => _dateOfBirth = value),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   TextFormField(
                     controller: _reason,
                     maxLines: 3,
@@ -177,19 +184,11 @@ class _BookingScreenState extends State<BookingScreen> {
                       hintText: l10n.hcReasonHint,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _submitting ? null : _submit,
-                      child: _submitting
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(l10n.hcConfirmBooking),
-                    ),
+                  const SizedBox(height: AppSpacing.xs),
+                  AppButton(
+                    label: l10n.hcConfirmBooking,
+                    onPressed: _submit,
+                    busy: _submitting,
                   ),
                 ],
               ),
@@ -303,7 +302,7 @@ class _SummaryCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -354,7 +353,7 @@ class _DateOfBirthField extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: AppRadius.controlRadius,
       onTap: () async {
         final now = DateTime.now();
         final initial = value ?? DateTime(now.year - 60, 1, 1);
@@ -393,7 +392,7 @@ class _SignInGate extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -416,14 +415,11 @@ class _SignInGate extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(l10n.hcSignInBody),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: onSignIn,
-                icon: const Icon(Icons.login_rounded),
-                label: Text(l10n.hcSignIn),
-              ),
+            const SizedBox(height: AppSpacing.md),
+            AppButton(
+              label: l10n.hcSignIn,
+              icon: Icons.login_rounded,
+              onPressed: onSignIn,
             ),
           ],
         ),

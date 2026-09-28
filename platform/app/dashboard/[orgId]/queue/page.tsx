@@ -3,18 +3,10 @@ import { requireOrgContext } from "@/lib/web-context.js";
 import { listDoctors } from "@/modules/doctors/service.js";
 import { getBoard } from "@/modules/queue/service.js";
 import { AutoRefresh } from "../../AutoRefresh.js";
-import { Badge, Button, Card, EmptyState, Field, InitialsAvatar, Input, Notice, Select } from "@/components/ui/index.js";
+import { Badge, Button, Card, EmptyState, Field, InitialsAvatar, Input, Notice, Select, statusLabel, statusTone } from "@/components/ui/index.js";
 import { queueAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
-
-const STATE_TONE: Record<string, "indigo" | "coral" | "ok" | "neutral"> = {
-  WAITING: "indigo",
-  CALLED: "coral",
-  IN_CONSULTATION: "coral",
-  COMPLETED: "ok",
-  SKIPPED: "neutral",
-};
 
 export default async function QueuePage({
   params,
@@ -103,7 +95,7 @@ export default async function QueuePage({
                   </div>
                   <div className="text-[11.5px] text-ink-muted">{e.ahead} ahead</div>
                 </div>
-                <Badge tone={STATE_TONE[e.state] ?? "neutral"}>{e.state}</Badge>
+                <Badge tone={statusTone(e.state)}>{statusLabel(e.state)}</Badge>
               </div>
 
               {(role !== "DOCTOR" && ["WAITING", "CALLED", "SKIPPED"].includes(e.state)) ||

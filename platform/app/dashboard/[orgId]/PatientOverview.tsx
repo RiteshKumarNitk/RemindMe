@@ -132,7 +132,10 @@ export async function PatientOverview({ ctx, orgId }: { ctx: RequestContext; org
       ) : (
         <Card>
           <CardSubtitle>You have no upcoming appointments</CardSubtitle>
-          <p className="mt-2 text-sm text-ink-muted">Book one from a doctor&rsquo;s profile, or below.</p>
+          <p className="mt-2 text-sm text-ink-muted">Find a doctor and book a visit in a couple of taps.</p>
+          <div className="mt-4">
+            <LinkButton href="/doctors">Find a doctor</LinkButton>
+          </div>
         </Card>
       )}
 
