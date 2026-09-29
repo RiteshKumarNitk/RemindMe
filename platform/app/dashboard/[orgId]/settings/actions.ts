@@ -69,8 +69,12 @@ export async function deactivateLocationAction(orgId: string, locationId: string
 
 export async function updateLocationAction(orgId: string, locationId: string, formData: FormData) {
   const ctx = await requireOrgContext(orgId);
+  const name = String(formData.get("name") ?? "").trim();
+  // The edit form's name field isn't `required` in the HTML; an empty submit
+  // would otherwise pass zod as `undefined` (no-op) and report success.
+  if (!name) fail(orgId, "Location name is required.");
   const parsed = updateLocationSchema.safeParse({
-    name: String(formData.get("name") ?? "").trim() || undefined,
+    name,
     addressLine1: formData.has("addressLine1") ? String(formData.get("addressLine1") ?? "").trim() || null : undefined,
     addressLine2: formData.has("addressLine2") ? String(formData.get("addressLine2") ?? "").trim() || null : undefined,
     city: formData.has("city") ? String(formData.get("city") ?? "").trim() || null : undefined,

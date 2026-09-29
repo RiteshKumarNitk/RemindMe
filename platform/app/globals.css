@@ -56,6 +56,29 @@
   box-sizing: border-box;
 }
 
+/* Element defaults live in @layer base so Tailwind utilities can still
+   override them: in the cascade, ANY unlayered rule beats ALL layered
+   utilities, which previously made `a { color: … }` defeat text-white on
+   every anchor styled as a button, and would have let `font: inherit`
+   defeat text-sm on buttons. */
+@layer base {
+  /* Native controls inherit the app's font stack — without this, every raw
+     <button>/<select>/<input> renders in the browser's default font, which
+     visibly disagrees with the design system (most obvious on form buttons). */
+  button,
+  input,
+  select,
+  textarea,
+  optgroup {
+    font: inherit;
+    letter-spacing: inherit;
+  }
+
+  a {
+    color: var(--indigo);
+  }
+}
+
 html {
   /* Light theme only, deliberately — no `prefers-color-scheme: dark` support.
      Without this, a browser with a dark OS preference still dark-inverts
@@ -76,10 +99,6 @@ body {
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
-}
-
-a {
-  color: var(--indigo);
 }
 
 code {

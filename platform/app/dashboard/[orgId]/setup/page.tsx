@@ -92,7 +92,10 @@ export default async function SetupPage({
   ];
 
   const doneCount = steps.filter((s) => s.done).length;
-  const currentStep = Math.min(steps.findIndex((s) => !s.done), steps.length - 1);
+  // findIndex returns -1 once everything is done; clamp to the last step so
+  // the stepper shows a fully-complete run instead of dropping every marker.
+  const firstUndone = steps.findIndex((s) => !s.done);
+  const currentStep = firstUndone === -1 ? steps.length - 1 : firstUndone;
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

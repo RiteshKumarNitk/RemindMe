@@ -77,6 +77,18 @@ export default async function DoctorDetailPage({
     ...(selectedType ? { appointmentTypeId: selectedType.id } : {}),
   });
 
+  // Every filter chip preserves the other selections — a date chip that
+  // dropped `type`/`location` would silently reset the patient's choices
+  // (and the slot math) when they pick a different day.
+  const chipHref = (date: string, typeId?: string, locationId?: string) => {
+    const params = new URLSearchParams({ date });
+    if (typeId) params.set("type", typeId);
+    if (locationId) params.set("location", locationId);
+    return `/doctors/${doctorId}?${params.toString()}`;
+  };
+  const selectedTypeId = selectedType?.id;
+  const selectedLocationId = selectedLocation?.id;
+
   const fee = formatFee(doctor.consultationFeeMinor);
 
   return (
@@ -133,7 +145,7 @@ export default async function DoctorDetailPage({
         {types.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Appointment type">
             <a
-              href={`/doctors/${doctorId}?date=${selectedDate}`}
+              href={chipHref(selectedDate)}
               aria-current={!selectedType ? "true" : undefined}
               className={`rounded-full border px-3 py-1.5 text-[13px] no-underline ${
                 !selectedType
@@ -146,7 +158,7 @@ export default async function DoctorDetailPage({
             {types.map((t) => (
               <a
                 key={t.id}
-                href={`/doctors/${doctorId}?date=${selectedDate}&type=${t.id}`}
+                href={chipHref(selectedDate, t.id, selectedLocationId)}
                 aria-current={selectedType?.id === t.id ? "true" : undefined}
                 className={`rounded-full border px-3 py-1.5 text-[13px] no-underline ${
                   selectedType?.id === t.id
@@ -162,7 +174,7 @@ export default async function DoctorDetailPage({
         {locations.length > 1 ? (
           <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Branch">
             <a
-              href={`/doctors/${doctorId}?date=${selectedDate}${selectedType ? `&type=${selectedType.id}` : ""}`}
+              href={chipHref(selectedDate, selectedTypeId)}
               aria-current={!selectedLocation ? "true" : undefined}
               className={`rounded-full border px-3 py-1.5 text-[13px] no-underline ${
                 !selectedLocation
@@ -175,7 +187,7 @@ export default async function DoctorDetailPage({
             {locations.map((l) => (
               <a
                 key={l.id}
-                href={`/doctors/${doctorId}?date=${selectedDate}${selectedType ? `&type=${selectedType.id}` : ""}&location=${l.id}`}
+                href={chipHref(selectedDate, selectedTypeId, l.id)}
                 aria-current={selectedLocation?.id === l.id ? "true" : undefined}
                 className={`rounded-full border px-3 py-1.5 text-[13px] no-underline ${
                   selectedLocation?.id === l.id
@@ -203,7 +215,7 @@ export default async function DoctorDetailPage({
             return (
               <a
                 key={iso}
-                href={`/doctors/${doctorId}?date=${iso}`}
+                href={chipHref(iso, selectedTypeId, selectedLocationId)}
                 aria-current={active ? "date" : undefined}
                 className={`shrink-0 rounded-full border px-3 py-1.5 text-sm no-underline ${
                   active
