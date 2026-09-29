@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireOrgContext } from "@/lib/web-context.js";
-import { getOrganization } from "@/modules/clinics/service.js";
-import { canPublishOrganization } from "@/modules/clinics/publish.js";
-import { Badge, Button, Card, CardSubtitle, CardTitle, Field, Input, Select } from "@/components/ui/index.js";
+import { getOrgInsights } from "@/modules/clinics/insights.js";
+import { Badge, Button, Card, CardSubtitle, CardTitle, CompletionMeter, Field, Input, LinkButton, Select } from "@/components/ui/index.js";
 import { publishAction, requestVerificationAction, saveProfileAction, unpublishAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
@@ -27,24 +26,17 @@ export default async function OrganizationProfilePage({
   if (ctx.org!.role !== "CLINIC_ADMIN") redirect(`/dashboard/${orgId}`);
   const { error, saved } = await searchParams;
 
-  const org = await getOrganization(ctx);
-  const readiness = canPublishOrganization({
-    name: org.name,
-    orgType: org.orgType,
-    tagline: org.tagline,
-    about: org.about,
-    publicPhone: org.publicPhone,
-    publicEmail: org.publicEmail,
-    activeLocationCount: org.locations.length,
-  });
+  const insights = await getOrgInsights(ctx, orgId);
+  const org = { ...insights.org, locations: insights.locations };
+  const readiness = { ready: insights.lifecycle.readinessReasons.length === 0, reasons: insights.lifecycle.readinessReasons };
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <div>
         <h1 className="text-xl font-semibold text-ink">Organization profile</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          This is what patients will eventually see when public hospital/doctor discovery ships.
-          Fill it in now so your clinic is ready to publish.
+          This is what patients see on the DoseWise website and in the patient app once the
+          clinic is published.
         </p>
       </div>
 
@@ -59,23 +51,22 @@ export default async function OrganizationProfilePage({
         </div>
       ) : null}
 
-      {/* Public profile preview */}
+      {/* Public profile preview (request §13/§31) — a real link to the actual
+          public page plus the same lifecycle badge the dashboard uses. */}
       <Card>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardSubtitle>Preview — how this will look publicly</CardSubtitle>
+            <CardSubtitle>Preview — how this looks publicly</CardSubtitle>
             <CardTitle className="mt-1 text-lg">{org.name}</CardTitle>
             <p className="mt-1 text-sm text-ink-muted">
               {org.tagline || "No short description yet."}
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5">
-            <Badge tone={org.isPubliclyListed ? "ok" : "neutral"}>
-              {org.isPubliclyListed ? "Listed publicly" : "Not listed yet"}
-            </Badge>
-            <Badge tone={org.verificationStatus === "VERIFIED" ? "indigo" : "neutral"}>
-              {org.verificationStatus === "VERIFIED" ? "Verified" : "Not verified yet"}
-            </Badge>
+            <Badge tone={insights.lifecycle.tone}>{insights.lifecycle.label}</Badge>
+            <LinkButton variant="ghost" size="sm" href={`/hospitals/${org.slug}`}>
+              Preview public profile ↗
+            </LinkButton>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-ink-muted sm:grid-cols-4">
@@ -97,6 +88,9 @@ export default async function OrganizationProfilePage({
           </div>
         </div>
         {org.about ? <p className="mt-4 text-sm text-ink">{org.about}</p> : null}
+        <div className="mt-5 border-t border-border pt-4">
+          <CompletionMeter completeness={insights.completeness} />
+        </div>
       </Card>
 
       {/* Publish gate */}
@@ -104,8 +98,8 @@ export default async function OrganizationProfilePage({
         <CardTitle>{org.isPubliclyListed ? "Public listing" : "Ready to publish?"}</CardTitle>
         {readiness.ready ? (
           <p className="mt-2 text-sm text-ink-muted">
-            This profile has everything needed to appear in public discovery once that feature
-            ships.
+            This profile has everything needed to appear in public discovery on the DoseWise
+            website and patient app.
           </p>
         ) : (
           <ul className="mt-2 list-disc pl-5 text-sm text-ink-muted">

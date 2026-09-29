@@ -307,6 +307,11 @@ export async function getAppointment(ctx: RequestContext, id: string) {
       queueEntry: true,
       patient: { select: { id: true, firstName: true, lastName: true, ownerUserId: true } },
       doctor: { select: { id: true, displayName: true } },
+      // Ownership-chain context for the appointment-detail UI (request §27):
+      // which branch and what kind of visit this is. Display-only — the
+      // authorization model is unchanged.
+      location: { select: { id: true, name: true, addressLine1: true, city: true } },
+      appointmentType: { select: { id: true, name: true, durationMinutes: true } },
     },
   });
   // A PATIENT may only read their own appointment, or a dependent's if they
@@ -366,6 +371,9 @@ export async function listAppointments(
     include: {
       patient: { select: { id: true, firstName: true, lastName: true } },
       doctor: { select: { id: true, displayName: true } },
+      location: { select: { id: true, name: true, city: true } },
+      // Token badge on operational lists (reception/doctor dashboards).
+      queueEntry: { select: { tokenNumber: true, state: true } },
     },
   });
   return { data };

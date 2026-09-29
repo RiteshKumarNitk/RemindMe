@@ -1104,6 +1104,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hcDoctorsTitle => 'Doctors';
 
   @override
+  String get hcTabClinics => 'Clinics';
+
+  @override
+  String get hcTabDoctors => 'Doctors';
+
+  @override
+  String get hcNoDoctorsFoundTitle => 'No doctors found';
+
+  @override
+  String get hcNoDoctorsFoundBody => 'Try a different name or speciality.';
+
+  @override
   String get hcSearchEmptyTitle => 'No healthcare providers found';
 
   @override
@@ -1212,6 +1224,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hcSelectDateTitle => 'Pick a date';
+
+  @override
+  String get hcAppointmentTypeTitle => 'Visit type';
+
+  @override
+  String get hcAppointmentTypeDefault => 'General visit';
+
+  @override
+  String hcAppointmentTypeWithDuration(String name, int minutes) {
+    return '$name · $minutes min';
+  }
 
   @override
   String get hcSelectTimeTitle => 'Pick a time';

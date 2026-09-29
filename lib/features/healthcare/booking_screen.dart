@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/localization/generated/app_localizations.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../data/api/api_exception.dart';
+import '../../data/models/healthcare/appointment_type.dart';
 import '../../data/models/healthcare/availability.dart';
 import '../../data/models/healthcare/clinic_location.dart';
 import '../../data/repositories/appointment_repository.dart';
@@ -30,6 +31,7 @@ class BookingScreen extends StatefulWidget {
     required this.timezone,
     this.branch,
     this.durationMinutes = 0,
+    this.appointmentType,
   });
 
   final String organizationId;
@@ -40,6 +42,10 @@ class BookingScreen extends StatefulWidget {
   final String timezone;
   final ClinicLocation? branch;
   final int durationMinutes;
+
+  /// The clinic's booking category chosen on the slot picker (request §35);
+  /// null = the clinic's default visit type.
+  final AppointmentTypeInfo? appointmentType;
 
   @override
   State<BookingScreen> createState() => _BookingScreenState();
@@ -213,6 +219,7 @@ class _BookingScreenState extends State<BookingScreen> {
         doctorId: widget.doctorId,
         scheduledStart: widget.slot.start,
         locationId: widget.branch?.id,
+        appointmentTypeId: widget.appointmentType?.id,
         reason: _reason.text,
         patient: PatientDetails(
           firstName: _firstName.text.trim(),

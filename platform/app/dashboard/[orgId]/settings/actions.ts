@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { AppError } from "@/lib/errors.js";
 import { requireOrgContext } from "@/lib/web-context.js";
-import { createLocationSchema, updateSettingsSchema } from "@/modules/clinics/schema.js";
-import { createLocation, updateSettings } from "@/modules/clinics/service.js";
+import { createLocationSchema, updateLocationSchema, updateSettingsSchema } from "@/modules/clinics/schema.js";
+import { createLocation, updateLocation, updateSettings } from "@/modules/clinics/service.js";
 import { createTypeSchema } from "@/modules/appointments/schema.js";
 import { createAppointmentType } from "@/modules/appointments/service.js";
 
@@ -35,13 +35,37 @@ export async function addLocationAction(orgId: string, formData: FormData) {
   const ctx = await requireOrgContext(orgId);
   const parsed = createLocationSchema.safeParse({
     name: String(formData.get("name") ?? ""),
+    addressLine1: String(formData.get("addressLine1") ?? "") || undefined,
     city: String(formData.get("city") ?? "") || undefined,
+    state: String(formData.get("state") ?? "") || undefined,
+    postalCode: String(formData.get("postalCode") ?? "") || undefined,
+    phone: String(formData.get("phone") ?? "") || undefined,
   });
   if (!parsed.success) fail(orgId, parsed.error.issues[0]?.message ?? "Invalid location.");
   try {
     await createLocation(ctx, parsed.data);
   } catch (err) {
     fail(orgId, err instanceof AppError ? err.message : "Could not add the location.");
+  }
+  revalidatePath(`/dashboard/${orgId}/settings`);
+}
+
+export async function updateLocationAction(orgId: string, locationId: string, formData: FormData) {
+  const ctx = await requireOrgContext(orgId);
+  const parsed = updateLocationSchema.safeParse({
+    name: String(formData.get("name") ?? "").trim() || undefined,
+    addressLine1: formData.has("addressLine1") ? String(formData.get("addressLine1") ?? "").trim() || null : undefined,
+    addressLine2: formData.has("addressLine2") ? String(formData.get("addressLine2") ?? "").trim() || null : undefined,
+    city: formData.has("city") ? String(formData.get("city") ?? "").trim() || null : undefined,
+    state: formData.has("state") ? String(formData.get("state") ?? "").trim() || null : undefined,
+    postalCode: formData.has("postalCode") ? String(formData.get("postalCode") ?? "").trim() || null : undefined,
+    phone: formData.has("phone") ? String(formData.get("phone") ?? "").trim() || null : undefined,
+  });
+  if (!parsed.success) fail(orgId, parsed.error.issues[0]?.message ?? "Invalid location.");
+  try {
+    await updateLocation(ctx, locationId, parsed.data);
+  } catch (err) {
+    fail(orgId, err instanceof AppError ? err.message : "Could not update the location.");
   }
   revalidatePath(`/dashboard/${orgId}/settings`);
 }

@@ -466,6 +466,10 @@
   "hcTypeOther": "Other providers",
   "hcProvidersTitle": "Clinics & hospitals",
   "hcDoctorsTitle": "Doctors",
+  "hcTabClinics": "Clinics",
+  "hcTabDoctors": "Doctors",
+  "hcNoDoctorsFoundTitle": "No doctors found",
+  "hcNoDoctorsFoundBody": "Try a different name or speciality.",
   "hcSearchEmptyTitle": "No healthcare providers found",
   "hcSearchEmptyBody": "Try a different name, provider type or city.",
   "hcNoDoctorsTitle": "No doctors listed",
@@ -510,6 +514,15 @@
   },
   "hcRegistration": "Registration",
   "hcSelectDateTitle": "Pick a date",
+  "hcAppointmentTypeTitle": "Visit type",
+  "hcAppointmentTypeDefault": "General visit",
+  "hcAppointmentTypeWithDuration": "{name} · {minutes} min",
+  "@hcAppointmentTypeWithDuration": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "minutes": {"type": "int"}
+    }
+  },
   "hcSelectTimeTitle": "Pick a time",
   "hcClinicTimeNote": "Times are in the clinic's time zone ({zone}).",
   "@hcClinicTimeNote": {

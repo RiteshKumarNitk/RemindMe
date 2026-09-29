@@ -10,6 +10,7 @@ import type {
   capabilitiesSchema,
   createLocationSchema,
   inviteMemberSchema,
+  updateLocationSchema,
   updateMemberSchema,
   updateOrgSchema,
   updateSettingsSchema,
@@ -239,6 +240,41 @@ export async function listLocations(ctx: RequestContext) {
     where: { organizationId: ctx.org!.id },
     orderBy: { name: "asc" },
   });
+}
+
+export async function updateLocation(
+  ctx: RequestContext,
+  locationId: string,
+  input: z.infer<typeof updateLocationSchema>,
+) {
+  assertRole(ctx, "CLINIC_ADMIN");
+  const t = tenantDb(ctx);
+  const before = await t.clinicLocation.findFirstOrThrow({
+    where: { id: locationId, organizationId: ctx.org!.id },
+  });
+  const loc = await t.clinicLocation.update({
+    where: { id: locationId },
+    data: {
+      ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+      ...(input.addressLine1 !== undefined ? { addressLine1: input.addressLine1?.trim() || null } : {}),
+      ...(input.addressLine2 !== undefined ? { addressLine2: input.addressLine2?.trim() || null } : {}),
+      ...(input.city !== undefined ? { city: input.city?.trim() || null } : {}),
+      ...(input.state !== undefined ? { state: input.state?.trim() || null } : {}),
+      ...(input.postalCode !== undefined ? { postalCode: input.postalCode?.trim() || null } : {}),
+      ...(input.country !== undefined ? { country: input.country?.trim() || null } : {}),
+      ...(input.phone !== undefined ? { phone: input.phone?.trim() || null } : {}),
+      ...(input.timezone !== undefined ? { timezone: input.timezone || null } : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+    },
+  });
+  await writeAudit(ctx, {
+    action: "LOCATION_UPDATED",
+    entityType: "ClinicLocation",
+    entityId: loc.id,
+    before,
+    after: loc,
+  });
+  return loc;
 }
 
 export async function createLocation(

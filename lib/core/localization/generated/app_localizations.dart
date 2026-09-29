@@ -2102,6 +2102,30 @@ abstract class AppLocalizations {
   /// **'Doctors'**
   String get hcDoctorsTitle;
 
+  /// No description provided for @hcTabClinics.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinics'**
+  String get hcTabClinics;
+
+  /// No description provided for @hcTabDoctors.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctors'**
+  String get hcTabDoctors;
+
+  /// No description provided for @hcNoDoctorsFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No doctors found'**
+  String get hcNoDoctorsFoundTitle;
+
+  /// No description provided for @hcNoDoctorsFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different name or speciality.'**
+  String get hcNoDoctorsFoundBody;
+
   /// No description provided for @hcSearchEmptyTitle.
   ///
   /// In en, this message translates to:
@@ -2275,6 +2299,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pick a date'**
   String get hcSelectDateTitle;
+
+  /// No description provided for @hcAppointmentTypeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Visit type'**
+  String get hcAppointmentTypeTitle;
+
+  /// No description provided for @hcAppointmentTypeDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'General visit'**
+  String get hcAppointmentTypeDefault;
+
+  /// No description provided for @hcAppointmentTypeWithDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · {minutes} min'**
+  String hcAppointmentTypeWithDuration(String name, int minutes);
 
   /// No description provided for @hcSelectTimeTitle.
   ///

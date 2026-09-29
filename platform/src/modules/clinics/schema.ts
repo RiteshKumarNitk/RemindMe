@@ -51,6 +51,23 @@ export const createLocationSchema = z
   })
   .strict();
 
+// Partial update for an existing location. `null` clears a field;
+// `undefined` leaves it as-is (same convention as updateOrgSchema).
+export const updateLocationSchema = z
+  .object({
+    name: z.string().min(1).max(160).optional(),
+    addressLine1: z.string().max(200).nullable().optional(),
+    addressLine2: z.string().max(200).nullable().optional(),
+    city: z.string().max(120).nullable().optional(),
+    state: z.string().max(120).nullable().optional(),
+    postalCode: z.string().max(20).nullable().optional(),
+    country: z.string().max(80).nullable().optional(),
+    phone: z.string().max(40).nullable().optional(),
+    timezone: z.string().max(64).nullable().optional(),
+    isActive: z.boolean().optional(),
+  })
+  .strict();
+
 export const roleEnum = z.enum([
   "PATIENT",
   "DOCTOR",

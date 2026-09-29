@@ -466,6 +466,10 @@
   "hcTypeOther": "अन्य",
   "hcProvidersTitle": "क्लिनिक और अस्पताल",
   "hcDoctorsTitle": "डॉक्टर",
+  "hcTabClinics": "क्लिनिक",
+  "hcTabDoctors": "डॉक्टर",
+  "hcNoDoctorsFoundTitle": "कोई डॉक्टर नहीं मिला",
+  "hcNoDoctorsFoundBody": "दूसरा नाम या विशेषज्ञता आज़माएँ।",
   "hcSearchEmptyTitle": "कोई इलाज केंद्र नहीं मिला",
   "hcSearchEmptyBody": "दूसरा नाम, प्रकार या शहर आज़माएँ।",
   "hcNoDoctorsTitle": "कोई डॉक्टर सूचीबद्ध नहीं",
@@ -495,6 +499,15 @@
   "hcConsultationFee": "{fee} प्रति विज़िट",
   "hcRegistration": "पंजीकरण",
   "hcSelectDateTitle": "तारीख चुनें",
+  "hcAppointmentTypeTitle": "विज़िट का प्रकार",
+  "hcAppointmentTypeDefault": "सामान्य विज़िट",
+  "hcAppointmentTypeWithDuration": "{name} · {minutes} मिनट",
+  "@hcAppointmentTypeWithDuration": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "minutes": {"type": "int"}
+    }
+  },
   "hcSelectTimeTitle": "समय चुनें",
   "hcClinicTimeNote": "समय क्लिनिक के समय क्षेत्र ({zone}) में हैं।",
   "hcNoSlotsTitle": "कोई उपलब्ध अपॉइंटमेंट नहीं",

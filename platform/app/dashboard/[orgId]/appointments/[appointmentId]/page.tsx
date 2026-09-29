@@ -77,6 +77,13 @@ export default async function AppointmentDetailPage({
           })}
         </p>
 
+        {/* Ownership chain (request §27/§28): which branch, what kind of
+            visit — shown to every role that can read the appointment. */}
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[12.5px] text-ink-muted">
+          {appt.location ? <span>📍 {appt.location.name}{appt.location.city ? ` — ${appt.location.city}` : ""}</span> : null}
+          {appt.appointmentType ? <span>· {appt.appointmentType.name} ({appt.appointmentType.durationMinutes} min)</span> : null}
+        </div>
+
         {appt.queueEntry ? (
           <div className="mt-2">
             <Badge tone="ok">Token {appt.queueEntry.tokenNumber}</Badge>

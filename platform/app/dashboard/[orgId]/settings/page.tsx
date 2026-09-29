@@ -3,7 +3,7 @@ import { requireOrgContext } from "@/lib/web-context.js";
 import { getSettings, listLocations } from "@/modules/clinics/service.js";
 import { listAppointmentTypes } from "@/modules/appointments/service.js";
 import { Button, Card, CardSubtitle, EmptyState, Field, Input, Notice } from "@/components/ui/index.js";
-import { addAppointmentTypeAction, addLocationAction, saveSettingsAction } from "./actions.js";
+import { addAppointmentTypeAction, addLocationAction, saveSettingsAction, updateLocationAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
 
@@ -67,26 +67,70 @@ export default async function SettingsPage({
 
       <div>
         <h2 className="mb-3 font-display text-lg font-bold text-ink">Locations</h2>
-        <Card>
-          {locations.length === 0 ? (
-            <EmptyState title="No locations yet." />
-          ) : (
-            <div className="flex flex-col">
-              {locations.map((l) => (
-                <div key={l.id} className="flex items-center justify-between border-b border-border py-2.5 first:pt-0 last:border-0 last:pb-0">
-                  <span className="text-[13.5px] font-semibold text-ink">{l.name}</span>
-                  <span className="text-[12px] text-ink-muted">{l.city ?? "—"}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <form action={addLocationAction.bind(null, orgId)} className="mt-4 flex max-w-sm flex-col gap-3">
+        {locations.length === 0 ? (
+          <Card>
+            <EmptyState
+              title="No locations yet."
+              description="Patients search by city and see your address publicly — at least one branch is required before publishing."
+            />
+          </Card>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {locations.map((l) => (
+              <Card key={l.id}>
+                <form action={updateLocationAction.bind(null, orgId, l.id)} className="flex flex-col gap-3">
+                  <CardSubtitle>Branch</CardSubtitle>
+                  <Field label="Location name">
+                    <Input name="name" defaultValue={l.name} className="w-full" required />
+                  </Field>
+                  <Field label="Street address">
+                    <Input name="addressLine1" defaultValue={l.addressLine1 ?? ""} placeholder="12 Station Road" className="w-full" />
+                  </Field>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="City">
+                      <Input name="city" defaultValue={l.city ?? ""} className="w-full" />
+                    </Field>
+                    <Field label="State">
+                      <Input name="state" defaultValue={l.state ?? ""} className="w-full" />
+                    </Field>
+                    <Field label="Postal code">
+                      <Input name="postalCode" defaultValue={l.postalCode ?? ""} className="w-full" />
+                    </Field>
+                    <Field label="Phone">
+                      <Input name="phone" defaultValue={l.phone ?? ""} className="w-full" />
+                    </Field>
+                  </div>
+                  <Button variant="ghost" className="self-start">
+                    Save location
+                  </Button>
+                </form>
+              </Card>
+            ))}
+          </div>
+        )}
+        <Card className="mt-4">
+          <CardSubtitle>Add another branch</CardSubtitle>
+          <form action={addLocationAction.bind(null, orgId)} className="mt-3 flex max-w-sm flex-col gap-3">
             <Field label="Location name">
               <Input name="name" required placeholder="Main Branch" className="w-full" />
             </Field>
-            <Field label="City">
-              <Input name="city" className="w-full" />
+            <Field label="Street address">
+              <Input name="addressLine1" placeholder="12 Station Road" className="w-full" />
             </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="City">
+                <Input name="city" className="w-full" />
+              </Field>
+              <Field label="State">
+                <Input name="state" className="w-full" />
+              </Field>
+              <Field label="Postal code">
+                <Input name="postalCode" className="w-full" />
+              </Field>
+              <Field label="Phone">
+                <Input name="phone" className="w-full" />
+              </Field>
+            </div>
             <Button variant="ghost" className="self-start">
               Add location
             </Button>

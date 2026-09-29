@@ -170,13 +170,16 @@ class AppointmentRepository {
   /// returned; the server re-validates lead time, availability and
   /// double-booking inside a serializable transaction. `organizationId` and
   /// `doctorId` come from the discovery flow, so the doctor is always booked
-  /// in the context of the clinic the patient found them in.
+  /// in the context of the clinic the patient found them in. [appointmentTypeId]
+  /// is the clinic's own booking category (request §35) — the backend
+  /// validates it belongs to this clinic and derives the real duration.
   Future<Appointment> book({
     required String organizationId,
     required String doctorId,
     required DateTime scheduledStart,
     required PatientDetails patient,
     String? locationId,
+    String? appointmentTypeId,
     String? reason,
   }) async {
     final json = await _client.post(
@@ -187,6 +190,8 @@ class AppointmentRepository {
         'doctorId': doctorId,
         'scheduledStart': scheduledStart.toUtc().toIso8601String(),
         if (locationId != null && locationId.isNotEmpty) 'locationId': locationId,
+        if (appointmentTypeId != null && appointmentTypeId.isNotEmpty)
+          'appointmentTypeId': appointmentTypeId,
         if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
         'patient': patient.toJson(),
       },

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/localization/generated/app_localizations.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../data/api/api_exception.dart';
+import '../../data/models/healthcare/appointment_type.dart';
 import '../../data/models/healthcare/availability.dart';
 import '../../data/models/healthcare/clinic_location.dart';
 import '../../data/repositories/appointment_repository.dart';
@@ -26,6 +27,7 @@ class SlotPickerScreen extends StatefulWidget {
     required this.organizationId,
     required this.organizationName,
     this.branch,
+    this.appointmentTypes = const [],
     this.reschedule,
   });
 
@@ -34,6 +36,10 @@ class SlotPickerScreen extends StatefulWidget {
   final String organizationId;
   final String organizationName;
   final ClinicLocation? branch;
+
+  /// The clinic's published booking categories (request §35). Empty when the
+  /// clinic hasn't configured any — the picker then just uses the default.
+  final List<AppointmentTypeInfo> appointmentTypes;
 
   /// When set, picking a slot **moves** this existing appointment instead of
   /// creating a new one. The replacement appointment is returned to whoever
@@ -63,6 +69,9 @@ class _SlotPickerScreenState extends State<SlotPickerScreen> {
   AvailabilitySlot? _selectedSlot;
   bool _submitting = false;
 
+  /// Null = the clinic's default duration ("General visit").
+  AppointmentTypeInfo? _selectedType;
+
   @override
   void initState() {
     super.initState();
@@ -75,12 +84,22 @@ class _SlotPickerScreenState extends State<SlotPickerScreen> {
     return context.read<HealthcareRepository>().doctorAvailability(
       widget.doctorId,
       date: _selectedDay,
+      appointmentTypeId: _selectedType?.id,
     );
   }
 
   void _selectDay(DateTime day) {
     setState(() {
       _selectedDay = day;
+      _selectedSlot = null;
+      _future = _load();
+    });
+  }
+
+  void _selectType(AppointmentTypeInfo? type) {
+    if (type?.id == _selectedType?.id) return;
+    setState(() {
+      _selectedType = type;
       _selectedSlot = null;
       _future = _load();
     });
@@ -145,6 +164,32 @@ class _SlotPickerScreenState extends State<SlotPickerScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
+              if (widget.appointmentTypes.isNotEmpty) ...[
+                HcSectionHeader(title: l10n.hcAppointmentTypeTitle),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: 10,
+                  children: [
+                    ChoiceChip(
+                      label: Text(l10n.hcAppointmentTypeDefault),
+                      selected: _selectedType == null,
+                      onSelected: (_) => _selectType(null),
+                    ),
+                    for (final type in widget.appointmentTypes)
+                      ChoiceChip(
+                        label: Text(
+                          l10n.hcAppointmentTypeWithDuration(
+                            type.name,
+                            type.durationMinutes,
+                          ),
+                        ),
+                        selected: _selectedType?.id == type.id,
+                        onSelected: (_) => _selectType(type),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+              ],
               HcSectionHeader(title: l10n.hcSelectTimeTitle),
               if (availability != null)
                 Padding(
@@ -234,6 +279,7 @@ class _SlotPickerScreenState extends State<SlotPickerScreen> {
           slot: slot,
           timezone: availability.timezone,
           durationMinutes: availability.durationMinutes,
+          appointmentType: _selectedType,
         ),
       ),
     );

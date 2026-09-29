@@ -43,6 +43,12 @@ const PUBLIC_DOCTOR_SUMMARY_SELECT = {
   consultationFeeMinor: true,
 } satisfies Prisma.DoctorProfileSelect;
 
+const PUBLIC_APPOINTMENT_TYPE_SELECT = {
+  id: true,
+  name: true,
+  durationMinutes: true,
+} satisfies Prisma.AppointmentTypeSelect;
+
 const PUBLIC_ORG_DETAIL_SELECT = {
   id: true,
   slug: true,
@@ -76,6 +82,15 @@ const PUBLIC_ORG_DETAIL_SELECT = {
     orderBy: { displayName: "asc" },
     select: PUBLIC_DOCTOR_SUMMARY_SELECT,
   },
+  // Public-safe appointment types (name + duration only) so the website and
+  // the patient app can offer the clinic's real booking categories instead
+  // of assuming the default duration. Booking itself keeps validating the
+  // chosen type server-side.
+  appointmentTypes: {
+    where: { isActive: true },
+    orderBy: { name: "asc" },
+    select: PUBLIC_APPOINTMENT_TYPE_SELECT,
+  },
 } satisfies Prisma.OrganizationSelect;
 
 const PUBLIC_DOCTOR_LIST_SELECT = {
@@ -105,6 +120,11 @@ const PUBLIC_DOCTOR_DETAIL_SELECT = {
       locations: {
         where: { isActive: true },
         select: { id: true, name: true, city: true, state: true },
+      },
+      appointmentTypes: {
+        where: { isActive: true },
+        orderBy: { name: "asc" },
+        select: PUBLIC_APPOINTMENT_TYPE_SELECT,
       },
     },
   },

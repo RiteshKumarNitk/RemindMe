@@ -192,13 +192,49 @@ export async function listPlatformAuditLog(
 
 export async function platformStats(ctx: RequestContext) {
   assertSuperAdmin(ctx);
-  const [organizations, activeOrganizations, users, appointments, patients] =
-    await Promise.all([
-      db.organization.count(),
-      db.organization.count({ where: { isActive: true } }),
-      db.user.count(),
-      db.appointment.count(),
-      db.patient.count(),
-    ]);
-  return { organizations, activeOrganizations, users, appointments, patients };
+  const [
+    organizations,
+    activeOrganizations,
+    users,
+    appointments,
+    patients,
+    doctors,
+    pendingVerification,
+    verifiedOrganizations,
+    publiclyListedOrganizations,
+  ] = await Promise.all([
+    db.organization.count(),
+    db.organization.count({ where: { isActive: true } }),
+    db.user.count(),
+    db.appointment.count(),
+    db.patient.count(),
+    db.doctorProfile.count(),
+    // Verification / listing pipeline (request §9). Same predicates the
+    // verification review pages filter by, so the tiles match the queues.
+    db.organization.count({ where: { verificationStatus: "PENDING_VERIFICATION" } }),
+    db.organization.count({ where: { verificationStatus: "VERIFIED" } }),
+    db.organization.count({ where: { isPubliclyListed: true, isActive: true } }),
+  ]);
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date(dayStart.getFullYear(), dayStart.getMonth(), 1);
+  const [appointmentsToday, appointmentsThisMonth] = await Promise.all([
+    db.appointment.count({
+      where: { scheduledStart: { gte: dayStart, lt: new Date(dayStart.getTime() + 86_400_000) } },
+    }),
+    db.appointment.count({ where: { scheduledStart: { gte: monthStart } } }),
+  ]);
+  return {
+    organizations,
+    activeOrganizations,
+    users,
+    appointments,
+    patients,
+    doctors,
+    pendingVerification,
+    verifiedOrganizations,
+    publiclyListedOrganizations,
+    appointmentsToday,
+    appointmentsThisMonth,
+  };
 }

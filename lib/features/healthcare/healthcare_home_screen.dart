@@ -6,9 +6,11 @@ import '../../core/localization/generated/app_localizations.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../data/api/api_exception.dart';
 import '../../data/models/healthcare/organization.dart';
+import '../../data/models/healthcare/doctor.dart';
 import '../../data/repositories/healthcare_repository.dart';
 import '../../services/platform_auth_service.dart';
 import 'appointments_screen.dart';
+import 'doctor_profile_screen.dart';
 import 'organization_profile_screen.dart';
 import 'platform_sign_in_screen.dart';
 import 'widgets/healthcare_widgets.dart';
@@ -44,11 +46,20 @@ class _HealthcareHomeScreenState extends State<HealthcareHomeScreen> {
   String? _city;
   String? _query;
 
+  /// Result tab: clinics (organizations) or doctors. One search box feeds
+  /// both — the backend applies the term to whichever surface is shown.
+  _HcTab _tab = _HcTab.clinics;
+
   final List<OrganizationSummary> _results = [];
+  final List<DoctorSummary> _doctorResults = [];
   int _page = 0;
+  int _doctorPage = 0;
   int _total = 0;
+  int _doctorTotal = 0;
   bool _loading = false;
+  bool _doctorLoading = false;
   ApiException? _error;
+  ApiException? _doctorError;
 
   @override
   void initState() {
@@ -62,9 +73,19 @@ class _HealthcareHomeScreenState extends State<HealthcareHomeScreen> {
     super.dispose();
   }
 
-  bool get _hasMore => _results.length < _total;
+  bool get _hasMore => _tab == _HcTab.clinics
+      ? _results.length < _total
+      : _doctorResults.length < _doctorTotal;
 
   Future<void> _load({bool reset = false}) async {
+    if (_tab == _HcTab.doctors) {
+      await _loadDoctors(reset: reset);
+      return;
+    }
+    await _loadOrganizations(reset: reset);
+  }
+
+  Future<void> _loadOrganizations({bool reset = false}) async {
     if (_loading) return;
     setState(() {
       _loading = true;
@@ -98,6 +119,47 @@ class _HealthcareHomeScreenState extends State<HealthcareHomeScreen> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _loadDoctors({bool reset = false}) async {
+    if (_doctorLoading) return;
+    setState(() {
+      _doctorLoading = true;
+      _doctorError = null;
+      if (reset) {
+        _doctorPage = 0;
+        _doctorResults.clear();
+        _doctorTotal = 0;
+      }
+    });
+
+    final repository = context.read<HealthcareRepository>();
+    try {
+      final page = await repository.searchDoctors(
+        query: _query,
+        page: _doctorPage + 1,
+      );
+      if (!mounted) return;
+      setState(() {
+        _doctorPage = page.page;
+        _doctorTotal = page.total;
+        _doctorResults.addAll(page.items);
+        _doctorLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _doctorError = e;
+        _doctorLoading = false;
+      });
+    }
+  }
+
+  void _switchTab(_HcTab tab) {
+    if (tab == _tab) return;
+    setState(() => _tab = tab);
+    final alreadyLoaded = tab == _HcTab.clinics ? _results.isNotEmpty : _doctorResults.isNotEmpty;
+    if (!alreadyLoaded) _load(reset: true);
   }
 
   void _submitSearch(String value) {
@@ -168,6 +230,14 @@ class _HealthcareHomeScreenState extends State<HealthcareHomeScreen> {
       MaterialPageRoute<void>(
         builder: (_) =>
             OrganizationProfileScreen(slug: organization.slug),
+      ),
+    );
+  }
+
+  void _openDoctor(DoctorSummary doctor) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DoctorProfileScreen(doctorId: doctor.id),
       ),
     );
   }
@@ -252,93 +322,173 @@ class _HealthcareHomeScreenState extends State<HealthcareHomeScreen> {
               },
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              height: 48,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _typeFilters.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final value = _typeFilters[index];
-                  return ChoiceChip(
-                    label: Text(_typeLabel(value, l10n)),
-                    selected: _type == value,
-                    onSelected: (_) {
-                      setState(() => _type = value);
-                      _load(reset: true);
-                    },
-                  );
-                },
-              ),
+            // Result-type tabs (request §32/§33): the same search box serves
+            // clinics and doctors; the backend filters whichever is shown.
+            SegmentedButton<_HcTab>(
+              segments: [
+                ButtonSegment(
+                  value: _HcTab.clinics,
+                  icon: const Icon(Icons.local_hospital_rounded, size: 18),
+                  label: Text(l10n.hcTabClinics),
+                ),
+                ButtonSegment(
+                  value: _HcTab.doctors,
+                  icon: const Icon(Icons.person_rounded, size: 18),
+                  label: Text(l10n.hcTabDoctors),
+                ),
+              ],
+              selected: {_tab},
+              onSelectionChanged: (selection) => _switchTab(selection.first),
             ),
             const SizedBox(height: 8),
+            if (_tab == _HcTab.clinics) ...[
+              SizedBox(
+                height: 48,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _typeFilters.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final value = _typeFilters[index];
+                    return ChoiceChip(
+                      label: Text(_typeLabel(value, l10n)),
+                      selected: _type == value,
+                      onSelected: (_) {
+                        setState(() => _type = value);
+                        _load(reset: true);
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             Row(
               children: [
                 Expanded(
                   child: HcSectionHeader(
-                    title: _city == null
-                        ? l10n.hcProvidersTitle
-                        : '${l10n.hcProvidersTitle} · $_city',
+                    title: _tab == _HcTab.clinics
+                        ? (_city == null
+                              ? l10n.hcProvidersTitle
+                              : '${l10n.hcProvidersTitle} · $_city')
+                        : l10n.hcDoctorsTitle,
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: _openFilters,
-                  icon: const Icon(Icons.tune_rounded, size: 20),
-                  label: Text(l10n.hcFiltersTitle),
-                ),
+                if (_tab == _HcTab.clinics)
+                  TextButton.icon(
+                    onPressed: _openFilters,
+                    icon: const Icon(Icons.tune_rounded, size: 20),
+                    label: Text(l10n.hcFiltersTitle),
+                  ),
               ],
             ),
-            if (_error != null)
-              HcErrorView.fromException(
-                _error!,
-                l10n,
-                onRetry: () => _load(reset: true),
-              )
-            else if (_loading && _results.isEmpty)
-              const HcSkeletonList()
-            else if (_results.isEmpty)
-              HcEmptyView(
-                icon: Icons.search_off_rounded,
-                title: l10n.hcSearchEmptyTitle,
-                body: l10n.hcSearchEmptyBody,
-                actionLabel: (_query != null || _city != null || _type != null)
-                    ? l10n.hcClear
-                    : null,
-                onAction: () {
-                  _searchController.clear();
-                  setState(() {
-                    _query = null;
-                    _city = null;
-                    _type = null;
-                  });
-                  _load(reset: true);
-                },
-              )
-            else ...[
-              for (final organization in _results)
-                HcOrganizationCard(
-                  organization: organization,
-                  onTap: () => _openOrganization(organization),
-                ),
-              if (_hasMore)
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: _loading ? null : () => _load(),
-                    child: _loading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(l10n.hcLoadMore),
-                  ),
-                ),
-            ],
+            if (_tab == _HcTab.clinics)
+              ..._buildClinicResults(l10n)
+            else
+              ..._buildDoctorResults(l10n),
           ],
         ),
       ),
     );
+  }
+
+  List<Widget> _buildClinicResults(AppLocalizations l10n) {
+    return [
+      if (_error != null)
+        HcErrorView.fromException(
+          _error!,
+          l10n,
+          onRetry: () => _load(reset: true),
+        )
+      else if (_loading && _results.isEmpty)
+        const HcSkeletonList()
+      else if (_results.isEmpty)
+        HcEmptyView(
+          icon: Icons.search_off_rounded,
+          title: l10n.hcSearchEmptyTitle,
+          body: l10n.hcSearchEmptyBody,
+          actionLabel: (_query != null || _city != null || _type != null)
+              ? l10n.hcClear
+              : null,
+          onAction: () {
+            _searchController.clear();
+            setState(() {
+              _query = null;
+              _city = null;
+              _type = null;
+            });
+            _load(reset: true);
+          },
+        )
+      else ...[
+        for (final organization in _results)
+          HcOrganizationCard(
+            organization: organization,
+            onTap: () => _openOrganization(organization),
+          ),
+        if (_hasMore)
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _loading ? null : () => _load(),
+              child: _loading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(l10n.hcLoadMore),
+            ),
+          ),
+      ],
+    ];
+  }
+
+  List<Widget> _buildDoctorResults(AppLocalizations l10n) {
+    return [
+      if (_doctorError != null)
+        HcErrorView.fromException(
+          _doctorError!,
+          l10n,
+          onRetry: () => _load(reset: true),
+        )
+      else if (_doctorLoading && _doctorResults.isEmpty)
+        const HcSkeletonList()
+      else if (_doctorResults.isEmpty)
+        HcEmptyView(
+          icon: Icons.person_search_rounded,
+          title: l10n.hcNoDoctorsFoundTitle,
+          body: l10n.hcNoDoctorsFoundBody,
+          actionLabel: _query != null ? l10n.hcClear : null,
+          onAction: () {
+            _searchController.clear();
+            setState(() => _query = null);
+            _load(reset: true);
+          },
+        )
+      else ...[
+        for (final doctor in _doctorResults)
+          HcDoctorCard(
+            doctor: doctor,
+            showOrganization: true,
+            onTap: () => _openDoctor(doctor),
+          ),
+        if (_hasMore)
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _doctorLoading ? null : () => _load(),
+              child: _doctorLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(l10n.hcLoadMore),
+            ),
+          ),
+      ],
+    ];
   }
 
   String _typeLabel(String? value, AppLocalizations l10n) {
@@ -414,6 +564,8 @@ class _HealthcareHomeScreenState extends State<HealthcareHomeScreen> {
     _load(reset: true);
   }
 }
+
+enum _HcTab { clinics, doctors }
 
 class _SearchField extends StatelessWidget {
   const _SearchField({

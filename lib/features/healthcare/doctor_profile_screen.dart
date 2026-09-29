@@ -102,6 +102,7 @@ class DoctorProfileScreen extends StatelessWidget {
                       organizationId: doctor.organization.id,
                       organizationName: doctor.organization.name,
                       branch: branch,
+                      appointmentTypes: doctor.organization.appointmentTypes,
                     ),
                   ),
                 ),

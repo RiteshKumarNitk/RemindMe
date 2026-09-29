@@ -49,6 +49,11 @@ export async function bookAppointmentAction(orgId: string, formData: FormData) {
     doctorId: String(formData.get("doctorId") ?? ""),
     scheduledStart: String(formData.get("scheduledStart") ?? ""),
     reason: String(formData.get("reason") ?? "") || undefined,
+    // Type and location are optional passthroughs (request §19/§20): the
+    // booking service re-validates that the type belongs to this clinic and
+    // the location tz resolution falls back to the org default.
+    appointmentTypeId: String(formData.get("appointmentTypeId") ?? "") || undefined,
+    locationId: String(formData.get("locationId") ?? "") || undefined,
   });
   if (!parsed.success) fail(orgId, parsed.error.issues[0]?.message ?? "Pick a doctor, date and time.");
   try {

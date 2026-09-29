@@ -37,6 +37,9 @@ export async function createOrganization(
                     name: input.location.name,
                     city: input.location.city ?? null,
                     timezone: input.location.timezone ?? null,
+                    addressLine1: input.location.addressLine1 ?? null,
+                    state: input.location.state ?? null,
+                    postalCode: input.location.postalCode ?? null,
                   },
                 },
               }

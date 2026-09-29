@@ -1,3 +1,4 @@
+import 'appointment_type.dart';
 import 'clinic_location.dart';
 import 'doctor.dart';
 import 'json_utils.dart';
@@ -87,6 +88,7 @@ class OrganizationDetail {
     this.verificationStatus,
     this.locations = const [],
     this.doctors = const [],
+    this.appointmentTypes = const [],
   });
 
   final String id;
@@ -103,6 +105,10 @@ class OrganizationDetail {
   final String? verificationStatus;
   final List<ClinicLocation> locations;
   final List<DoctorSummary> doctors;
+
+  /// Public-safe booking categories the clinic configured (request §34/§35);
+  /// empty for clinics that haven't set any up yet.
+  final List<AppointmentTypeInfo> appointmentTypes;
 
   factory OrganizationDetail.fromJson(Map<String, dynamic> json) {
     return OrganizationDetail(
@@ -124,6 +130,7 @@ class OrganizationDetail {
       doctors: asMapList(json['doctorProfiles'])
           .map(DoctorSummary.fromJson)
           .toList(growable: false),
+      appointmentTypes: parseAppointmentTypes(json['appointmentTypes']),
     );
   }
 

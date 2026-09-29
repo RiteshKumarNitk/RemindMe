@@ -4,7 +4,7 @@ import { db } from "@/lib/db.js";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { NavLink } from "@/components/nav-link.js";
 import { NotificationBell } from "@/components/notification-bell.js";
-import { navIconFor, LogOutIcon, SearchIcon } from "@/components/dashboard-icons.js";
+import { navIconFor, LogOutIcon, SearchIcon, CheckIcon } from "@/components/dashboard-icons.js";
 import { MobileNavAside, MobileNavButton, MobileNavProvider } from "@/components/mobile-nav.js";
 import { Badge } from "@/components/ui/index.js";
 import { logoutAction } from "../../login/actions.js";
@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 const NAV: Record<string, Array<{ href: string; label: string }>> = {
   CLINIC_ADMIN: [
     { href: "", label: "Overview" },
+    { href: "/setup", label: "Clinic setup" },
     { href: "/profile", label: "Profile" },
     { href: "/doctors", label: "Doctors" },
     { href: "/staff", label: "Staff" },
@@ -40,6 +41,10 @@ const NAV: Record<string, Array<{ href: string; label: string }>> = {
     { href: "/appointments", label: "My appointments" },
     { href: "/family", label: "Family access" },
   ],
+};
+
+const NAV_ICONS: Record<string, (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element> = {
+  "Clinic setup": CheckIcon,
 };
 
 const ROLE_BADGE: Record<string, "coral" | "indigo" | "ok" | "warn"> = {
@@ -112,7 +117,7 @@ export default async function OrgLayout({
 
           <nav className="flex flex-1 flex-col gap-0.5" aria-label="Dashboard">
             {items.map((item) => {
-              const NavIcon = navIconFor(item.label);
+              const NavIcon = NAV_ICONS[item.label] ?? navIconFor(item.label);
               return (
                 <NavLink key={item.label} href={`/dashboard/${orgId}${item.href}`} exact={item.href === ""} className={navLinkClass}>
                   <NavIcon />

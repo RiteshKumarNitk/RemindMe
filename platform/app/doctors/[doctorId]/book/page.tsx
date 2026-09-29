@@ -58,10 +58,10 @@ export default async function BookAppointmentPage({
   searchParams,
 }: {
   params: Promise<{ doctorId: string }>;
-  searchParams: Promise<{ slot?: string; error?: string }>;
+  searchParams: Promise<{ slot?: string; type?: string; error?: string }>;
 }) {
   const { doctorId } = await params;
-  const { slot, error } = await searchParams;
+  const { slot, type: typeParam, error } = await searchParams;
 
   if (!slot || Number.isNaN(new Date(slot).getTime())) {
     redirect(`/doctors/${doctorId}`);
@@ -76,7 +76,13 @@ export default async function BookAppointmentPage({
   }
 
   const slotDate = new Date(slot);
-  const currentPath = `/doctors/${doctorId}/book?slot=${encodeURIComponent(slot)}`;
+  // The chosen appointment type rides along from the doctor page; validated
+  // against the org's published types (a tampered id falls back to default).
+  const types = doctor.organization.appointmentTypes ?? [];
+  const selectedType = types.find((t) => t.id === typeParam) ?? null;
+  const branch =
+    doctor.organization.locations.find((l) => l.id && selectedType) ?? doctor.organization.locations[0] ?? null;
+  const currentPath = `/doctors/${doctorId}/book?slot=${encodeURIComponent(slot)}${selectedType ? `&type=${selectedType.id}` : ""}`;
   const ctx = await optionalWebUser();
 
   return (
@@ -100,6 +106,17 @@ export default async function BookAppointmentPage({
               minute: "2-digit",
             })}
           </p>
+          {selectedType ? (
+            <p className="mt-1 text-sm text-ink-muted">
+              {selectedType.name} · {selectedType.durationMinutes} min
+            </p>
+          ) : null}
+          {branch ? (
+            <p className="mt-2 text-sm text-ink-muted">
+              {branch.name}
+              {branch.city ? ` — ${branch.city}` : ""}
+            </p>
+          ) : null}
           {doctor.consultationFeeMinor != null ? (
             <Badge tone="indigo" className="mt-2">
               ₹{(doctor.consultationFeeMinor / 100).toLocaleString()} / visit
@@ -139,7 +156,13 @@ export default async function BookAppointmentPage({
             </p>
           </Card>
         ) : (
-          <BookingForm doctorId={doctorId} slot={slot} organizationId={doctor.organization.id} userId={ctx.userId} />
+          <BookingForm
+            doctorId={doctorId}
+            slot={slot}
+            organizationId={doctor.organization.id}
+            userId={ctx.userId}
+            appointmentTypeId={selectedType?.id}
+          />
         )}
       </main>
     </div>
@@ -151,11 +174,13 @@ async function BookingForm({
   slot,
   organizationId,
   userId,
+  appointmentTypeId,
 }: {
   doctorId: string;
   slot: string;
   organizationId: string;
   userId: string;
+  appointmentTypeId?: string;
 }) {
   const [user, dependents] = await Promise.all([
     db.user.findUnique({ where: { id: userId }, select: { fullName: true, phone: true } }),
@@ -169,6 +194,7 @@ async function BookingForm({
       <CardSubtitle>Your details</CardSubtitle>
       <form action={confirmBookingAction.bind(null, doctorId, slot)} className="mt-3 flex flex-col gap-4">
         <input type="hidden" name="organizationId" value={organizationId} />
+        {appointmentTypeId ? <input type="hidden" name="appointmentTypeId" value={appointmentTypeId} /> : null}
         {dependents.length > 0 ? (
           <Field label="Who is this appointment for?">
             <Select name="patientId" className="w-full" defaultValue="">

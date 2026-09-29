@@ -1,9 +1,10 @@
 import { requireOrgContext } from "@/lib/web-context.js";
 import { db } from "@/lib/db.js";
-import { listAppointments } from "@/modules/appointments/service.js";
+import { listAppointments, listAppointmentTypes } from "@/modules/appointments/service.js";
 import { listDoctors } from "@/modules/doctors/service.js";
 import { listPatients } from "@/modules/patients/service.js";
 import { listMyAccess } from "@/modules/family/service.js";
+import { listLocations } from "@/modules/clinics/service.js";
 import { Badge, Button, Card, CardSubtitle, EmptyState, InitialsAvatar, LinkButton, Notice, statusLabel, statusTone } from "@/components/ui/index.js";
 import { ConfirmSubmit } from "@/components/confirm-submit.js";
 import { BookForm } from "./BookForm.js";
@@ -22,14 +23,19 @@ export default async function AppointmentsPage({
   searchParams,
 }: {
   params: Promise<{ orgId: string }>;
-  searchParams: Promise<{ error?: string; booked?: string }>;
+  searchParams: Promise<{ error?: string; booked?: string; doctorId?: string }>;
 }) {
   const { orgId } = await params;
   const ctx = await requireOrgContext(orgId);
   const role = ctx.org!.role;
-  const { error, booked } = await searchParams;
+  const { error, booked, doctorId: doctorIdParam } = await searchParams;
 
   const doctors = await listDoctors(ctx);
+  const [types, locations] = await Promise.all([
+    listAppointmentTypes(ctx),
+    // Staff and patients both pick a branch; doctors book at their own.
+    listLocations(ctx),
+  ]);
   let patients: Array<{ id: string; firstName: string; lastName: string }> | undefined;
   if (role === "RECEPTIONIST" || role === "CLINIC_ADMIN" || role === "DOCTOR") {
     patients = (await listPatients(ctx, { limit: 100 })).data;
@@ -62,9 +68,13 @@ export default async function AppointmentsPage({
     myDoctorId = mine?.id ?? null;
   }
 
+  // Staff can arrive pre-filtered by doctor (the owner dashboard's
+  // per-doctor "today" cards link here, request §22). The doctor scope is
+  // still validated by the service against this org's own rows.
+  const scopedDoctorId = myDoctorId ?? (role === "CLINIC_ADMIN" || role === "RECEPTIONIST" ? doctorIdParam ?? null : null);
   const { data: appointments } = await listAppointments(ctx, {
     limit: 100,
-    ...(myDoctorId ? { doctorId: myDoctorId } : {}),
+    ...(scopedDoctorId ? { doctorId: scopedDoctorId } : {}),
   });
 
   const isStaff = role === "RECEPTIONIST" || role === "CLINIC_ADMIN";
@@ -163,6 +173,8 @@ export default async function AppointmentsPage({
               orgId={orgId}
               doctors={doctors}
               patients={patients}
+              types={types.map((t) => ({ id: t.id, name: t.name, durationMinutes: t.durationMinutes }))}
+              locations={locations.filter((l) => l.isActive).map((l) => ({ id: l.id, name: l.name, city: l.city }))}
               action={bookAppointmentAction.bind(null, orgId)}
             />
           </div>

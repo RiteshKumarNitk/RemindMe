@@ -16,6 +16,12 @@ export const createOrgSchema = z
         name: z.string().min(1).max(160),
         city: z.string().max(120).optional(),
         timezone: z.string().max(64).optional(),
+        // Primary-location address capture (request §12): the ClinicLocation
+        // model has always had these columns; collecting them at creation
+        // gives public discovery a real address from day one.
+        addressLine1: z.string().max(200).optional(),
+        state: z.string().max(120).optional(),
+        postalCode: z.string().max(20).optional(),
       })
       .strict()
       .optional(),

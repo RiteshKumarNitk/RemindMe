@@ -45,6 +45,9 @@ export async function DoctorOverview({
   const inConsultation = board.entries.find((e) => e.state === "IN_CONSULTATION") ?? null;
   const completedToday = todaysAppointments.filter((a) => a.status === "COMPLETED").length;
   const noShowToday = todaysAppointments.filter((a) => a.status === "NO_SHOW").length;
+  const stillAhead = todaysAppointments.filter((a) =>
+    ["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING", "IN_CONSULTATION"].includes(a.status),
+  ).length;
 
   const nextAppointmentId = (nextUp ?? inConsultation)?.appointmentId ?? null;
   const active = inConsultation ?? nextUp;
@@ -100,7 +103,7 @@ export async function DoctorOverview({
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatTile icon={<ClockIcon />} tone="warn" label="Waiting" value={waiting.length} />
-        <StatTile icon={<CalendarIcon />} tone="indigo" label="Today's total" value={todaysAppointments.length} />
+        <StatTile icon={<CalendarIcon />} tone="indigo" label="Still ahead today" value={stillAhead} />
         <StatTile icon={<CheckIcon />} tone="ok" label="Completed" value={completedToday} />
         <StatTile icon={<CloseIcon />} tone="danger" label="No-shows" value={noShowToday} />
       </div>
@@ -120,6 +123,9 @@ export async function DoctorOverview({
                     </span>
                     <span className="text-sm text-ink">
                       {a.patient.firstName} {a.patient.lastName}
+                      {a.queueEntry ? (
+                        <span className="ml-2 align-middle font-mono text-[11px] text-ink-faint">#{a.queueEntry.tokenNumber}</span>
+                      ) : null}
                     </span>
                   </div>
                   <Badge tone={statusTone(a.status)}>{statusLabel(a.status)}</Badge>

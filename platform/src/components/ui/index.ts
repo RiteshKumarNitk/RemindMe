@@ -8,6 +8,9 @@ export { SearchBar } from "./search-bar";
 export { Hero, HeroMain, HeroSide, HeroLabel, HeroActions, SideStat } from "./hero";
 export { StatTile } from "./stat-tile";
 export { InitialsAvatar } from "./avatar";
+export { CompletionMeter } from "./completion-meter";
+export { AttentionList, type AttentionItem } from "./attention-list";
+export { Stepper, type StepperStep } from "./stepper";
 export {
   HospitalCard,
   DoctorCard,

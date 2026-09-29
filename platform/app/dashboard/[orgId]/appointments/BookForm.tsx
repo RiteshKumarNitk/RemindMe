@@ -6,6 +6,8 @@ import { Button, Field, InitialsAvatar, Input, Select } from "@/components/ui/in
 type Doctor = { id: string; displayName: string; specialty?: string | null };
 type PatientOpt = { id: string; firstName: string; lastName: string };
 type Slot = { start: string; end: string };
+type TypeOpt = { id: string; name: string; durationMinutes: number };
+type LocationOpt = { id: string; name: string; city?: string | null };
 
 function nextDays(n: number): Date[] {
   const today = new Date();
@@ -21,22 +23,29 @@ function isoDate(d: Date): string {
  * A patient/doctor/time picker over the same booking mechanics the old form
  * used (a plain server action, doctorId/scheduledStart as hidden inputs) —
  * only the picker UI changed, not what gets submitted or how the server
- * validates it.
+ * validates it. Appointment type and location are passed through when the
+ * clinic has them configured (request §19: never bypass the clinic's
+ * configured types/locations); omitted values keep using the clinic default.
  */
 export function BookForm({
   orgId,
   doctors,
   patients,
+  types,
+  locations,
   action,
   submitLabel = "Confirm booking",
 }: {
   orgId: string;
   doctors: Doctor[];
   patients?: PatientOpt[];
+  types?: TypeOpt[];
+  locations?: LocationOpt[];
   action: (formData: FormData) => void;
   submitLabel?: string;
 }) {
   const [doctorId, setDoctorId] = useState(doctors[0]?.id ?? "");
+  const [typeId, setTypeId] = useState("");
   const days = useMemo(() => nextDays(14), []);
   const [date, setDate] = useState(() => isoDate(days[0]!));
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -44,13 +53,15 @@ export function BookForm({
   const [loading, setLoading] = useState(false);
 
   const doctor = doctors.find((d) => d.id === doctorId);
+  const type = types?.find((t) => t.id === typeId);
 
   useEffect(() => {
     if (!doctorId || !date) return;
     let cancelled = false;
     setLoading(true);
     setSelected("");
-    fetch(`/api/orgs/${orgId}/doctors/${doctorId}/slots?date=${date}`)
+    const typeQs = typeId ? `&appointmentTypeId=${encodeURIComponent(typeId)}` : "";
+    fetch(`/api/orgs/${orgId}/doctors/${doctorId}/slots?date=${date}${typeQs}`)
       .then((r) => r.json())
       .then((data: { slots?: Slot[] }) => {
         if (!cancelled) setSlots(data.slots ?? []);
@@ -64,7 +75,7 @@ export function BookForm({
     return () => {
       cancelled = true;
     };
-  }, [orgId, doctorId, date]);
+  }, [orgId, doctorId, date, typeId]);
 
   return (
     <form action={action}>
@@ -81,6 +92,34 @@ export function BookForm({
           </Field>
         </div>
       )}
+
+      {types && types.length > 0 ? (
+        <div className="mb-5 grid gap-4 sm:grid-cols-2">
+          <Field label="Appointment type">
+            <Select name="appointmentTypeId" value={typeId} onChange={(e) => setTypeId(e.target.value)} className="w-full">
+              <option value="">Default ({types.length > 0 ? "clinic standard" : "15 min"})</option>
+              {types.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} · {t.durationMinutes} min
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {locations && locations.length > 0 ? (
+            <Field label="Location">
+              <Select name="locationId" className="w-full" defaultValue="">
+                <option value="">No preference</option>
+                {locations.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                    {l.city ? ` — ${l.city}` : ""}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
         <div className="flex flex-col gap-5">
@@ -187,6 +226,7 @@ export function BookForm({
                 ? `${new Date(date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · ${new Date(selected).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                 : "Pick a time above"}
             </span>
+            {type ? <span className="text-[11.5px] text-ink-muted">{type.name} · {type.durationMinutes} min</span> : null}
           </div>
           <Button className="mt-1 w-full justify-center" disabled={!selected || !doctorId}>
             {submitLabel}
