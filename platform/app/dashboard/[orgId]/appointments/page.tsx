@@ -30,43 +30,46 @@ export default async function AppointmentsPage({
   const role = ctx.org!.role;
   const { error, booked, doctorId: doctorIdParam } = await searchParams;
 
-  const doctors = await listDoctors(ctx);
-  const [types, locations] = await Promise.all([
+  // Role-scoped preloads run as ONE batch (§21: no sequential round-trips
+  // where parallel ones work).
+  const isStaffView = role === "RECEPTIONIST" || role === "CLINIC_ADMIN" || role === "DOCTOR";
+  const [doctors, types, locations, patients, myDoctorId] = await Promise.all([
+    listDoctors(ctx),
     listAppointmentTypes(ctx),
     // Staff and patients both pick a branch; doctors book at their own.
     listLocations(ctx),
+    isStaffView
+      ? listPatients(ctx, { limit: 100 }).then((r) => r.data)
+      : role === "PATIENT"
+        ? (async () => {
+            // A patient books for themselves by default; if they also manage
+            // any dependents' appointments (family access grant), offer a
+            // picker instead of silently assuming "myself".
+            const [own, myAccess] = await Promise.all([
+              db.patient.findFirst({
+                where: { organizationId: orgId, ownerUserId: ctx.userId },
+                select: { id: true, firstName: true, lastName: true },
+              }),
+              listMyAccess(ctx),
+            ]);
+            const dependents = myAccess.data
+              .filter((g) => g.permissions.includes("MANAGE_APPOINTMENTS"))
+              .map((g) => g.patient);
+            if (dependents.length === 0) return undefined;
+            return own
+              ? [{ ...own, firstName: `${own.firstName} (Myself)` }, ...dependents]
+              : dependents;
+          })()
+        : Promise.resolve(undefined),
+    role === "DOCTOR"
+      ? db.doctorProfile
+          .findFirst({
+            where: { organizationId: orgId, userId: ctx.userId },
+            select: { id: true },
+          })
+          .then((m) => m?.id ?? null)
+      : Promise.resolve(null),
   ]);
-  let patients: Array<{ id: string; firstName: string; lastName: string }> | undefined;
-  if (role === "RECEPTIONIST" || role === "CLINIC_ADMIN" || role === "DOCTOR") {
-    patients = (await listPatients(ctx, { limit: 100 })).data;
-  } else if (role === "PATIENT") {
-    // A patient books for themselves by default; if they also manage any
-    // dependents' appointments (family access grant), offer a picker
-    // instead of silently assuming "myself" (PRODUCT_EVOLUTION_PLAN.md
-    // Phase 11).
-    const [own, myAccess] = await Promise.all([
-      db.patient.findFirst({
-        where: { organizationId: orgId, ownerUserId: ctx.userId },
-        select: { id: true, firstName: true, lastName: true },
-      }),
-      listMyAccess(ctx),
-    ]);
-    const dependents = myAccess.data
-      .filter((g) => g.permissions.includes("MANAGE_APPOINTMENTS"))
-      .map((g) => g.patient);
-    if (dependents.length > 0) {
-      patients = own ? [{ ...own, firstName: `${own.firstName} (Myself)` }, ...dependents] : dependents;
-    }
-  }
-
-  let myDoctorId: string | null = null;
-  if (role === "DOCTOR") {
-    const mine = await db.doctorProfile.findFirst({
-      where: { organizationId: orgId, userId: ctx.userId },
-      select: { id: true },
-    });
-    myDoctorId = mine?.id ?? null;
-  }
 
   // Staff can arrive pre-filtered by doctor (the owner dashboard's
   // per-doctor "today" cards link here, request §22). The doctor scope is

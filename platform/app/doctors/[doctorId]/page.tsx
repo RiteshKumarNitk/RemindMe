@@ -52,10 +52,10 @@ export default async function DoctorDetailPage({
   searchParams,
 }: {
   params: Promise<{ doctorId: string }>;
-  searchParams: Promise<{ date?: string; type?: string }>;
+  searchParams: Promise<{ date?: string; type?: string; location?: string }>;
 }) {
   const { doctorId } = await params;
-  const { date: dateParam, type: typeParam } = await searchParams;
+  const { date: dateParam, type: typeParam, location: locationParam } = await searchParams;
 
   const doctor = await loadDoctor(doctorId);
   if (!doctor) notFound();
@@ -64,6 +64,11 @@ export default async function DoctorDetailPage({
   // or stale `type` param simply falls back to the clinic default duration.
   const types = doctor.organization.appointmentTypes ?? [];
   const selectedType = types.find((t) => t.id === typeParam) ?? null;
+  // Branch selection (request §12/§J): explicit, URL-carried, validated
+  // against the org's own active locations. Availability is doctor-level, so
+  // this choice labels the booking rather than changing the slots.
+  const locations = doctor.organization.locations;
+  const selectedLocation = locations.find((l) => l.id === locationParam) ?? null;
 
   const days = nextDays(14);
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : isoDate(days[0]!);
@@ -154,6 +159,37 @@ export default async function DoctorDetailPage({
             ))}
           </div>
         ) : null}
+        {locations.length > 1 ? (
+          <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Branch">
+            <a
+              href={`/doctors/${doctorId}?date=${selectedDate}${selectedType ? `&type=${selectedType.id}` : ""}`}
+              aria-current={!selectedLocation ? "true" : undefined}
+              className={`rounded-full border px-3 py-1.5 text-[13px] no-underline ${
+                !selectedLocation
+                  ? "border-indigo bg-indigo font-semibold text-white"
+                  : "border-border bg-card text-ink hover:border-indigo"
+              }`}
+            >
+              No branch preference
+            </a>
+            {locations.map((l) => (
+              <a
+                key={l.id}
+                href={`/doctors/${doctorId}?date=${selectedDate}${selectedType ? `&type=${selectedType.id}` : ""}&location=${l.id}`}
+                aria-current={selectedLocation?.id === l.id ? "true" : undefined}
+                className={`rounded-full border px-3 py-1.5 text-[13px] no-underline ${
+                  selectedLocation?.id === l.id
+                    ? "border-indigo bg-indigo font-semibold text-white"
+                    : "border-border bg-card text-ink hover:border-indigo"
+                }`}
+              >
+                {l.name}
+                {l.city ? ` — ${l.city}` : ""}
+              </a>
+            ))}
+          </div>
+        ) : null}
+
         <p className="mt-2 text-xs text-ink-muted">
           {selectedType
             ? `${selectedType.name} · ${durationMinutes}-minute appointment`
@@ -188,7 +224,7 @@ export default async function DoctorDetailPage({
             {slots.map((slot) => (
               <a
                 key={slot.start}
-                href={`/doctors/${doctorId}/book?slot=${encodeURIComponent(slot.start)}${selectedType ? `&type=${selectedType.id}` : ""}`}
+                href={`/doctors/${doctorId}/book?slot=${encodeURIComponent(slot.start)}${selectedType ? `&type=${selectedType.id}` : ""}${selectedLocation ? `&location=${selectedLocation.id}` : ""}`}
                 className="rounded-control border border-border bg-card px-2 py-2 text-center text-sm font-medium text-ink no-underline hover:border-indigo hover:text-indigo"
               >
                 {new Date(slot.start).toLocaleTimeString(undefined, {

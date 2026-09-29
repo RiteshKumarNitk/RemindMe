@@ -58,10 +58,10 @@ export default async function BookAppointmentPage({
   searchParams,
 }: {
   params: Promise<{ doctorId: string }>;
-  searchParams: Promise<{ slot?: string; type?: string; error?: string }>;
+  searchParams: Promise<{ slot?: string; type?: string; location?: string; error?: string }>;
 }) {
   const { doctorId } = await params;
-  const { slot, type: typeParam, error } = await searchParams;
+  const { slot, type: typeParam, location: locationParam, error } = await searchParams;
 
   if (!slot || Number.isNaN(new Date(slot).getTime())) {
     redirect(`/doctors/${doctorId}`);
@@ -76,13 +76,13 @@ export default async function BookAppointmentPage({
   }
 
   const slotDate = new Date(slot);
-  // The chosen appointment type rides along from the doctor page; validated
-  // against the org's published types (a tampered id falls back to default).
+  // The chosen appointment type and branch ride along from the doctor page;
+  // both validated against the org's own published data (a tampered or stale
+  // id falls back to the clinic default / no preference, never another org's).
   const types = doctor.organization.appointmentTypes ?? [];
   const selectedType = types.find((t) => t.id === typeParam) ?? null;
-  const branch =
-    doctor.organization.locations.find((l) => l.id && selectedType) ?? doctor.organization.locations[0] ?? null;
-  const currentPath = `/doctors/${doctorId}/book?slot=${encodeURIComponent(slot)}${selectedType ? `&type=${selectedType.id}` : ""}`;
+  const branch = doctor.organization.locations.find((l) => l.id === locationParam) ?? null;
+  const currentPath = `/doctors/${doctorId}/book?slot=${encodeURIComponent(slot)}${selectedType ? `&type=${selectedType.id}` : ""}${branch ? `&location=${branch.id}` : ""}`;
   const ctx = await optionalWebUser();
 
   return (
@@ -162,6 +162,7 @@ export default async function BookAppointmentPage({
             organizationId={doctor.organization.id}
             userId={ctx.userId}
             appointmentTypeId={selectedType?.id}
+            locationId={branch?.id}
           />
         )}
       </main>
@@ -175,12 +176,14 @@ async function BookingForm({
   organizationId,
   userId,
   appointmentTypeId,
+  locationId,
 }: {
   doctorId: string;
   slot: string;
   organizationId: string;
   userId: string;
   appointmentTypeId?: string;
+  locationId?: string;
 }) {
   const [user, dependents] = await Promise.all([
     db.user.findUnique({ where: { id: userId }, select: { fullName: true, phone: true } }),
@@ -195,6 +198,7 @@ async function BookingForm({
       <form action={confirmBookingAction.bind(null, doctorId, slot)} className="mt-3 flex flex-col gap-4">
         <input type="hidden" name="organizationId" value={organizationId} />
         {appointmentTypeId ? <input type="hidden" name="appointmentTypeId" value={appointmentTypeId} /> : null}
+        {locationId ? <input type="hidden" name="locationId" value={locationId} /> : null}
         {dependents.length > 0 ? (
           <Field label="Who is this appointment for?">
             <Select name="patientId" className="w-full" defaultValue="">

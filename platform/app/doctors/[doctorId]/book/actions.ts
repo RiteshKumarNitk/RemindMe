@@ -18,6 +18,7 @@ export async function confirmBookingAction(doctorId: string, slot: string, formD
     reason: String(formData.get("reason") ?? "").trim() || undefined,
     patientId,
     appointmentTypeId: String(formData.get("appointmentTypeId") ?? "").trim() || undefined,
+    locationId: String(formData.get("locationId") ?? "").trim() || undefined,
     patient: {
       firstName: String(formData.get("firstName") ?? "").trim(),
       lastName: String(formData.get("lastName") ?? "").trim(),

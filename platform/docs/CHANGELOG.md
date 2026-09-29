@@ -4,6 +4,36 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-09-29 — End-to-end acceptance suite: the 34-step clinic→publish→book→treat flow is now one proven path (uncommitted)
+
+The dashboard/directory/appointment work (guided onboarding, setup checklist, lifecycle +
+completeness, unified /search, appointment-type + branch-aware booking on web and Flutter) was
+already in place; the missing piece was a single test that walks the whole chain through the real
+route handlers against the real database. Added `tests/integration/acceptance-e2e.test.ts`:
+create clinic → location ×2 → doctor (publicly listed) → appointment type (30 min) → weekly
+availability → public profile fields → request verification → super-admin approves → publish →
+discoverable on `/api/public/organizations` (and a control clinic proven invisible) → doctor in
+public directory with org payload → public org detail exposes appointment types + both locations →
+type-aware slots (staff endpoint `typeId` param) agree with the public slots endpoint → patient
+registers → self-books through `/api/patient/appointments` with type + Mansarovar branch → the
+**database row** verified to carry org/branch/doctor/type/patient (explicitly not the other
+branch) → appointment visible to patient (with location+type in the payload), owner, staff list,
+and assigned doctor → check-in allocates a token on the appointment's own queue day → queue board
+WAITING → doctor starts (assigned-doctor-only) → SOAP → prescription item → **staff PUT
+consultation is 403** (RBAC enforced mid-flow) → complete → sign → patient reads their own
+consultation → 15 audit actions asserted → Clinic B reading Clinic A's appointment is 404 with no
+leak and absent from B's list. One real bug found and fixed on the way: the public booking page
+resolved the branch with a truthiness bug (`locations.find((l) => l.id && selectedType)`) and
+never honored an explicit `?location=` — the doctor page now carries the chosen branch in the URL
+(chips for multi-branch clinics), the book page validates it against the org's own locations, and
+`locationId` rides the hidden input into the existing `selfBookAppointment`. Also batched the
+dashboard appointments page's five role-scoped preloads into one `Promise.all` (was up to four
+sequential round-trips). Verified live against the dev server: the published clinic is returned by
+the running public API and `pageSize=51` is rejected 422 (pagination bound). `tsc`, unit 50/50,
+`next build` (20 pages), integration (acceptance 3/3 + all 11 files green incl. the tenant-
+scoped-appointment proof in `tenant-isolation.test.ts`), `flutter analyze` 0 errors / 5 known
+infos, `flutter test` 94/94.
+
 ## 2026-09-18 — Migrated the last 7 old-styled pages — every screen now on the current design (uncommitted)
 
 An inventory found 7 reachable sub-pages still on the pre-migration inline-style kit: consultation
