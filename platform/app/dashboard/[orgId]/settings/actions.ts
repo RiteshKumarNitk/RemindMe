@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { AppError } from "@/lib/errors.js";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { createLocationSchema, updateLocationSchema, updateSettingsSchema } from "@/modules/clinics/schema.js";
-import { createLocation, updateLocation, updateSettings } from "@/modules/clinics/service.js";
+import { createLocation, listLocations, updateLocation, updateSettings } from "@/modules/clinics/service.js";
 import { createTypeSchema } from "@/modules/appointments/schema.js";
 import { createAppointmentType } from "@/modules/appointments/service.js";
 
@@ -48,6 +48,23 @@ export async function addLocationAction(orgId: string, formData: FormData) {
     fail(orgId, err instanceof AppError ? err.message : "Could not add the location.");
   }
   revalidatePath(`/dashboard/${orgId}/settings`);
+}
+
+export async function deactivateLocationAction(orgId: string, locationId: string) {
+  const ctx = await requireOrgContext(orgId);
+  const locations = await listLocations(ctx);
+  // Never let a clinic strand its last active branch — publishing and
+  // readiness both require at least one active location.
+  if (locations.filter((l) => l.isActive).length <= 1) {
+    fail(orgId, "A clinic needs at least one active location. Add another branch first.");
+  }
+  try {
+    await updateLocation(ctx, locationId, { isActive: false });
+  } catch (err) {
+    fail(orgId, err instanceof AppError ? err.message : "Could not deactivate the location.");
+  }
+  revalidatePath(`/dashboard/${orgId}/settings`);
+  revalidatePath(`/dashboard/${orgId}`);
 }
 
 export async function updateLocationAction(orgId: string, locationId: string, formData: FormData) {

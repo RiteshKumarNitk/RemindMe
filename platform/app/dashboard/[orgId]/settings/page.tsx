@@ -3,7 +3,14 @@ import { requireOrgContext } from "@/lib/web-context.js";
 import { getSettings, listLocations } from "@/modules/clinics/service.js";
 import { listAppointmentTypes } from "@/modules/appointments/service.js";
 import { Button, Card, CardSubtitle, EmptyState, Field, Input, Notice } from "@/components/ui/index.js";
-import { addAppointmentTypeAction, addLocationAction, saveSettingsAction, updateLocationAction } from "./actions.js";
+import { ConfirmSubmit } from "@/components/confirm-submit.js";
+import {
+  addAppointmentTypeAction,
+  addLocationAction,
+  deactivateLocationAction,
+  saveSettingsAction,
+  updateLocationAction,
+} from "./actions.js";
 
 export const dynamic = "force-dynamic";
 
@@ -100,9 +107,20 @@ export default async function SettingsPage({
                       <Input name="phone" defaultValue={l.phone ?? ""} className="w-full" />
                     </Field>
                   </div>
-                  <Button variant="ghost" className="self-start">
-                    Save location
-                  </Button>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Button variant="ghost">Save location</Button>
+                    {/* Deactivate (soft) — schema-supported; keeps history intact.
+                        Guarded so a clinic can't strand its only branch. */}
+                    {locations.length > 1 ? (
+                      <ConfirmSubmit
+                        formAction={deactivateLocationAction.bind(null, orgId, l.id)}
+                        label="Deactivate"
+                        variant="ghost"
+                        confirmTitle={`Deactivate ${l.name}?`}
+                        confirmMessage="It disappears from public discovery and can't be booked against. Reactivate by editing it later."
+                      />
+                    ) : null}
+                  </div>
                 </form>
               </Card>
             ))}

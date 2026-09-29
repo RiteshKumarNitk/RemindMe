@@ -204,6 +204,25 @@ class _OrganizationProfileScreenState extends State<OrganizationProfileScreen> {
                     onSelect: () => setState(() => _branch = location),
                   ),
               ],
+              // Visit types the clinic published (spec §25) — real data only;
+              // the section disappears entirely for clinics without any.
+              if (organization.appointmentTypes.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.xl),
+                HcSectionHeader(title: l10n.hcAppointmentTypeTitle),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: 10,
+                  children: [
+                    for (final type in organization.appointmentTypes)
+                      HcStatusChip(
+                        label: l10n.hcAppointmentTypeWithDuration(
+                          type.name,
+                          type.durationMinutes,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: AppSpacing.xl),
               Container(
                 key: _doctorsKey,

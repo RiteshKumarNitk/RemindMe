@@ -34,7 +34,7 @@ export async function AdminOverview({ ctx, orgId }: { ctx: RequestContext; orgId
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date(todayStart.getTime() + 86_400_000);
 
-  const [insights, todaysResult, doctorRows] = await Promise.all([
+  const [insights, todaysResult, doctorRows, locationRows] = await Promise.all([
     getOrgInsights(ctx, orgId),
     listAppointments(ctx, { from: todayStart.toISOString(), to: todayEnd.toISOString(), limit: 200 }),
     // Per-doctor operational breakdown (§22) — owner sees today's load by doctor.
@@ -42,6 +42,13 @@ export async function AdminOverview({ ctx, orgId }: { ctx: RequestContext; orgId
       where: { organizationId: orgId, isActive: true },
       select: { id: true, displayName: true, specialty: true },
       orderBy: { displayName: "asc" },
+    }),
+    // Per-location today counts (§9/§16) — only meaningful once the clinic
+    // actually runs more than one branch.
+    t.clinicLocation.findMany({
+      where: { organizationId: orgId, isActive: true },
+      select: { id: true, name: true, city: true },
+      orderBy: { name: "asc" },
     }),
   ]);
   const todaysAppointments = todaysResult.data;
@@ -139,6 +146,30 @@ export async function AdminOverview({ ctx, orgId }: { ctx: RequestContext; orgId
           </div>
         </Card>
       </div>
+
+      {/* Per-location load (§9/§16) — only shown for genuinely multi-branch clinics. */}
+      {locationRows.length > 1 ? (
+        <section aria-label="Locations today">
+          <h2 className="mb-3 font-display text-lg font-bold text-ink">Locations today</h2>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {locationRows.map((l) => {
+              const count = todaysAppointments.filter((a) => a.locationId === l.id).length;
+              return (
+                <Card key={l.id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-[13.5px] font-semibold text-ink">{l.name}</div>
+                    <div className="truncate text-[11.5px] text-ink-muted">{l.city ?? "—"}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-display text-lg font-bold tabular-nums text-ink">{count}</div>
+                    <div className="text-[10.5px] uppercase tracking-wide text-ink-faint">today</div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       {/* Per-doctor load (§22) — the owner's view of who is carrying what today. */}
       {perDoctor.length > 0 ? (

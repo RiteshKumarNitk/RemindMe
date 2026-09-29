@@ -19,18 +19,25 @@ export function ConfirmSubmit({
   confirmMessage,
   variant = "primary",
   size = "md",
+  formAction,
 }: {
   label: ReactNode;
   confirmTitle: string;
   confirmMessage: string;
   variant?: "primary" | "secondary" | "ghost" | "danger";
   size?: "sm" | "md" | "lg";
+  /** Optional bound server action — lets a confirm-guarded button post to a
+   * different action than its surrounding <form> (e.g. a Deactivate button
+   * living inside a location's Save form). Omitted = submit the form's own
+   * action, as before. */
+  formAction?: (formData: FormData) => void | Promise<void>;
 }) {
   return (
     <Button
       type="submit"
       variant={variant}
       size={size}
+      {...(formAction ? { formAction } : {})}
       onClick={(e) => {
         if (!window.confirm(`${confirmTitle}\n\n${confirmMessage}`)) {
           e.preventDefault();

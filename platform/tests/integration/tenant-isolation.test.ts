@@ -1,11 +1,24 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { disconnect, truncateAll } from "../helpers/db.js";
 import { call } from "../helpers/http.js";
-import { createOrg, registerAndLogin, type TestOrg, type TestUser } from "../helpers/factories.js";
+import {
+  createDoctorWithLogin,
+  createOrg,
+  createPatient,
+  firstSlot,
+  registerAndLogin,
+  setWeeklyAvailability,
+  type TestOrg,
+  type TestUser,
+} from "../helpers/factories.js";
 import { GET as getOrg, PATCH as patchOrg } from "../../app/api/orgs/[orgId]/route.js";
 import { GET as listMembers, POST as inviteMember } from "../../app/api/orgs/[orgId]/members/route.js";
 import { GET as listDoctors, POST as createDoctor } from "../../app/api/orgs/[orgId]/doctors/route.js";
 import { GET as getSettings } from "../../app/api/orgs/[orgId]/settings/route.js";
+import { GET as getAppointmentRoute } from "../../app/api/orgs/[orgId]/appointments/[appointmentId]/route.js";
+import { GET as listAppointmentsRoute } from "../../app/api/orgs/[orgId]/appointments/route.js";
+import { POST as bookAppointmentRoute } from "../../app/api/orgs/[orgId]/appointments/route.js";
+import { db } from "../helpers/db.js";
 
 let userA: TestUser;
 let userB: TestUser;
@@ -96,4 +109,76 @@ describe("tenant isolation (MULTI_TENANCY.md)", () => {
     });
     expect(res.status).toBe(404);
   });
+
+  // §30 of the dashboard/directory request: an appointment belongs to its
+  // clinic's tenant scope exactly like every other resource — a Clinic A
+  // user can read their own appointment, a Clinic A user reading a Clinic B
+  // appointment gets the same 404 (existence never confirmed), and B's
+  // private appointment never leaks into A's list endpoint.
+  it(
+    "appointments are tenant-scoped: A reads own, A reading B's → 404, no leak",
+    async () => {
+    // Clinic A: doctor + availability + patient + one booked appointment.
+    const adminA = userA.accessToken;
+    const docA = await createDoctorWithLogin(adminA, orgA.id);
+    await setWeeklyAvailability(adminA, orgA.id, docA.doctorId);
+    const patientA = await createPatient(orgA.id, userA.userId);
+    const slotA = await firstSlot(adminA, orgA.id, docA.doctorId);
+    const bookA = await call<{ id: string }>(bookAppointmentRoute, {
+      bearer: adminA,
+      params: { orgId: orgA.id },
+      body: { patientId: patientA.id, doctorId: docA.doctorId, scheduledStart: slotA.start },
+    });
+    expect(bookA.status).toBe(201);
+    const apptAId = bookA.body.id;
+
+    // Clinic B: private appointment the same way.
+    const adminB = userB.accessToken;
+    const docB = await createDoctorWithLogin(adminB, orgB.id);
+    await setWeeklyAvailability(adminB, orgB.id, docB.doctorId);
+    const patientB = await createPatient(orgB.id, userB.userId);
+    const slotB = await firstSlot(adminB, orgB.id, docB.doctorId);
+    const bookB = await call<{ id: string }>(bookAppointmentRoute, {
+      bearer: adminB,
+      params: { orgId: orgB.id },
+      body: { patientId: patientB.id, doctorId: docB.doctorId, scheduledStart: slotB.start },
+    });
+    expect(bookB.status).toBe(201);
+    const apptBId = bookB.body.id;
+
+    // A reading their own → 200.
+    const own = await call(getAppointmentRoute, {
+      bearer: adminA,
+      params: { orgId: orgA.id, appointmentId: apptAId },
+    });
+    expect(own.status).toBe(200);
+
+    // A reading B's by id → 404, body must not leak B's data.
+    const cross = await call(getAppointmentRoute, {
+      bearer: adminA,
+      params: { orgId: orgA.id, appointmentId: apptBId },
+    });
+    expect(cross.status).toBe(404);
+    expect(JSON.stringify(cross.body)).not.toContain("clinicB");
+
+    // B's appointment never appears in A's list, and A's id can't fetch it
+    // through B's route with A's token either.
+    const listA = await call<{ data: Array<{ id: string }> }>(listAppointmentsRoute, {
+      bearer: adminA,
+      params: { orgId: orgA.id },
+    });
+    expect(listA.status).toBe(200);
+    expect(listA.body.data.some((a) => a.id === apptBId)).toBe(false);
+
+    const viaB = await call(getAppointmentRoute, {
+      bearer: adminA,
+      params: { orgId: orgB.id, appointmentId: apptBId },
+    });
+    expect(viaB.status).toBe(404);
+
+    // Sanity: the rows really exist (proves the 404 is scoping, not absence).
+    expect(await db.appointment.count({ where: { id: { in: [apptAId, apptBId] } } })).toBe(2);
+    },
+    120_000,
+  );
 });
