@@ -16,10 +16,17 @@ export function isOverlapViolation(err: unknown): boolean {
 }
 
 function isWriteConflict(err: unknown): boolean {
-  return (
-    err instanceof Prisma.PrismaClientKnownRequestError &&
-    (err.code === "P2034" || err.code === "P2037")
-  );
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (err.code === "P2034" || err.code === "P2037") return true;
+  // A serialization failure raised inside a RAW statement (e.g. the token
+  // allocator's INSERT … ON CONFLICT) surfaces as P2010 "raw query failed"
+  // carrying the Postgres SQLSTATE, not as P2034. Without this, concurrent
+  // token bookings at the opening minute returned 500 instead of retrying.
+  if (err.code === "P2010") {
+    const pgCode = (err.meta as { code?: unknown } | undefined)?.code;
+    return pgCode === "40001" || pgCode === "40P01" || /40001|could not serialize/i.test(err.message);
+  }
+  return false;
 }
 
 /**
@@ -46,7 +53,9 @@ export async function runSerializable<T>(
       }
       if (isWriteConflict(err) && attempt < retries) {
         lastErr = err;
-        await new Promise((r) => setTimeout(r, 25 * (attempt + 1)));
+        // Jittered backoff: a burst of identical requests (the opening-minute
+        // rush) must not retry in lockstep and collide again.
+        await new Promise((r) => setTimeout(r, 25 * (attempt + 1) + Math.random() * 50 * (attempt + 1)));
         continue;
       }
       throw err;

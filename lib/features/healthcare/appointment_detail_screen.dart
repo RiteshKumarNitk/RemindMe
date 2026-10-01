@@ -85,9 +85,16 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
               : '$day\n$time';
 
           return RefreshIndicator(
+            // With a token, refresh just the live card — reloading the whole
+            // screen would flash the skeleton and rebuild the card (a second
+            // request). Without one, reload the appointment.
             onRefresh: () async {
-              reload();
-              await _tokenCard.currentState?.refresh();
+              final card = _tokenCard.currentState;
+              if (card != null) {
+                await card.refresh();
+              } else {
+                reload();
+              }
             },
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -402,6 +409,7 @@ class _LiveTokenCardState extends State<_LiveTokenCard> {
 
   TokenStatus? _status;
   Timer? _timer;
+  bool _inFlight = false;
 
   @override
   void initState() {
@@ -416,6 +424,9 @@ class _LiveTokenCardState extends State<_LiveTokenCard> {
   }
 
   Future<void> refresh() async {
+    // A pull-to-refresh landing while a poll is in flight must not double up.
+    if (_inFlight) return;
+    _inFlight = true;
     try {
       final status = await context.read<AppointmentRepository>().tokenStatus(
         widget.appointmentId,
@@ -425,7 +436,14 @@ class _LiveTokenCardState extends State<_LiveTokenCard> {
       _timer?.cancel();
       if (status.isLive) _timer = Timer(_pollEvery, refresh);
     } on ApiException {
-      // Keep the last known (or fallback) ticket; retry on the next pull.
+      // Keep the last known (or fallback) ticket and try again on the next
+      // tick — a dropped request on a flaky network must not stop updates.
+      if (mounted && (_status?.isLive ?? true)) {
+        _timer?.cancel();
+        _timer = Timer(_pollEvery, refresh);
+      }
+    } finally {
+      _inFlight = false;
     }
   }
 

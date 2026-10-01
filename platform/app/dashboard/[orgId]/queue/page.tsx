@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db.js";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { listDoctors } from "@/modules/doctors/service.js";
@@ -46,6 +47,9 @@ export default async function QueuePage({
   const { orgId } = await params;
   const ctx = await requireOrgContext(orgId);
   const role = ctx.org!.role;
+  // Patients never see the board (it lists everyone in the queue by name);
+  // their own token lives on the appointment page.
+  if (role === "PATIENT") redirect(`/dashboard/${orgId}`);
   const sp = await searchParams;
 
   const doctors = await listDoctors(ctx);
@@ -137,7 +141,8 @@ export default async function QueuePage({
           Queue — {doctor?.displayName ?? "Doctor"} · {board.queueDate}
         </h1>
         <div className="text-sm text-ink-muted tabular-nums">
-          {board.summary.total} tokens today
+          {board.summary.total} {board.summary.total === 1 ? "token" : "tokens"}
+          {isToday ? " today" : ""}
         </div>
       </div>
       {sp.error ? <Notice tone="down">{sp.error}</Notice> : null}

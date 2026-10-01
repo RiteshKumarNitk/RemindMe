@@ -238,6 +238,9 @@ export async function getBoard(
   ctx: RequestContext,
   filter: { doctorId: string; date?: string },
 ) {
+  // The board lists every queued patient by name. Patients read only their own
+  // ticket via /patient/token-status — never the board.
+  assertRole(ctx, "RECEPTIONIST", "CLINIC_ADMIN", "DOCTOR");
   const t = tenantDb(ctx);
   const doctor = await t.doctorProfile.findFirstOrThrow({
     where: { id: filter.doctorId, organizationId: ctx.org!.id },

@@ -174,6 +174,24 @@ void main() {
       expect(status('COMPLETED').isLive, isFalse);
       expect(status('NO_SHOW').isLive, isFalse);
     });
+
+    test('a cancelled token (entry parked as SKIPPED) is not live', () {
+      final cancelled = TokenStatus.fromJson({
+        'tokenNumber': 4,
+        'state': 'SKIPPED',
+        'appointmentStatus': 'CANCELLED',
+        'advice': 'This booking was cancelled.',
+      });
+      expect(cancelled.isWithdrawn, isTrue);
+      expect(cancelled.isLive, isFalse);
+      final skipped = TokenStatus.fromJson({
+        'tokenNumber': 4,
+        'state': 'SKIPPED',
+        'appointmentStatus': 'WAITING',
+        'advice': '',
+      });
+      expect(skipped.isLive, isTrue);
+    });
   });
 
   group('Appointment', () {

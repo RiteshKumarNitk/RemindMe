@@ -45,6 +45,18 @@ export async function registerAndLogin(prefix = "u"): Promise<TestUser> {
   };
 }
 
+/** Log an existing test user in again — for suites that outlive the access-token TTL. */
+export async function relogin(email: string): Promise<string> {
+  const login = await call<{ accessToken: string }>(loginRoute, {
+    client: "app",
+    body: { email, password: PW },
+  });
+  if (login.status !== 200) {
+    throw new Error(`relogin failed: ${login.status} ${JSON.stringify(login.body)}`);
+  }
+  return login.body.accessToken;
+}
+
 export interface TestOrg {
   id: string;
   slug: string;

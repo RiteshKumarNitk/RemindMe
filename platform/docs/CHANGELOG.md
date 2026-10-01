@@ -4,6 +4,28 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-10-01 — Token/queue production-hardening QA pass (uncommitted)
+
+Real-clinic walk-through of the token day (API, database, browser, Flutter). Defects fixed —
+no schema change, no new feature:
+- **Opening-minute rush returned HTTP 500** (20 simultaneous bookings: 17 failed). Token booking
+  ran SERIALIZABLE, so every booking for a doctor/day aborted on the shared counter row; the
+  40001 from the raw allocator also arrived as P2010 and was never retried. Booking now runs
+  READ COMMITTED (the allocator's documented model) with the cap enforced against the locked
+  counter value; `runSerializable` also retries P2010/40001 for other raw statements.
+- **Patients could read the reception board** (`GET /queue`, `GET /queue/next`) — every queued
+  patient's name. Now RECEPTIONIST / CLINIC_ADMIN / DOCTOR only; patients are redirected.
+- **Consultation page left the queue stuck**: Start / Sign & complete moved the appointment but
+  not the QueueEntry, so "Call next" refused for the rest of the day. Now kept in step.
+- **Cancelled appointments could be resurrected** via recall → start; queue actions on
+  cancelled / rescheduled / no-show appointments are now refused; cancel also drops HOLD entries.
+- Cancelled tokens no longer show "you missed your call" or keep polling (web + Flutter);
+  patients are told to contact reception instead of seeing a Cancel button that always fails.
+- Flutter token polling: no overlapping requests, no skeleton flicker on pull, keeps polling
+  after a dropped request.
+Docs: QUEUE_MANAGEMENT.md rewritten to match the state machine; TOKEN_BOOKING_ASSESSMENT.md §8.
+Tests: `token-qa.test.ts` (21), `token_widget_test.dart` (6), Flutter token model tests.
+
 ## 2026-10-01 — Same-day token booking: UI, Flutter, and four backend fixes (uncommitted)
 
 Completes the token feature whose backend landed in `02ba104` (see

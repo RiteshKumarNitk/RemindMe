@@ -12,9 +12,9 @@ additive schema change below.
 | `AppointmentStatus` lifecycle (`REQUESTED → CONFIRMED → CHECKED_IN → WAITING → IN_CONSULTATION → COMPLETED`) | Unchanged for token bookings. Token check-in walks the *same* `CHECKED_IN → WAITING` path scheduled check-in does. |
 | `QueueEntry` (`tokenNumber`, `queueDate`, `state`, `position`, `recallCount`) | **The token.** `tokenNumber` is already the daily sequence and already has `@@unique([organizationId, doctorId, queueDate, tokenNumber])`. |
 | `QueueEntry` queue operations (`CALL/RECALL/SKIP/START/COMPLETE`) | Reception board actions. `HOLD` + `NO_SHOW` + `callNext` are added *to this state machine*, not as a parallel one. |
-| `AppointmentEvent` | Every token/queue transition is logged here. |
+| `AppointmentEvent` | Every change of the **appointment's** status (token booked → WAITING, START → IN_CONSULTATION, COMPLETE, NO_SHOW, CANCEL). Queue-only moves (CALL, HOLD, RELEASE, SKIP, RECALL) don't change the appointment's status, so they are recorded in `AuditLog` (`QUEUE_<ACTION>`), not here. |
 | `AuditLog` (`writeAudit` / `writeAuditWith`) | Every mutation. |
-| `Notification` + `notify()` + dispatcher | `TOKEN_BOOKED`, `TOKEN_CALLED`, `TOKEN_RECALLED`, `TOKEN_ON_HOLD`, `CONSULTATION_STARTED`. No new notification architecture. |
+| `Notification` + `notify()` + dispatcher | One existing event, `QUEUE_UPDATE` (PUSH), with payload `{appointmentId, tokenNumber, state}` — sent on token booked (WAITING) and on every queue action except RELEASE and COMPLETE. No new notification architecture, no new event names. |
 | `AvailabilityRule.startMinute/endMinute` convention (minutes from local midnight) | The token window is stored the same way, so it needs no new type. |
 | `src/lib/time.ts` (`zonedWallTimeToUtc`, `localPartsInZone`) | All window maths is clinic-timezone-correct and server-side. |
 | `runSerializable` + the `Appointment_org_doctor_no_overlap` EXCLUDE constraint | Concurrency safety model for booking, extended (see §3.6). |
@@ -55,7 +55,7 @@ Default `SCHEDULED` ⇒ no existing doctor's behaviour changes.
 | `maxDailyTokens` | `50` | daily token cap |
 
 7:00 AM is only the **default**. It is a doctor-configurable value, validated
-(0–1440, `opens < closes`, `maxDailyTokens` 1–500) and surfaced in the doctor's
+(minutes 0–1439, `opens < closes`, queue start inside the window, `maxDailyTokens` 1–1000) and surfaced in the doctor's
 own settings UI. Nothing in the codebase hardcodes 07:00.
 
 ### 3.3 `enum AppointmentBookingKind { SCHEDULED, SAME_DAY_TOKEN }`
@@ -234,3 +234,58 @@ and only RECALL changes it (to -1, "serve next"). Nothing reorders silently.
   booking + status repository calls, "Today's token" card on the doctor
   profile, `TokenBookingScreen`, and a live token card (server `ahead`, polled
   every 20 s while live) that replaces the old `position - 1` estimate.
+
+## 8. Production-hardening QA pass (2026-10-01)
+
+Real-clinic walk-through of the whole token + queue day. Defects found and fixed
+(none required a schema change):
+
+1. **Consultation page left the queue stuck (pre-existing, high).** The
+   consultation page's *Start* and *Sign & complete* (and the appointment
+   `start` / `complete` / `no-show` routes) move the **appointment** through
+   `applyStatusChange`, which never touched the `QueueEntry`. A visit finished
+   from the SOAP/prescription page left its entry `IN_CONSULTATION`, so
+   "Call next" refused ("someone is already called") for the rest of the day.
+   `syncQueueEntryForAppointment` now moves the entry in the same transaction
+   and writes the matching `QUEUE_*` audit row.
+2. **Cancelled appointments could be resurrected (pre-existing, high).**
+   Cancel parks the queue entry as `SKIPPED` (recallable), and queue `START`
+   updated the appointment without checking its status — so recall → call →
+   start turned a `CANCELLED` appointment into `IN_CONSULTATION`. Queue
+   actions are now refused for CANCELLED / RESCHEDULED / NO_SHOW appointments
+   (and only a stale-entry COMPLETE is allowed on a COMPLETED one); the board
+   offers no buttons for them. Cancel now also drops `HOLD` entries.
+3. **Cancelled token shown as "you missed your call".** The patient status now
+   carries `appointmentStatus`; web and Flutter show "Cancelled" and stop
+   polling. The reception board files cancelled entries under the finished
+   group rather than the recallable "On hold / skipped" group.
+4. **Doomed patient Cancel button on tokens.** The existing policy (patient
+   self-cancel only outside `cancellationWindowHours`, measured from
+   `scheduledStart` = today's queue-start anchor) is unchanged; the page now
+   says "contact reception" instead of offering a button that always fails.
+
+### Documented behaviour (as implemented and pinned by tests)
+
+- **Queue transitions** (`queue/state-machine.ts`):
+  WAITING→CALLED (call), WAITING→SKIPPED, WAITING→HOLD, WAITING→NO_SHOW;
+  CALLED→WAITING (recall), CALLED→SKIPPED, CALLED→HOLD, CALLED→IN_CONSULTATION
+  (start, assigned doctor), CALLED→NO_SHOW; SKIPPED→WAITING (recall),
+  SKIPPED→NO_SHOW; HOLD→CALLED (recall), HOLD→WAITING (release), HOLD→NO_SHOW;
+  IN_CONSULTATION→COMPLETED (complete, assigned doctor). COMPLETED and NO_SHOW
+  are terminal.
+- **Recall priority:** RECALL sets `position = -1` (every other entry keeps its
+  position; nobody is renumbered). Order is `(position, tokenNumber)`, so a
+  recalled-to-WAITING patient is called next; if two are recalled, the lower
+  token goes first. Recall from HOLD goes straight to CALLED.
+- **`tokenNumber` is never updated** after creation — no code path writes it.
+- **Call next** refuses while anyone is CALLED or IN_CONSULTATION, and never
+  auto-picks HOLD / SKIPPED.
+- **Cap:** counts tokens *issued* (the counter), so a cancelled token still
+  uses one of the day's slots. A refused booking (window, cap, ownership)
+  rolls back with its transaction and consumes no number.
+- **Cancellation:** staff may cancel REQUESTED / CONFIRMED / CHECKED_IN /
+  WAITING (including a CALLED or HELD token, whose appointment is still
+  WAITING); IN_CONSULTATION, COMPLETED, NO_SHOW cannot be cancelled.
+  Patients/guardians are additionally bound by the clinic's cancellation
+  window from the queue-start anchor — in practice, a same-day token is
+  cancelled by reception.

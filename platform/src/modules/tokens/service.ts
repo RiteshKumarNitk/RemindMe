@@ -5,7 +5,6 @@ import { AppError } from "@/lib/errors.js";
 import { writeAuditWith } from "@/lib/audit.js";
 import { assertRole } from "@/lib/rbac.js";
 import { tenantDb } from "@/lib/tenant.js";
-import { runSerializable } from "@/lib/serializable.js";
 import { notify } from "@/lib/notifications/notify.js";
 import { allocateTokenNumber } from "@/modules/queue/service.js";
 import { resolveTimezone } from "@/modules/appointments/service.js";
@@ -304,6 +303,43 @@ export interface TokenBookingResult {
 }
 
 /**
+ * Token booking's transaction: READ COMMITTED, not SERIALIZABLE.
+ *
+ * Every booking for a doctor/day writes the same counter row. Under
+ * SERIALIZABLE, concurrent writers of one row abort with 40001 and must retry,
+ * so an opening-minute rush of 20 patients committed roughly one per round and
+ * the rest ran out of retries (HTTP 500). Under READ COMMITTED the counter's
+ * `INSERT … ON CONFLICT DO UPDATE` simply waits for the row lock and increments
+ * the latest committed value — the behaviour the allocator was designed for
+ * (TOKEN_BOOKING_ASSESSMENT.md §4.2). Correctness does not rely on snapshot
+ * isolation:
+ *   - unique token per doctor/day: the counter row lock + QueueEntry @@unique
+ *   - daily cap: checked against the number the locked counter returned
+ *   - one active token per patient/doctor/day: the partial unique index
+ *   - ownership / window / doctor checks: per-row reads, no cross-row invariant
+ * `maxWait`/`timeout` are sized for a burst queueing on that lock; a write
+ * conflict or deadlock is still retried.
+ */
+async function runTokenTransaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await db.$transaction(fn, {
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+        maxWait: 15_000,
+        timeout: 30_000,
+      });
+    } catch (err) {
+      const retryable =
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        (err.code === "P2034" ||
+          (err.code === "P2010" && /40P01|40001|deadlock|could not serialize/i.test(err.message)));
+      if (!retryable || attempt >= 3) throw err;
+      await new Promise((r) => setTimeout(r, 30 * (attempt + 1) + Math.random() * 60));
+    }
+  }
+}
+
+/**
  * Core booking routine, shared by patient self-service and the staff walk-in.
  *
  * Enforced here, server-side, in this order — none of it can be skipped by
@@ -315,8 +351,9 @@ export interface TokenBookingResult {
  *   5. no other active token for this patient/doctor/day — and if one exists it
  *      is RETURNED, not rejected
  *
- * All of it inside a SERIALIZABLE transaction, so the cap and the one-token
- * rule are decided against one consistent snapshot.
+ * All of it inside one transaction (`runTokenTransaction`); the cap and the
+ * one-token rule are enforced by the locked counter and a unique index, not
+ * by snapshot isolation.
  */
 async function bookTokenForPatient(
   ctx: RequestContext,
@@ -333,7 +370,7 @@ async function bookTokenForPatient(
   const now = new Date();
 
   try {
-    const booked = await runSerializable(async (tx) => {
+    const booked = await runTokenTransaction(async (tx) => {
       // Never trust patientId/locationId from the client. Same rule as
       // `bookAppointment`: a patient books for their own record, or for a
       // dependent they hold an active MANAGE_APPOINTMENTS grant on — checked
@@ -425,12 +462,36 @@ async function bookTokenForPatient(
         },
         select: { id: true },
       });
+      await tx.appointmentEvent.create({
+        data: {
+          organizationId: orgId,
+          appointmentId: appt.id,
+          fromStatus: null,
+          toStatus: "WAITING",
+          actorId: ctx.userId,
+          reason: "token:book",
+        },
+      });
 
+      // ---- Counter lock taken here; held until commit. Keep what follows short.
+      // The upsert is atomic under READ COMMITTED: concurrent bookings for this
+      // doctor/day queue on the counter row and each gets the next number.
       const tokenNumber = await allocateTokenNumber(tx, {
         organizationId: orgId,
         doctorId: args.doctorId,
         queueDate: tokenDate,
       });
+      // The authoritative cap check. The window check above read the counter
+      // without a lock (fast refusal in the common case); this one is decided
+      // against the locked row, and throwing rolls the increment back so no
+      // number is consumed.
+      if (tokenNumber > config.maxDailyTokens) {
+        throw new AppError(
+          "TOKEN_LIMIT_REACHED",
+          `All ${config.maxDailyTokens} tokens for today have been issued.`,
+          { date: window.date, timezone: window.timezone },
+        );
+      }
 
       const entry = await tx.queueEntry.create({
         data: {
@@ -448,16 +509,6 @@ async function bookTokenForPatient(
         select: { id: true, tokenNumber: true },
       });
 
-      await tx.appointmentEvent.create({
-        data: {
-          organizationId: orgId,
-          appointmentId: appt.id,
-          fromStatus: null,
-          toStatus: "WAITING",
-          actorId: ctx.userId,
-          reason: "token:book",
-        },
-      });
       await writeAuditWith(tx, ctx, {
         action: args.auditAction,
         entityType: "Appointment",

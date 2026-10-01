@@ -7,14 +7,22 @@ client.
 
 ## Queue states
 
-`WAITING` · `CALLED` · `IN_CONSULTATION` · `COMPLETED` · `SKIPPED`
+`WAITING` · `CALLED` · `IN_CONSULTATION` · `COMPLETED` · `SKIPPED` · `HOLD` · `NO_SHOW`
 
 ```
-WAITING ──► CALLED ──► IN_CONSULTATION ──► COMPLETED
-   ▲          │
-   │          └──► SKIPPED         (no-show at the door)
-   └── recall ◄─────────┘          (SKIPPED/CALLED back to WAITING, recallCount++)
+WAITING ──call──► CALLED ──start──► IN_CONSULTATION ──complete──► COMPLETED
+  │  ▲              │ │ │
+  │  └──recall──────┘ │ └──skip──► SKIPPED ──recall──► WAITING (served next)
+  │                   └──hold──► HOLD ──recall──► CALLED
+  ├──hold──► HOLD           HOLD ──release──► WAITING
+  ├──skip──► SKIPPED
+  └──no-show (also from CALLED / SKIPPED / HOLD) ──► NO_SHOW  (terminal)
 ```
+
+Source of truth: `src/modules/queue/state-machine.ts`. HOLD = here-ish but out
+of the running order (recallable); SKIPPED = missed the call (recallable);
+NO_SHOW = clinic decided they did not attend (terminal; the appointment
+becomes NO_SHOW too).
 
 ## Scope of a queue
 
@@ -43,26 +51,35 @@ On `POST /appointments/:id/check-in`:
 
 | Action | Transition | Effect |
 |---|---|---|
-| **call** | `WAITING → CALLED` | `calledAt = now`; notify patient (`QUEUE_UPDATE`, "your turn") |
-| **recall** | `CALLED/SKIPPED → WAITING` (re-queued, kept near front) | `recallCount++`; re-notify |
-| **skip** | `WAITING/CALLED → SKIPPED` | `skippedAt = now`; patient dropped from active order; can be recalled |
-| **start** | `CALLED → IN_CONSULTATION` | `consultationStartedAt`; appointment → `IN_CONSULTATION`; only the assigned DOCTOR |
-| **complete** | `IN_CONSULTATION → COMPLETED` | `completedAt`; appointment → `COMPLETED` |
+| **call** | `WAITING → CALLED` | `calledAt` |
+| **recall** | `CALLED/SKIPPED → WAITING`, `HOLD → CALLED` | `recallCount++`, `position = -1`, `calledAt` |
+| **skip** | `WAITING/CALLED → SKIPPED` | `skippedAt` |
+| **hold** | `WAITING/CALLED → HOLD` | `heldAt` |
+| **release** | `HOLD → WAITING` | `heldAt = null` (keeps its old position) |
+| **no-show** | `WAITING/CALLED/SKIPPED/HOLD → NO_SHOW` | appointment → `NO_SHOW` |
+| **start** | `CALLED → IN_CONSULTATION` | assigned DOCTOR only; appointment → `IN_CONSULTATION` |
+| **complete** | `IN_CONSULTATION → COMPLETED` | assigned DOCTOR only; appointment → `COMPLETED` |
+| **next** (`POST /queue/next`) | earliest `WAITING` → `CALLED` | refuses while anyone is CALLED/IN_CONSULTATION |
 
-"Call next" = pick the lowest-`position` `WAITING` entry for the doctor/day and
-`call` it. A `recall`ed entry is re-inserted at `position = (current min
-WAITING position) - 1` (or a dedicated `recallPriority` ordering key) so it is
-served next without renumbering everyone.
+Every action writes `AuditLog` `QUEUE_<ACTION>` and (except release/complete)
+a `QUEUE_UPDATE` notification to the patient's owner. Front-desk actions are
+RECEPTIONIST / CLINIC_ADMIN, or the assigned doctor on their own queue.
+
+**Appointment is the source of truth.** Queue actions are refused when the
+appointment is CANCELLED / RESCHEDULED / NO_SHOW. Starting, completing or
+no-showing the *appointment* directly (consultation page, appointment routes)
+moves the queue entry in the same transaction.
 
 ## Ordering
 
-Live board query:
-`WHERE organizationId=? AND doctorId=? AND queueDate=? AND state IN ('WAITING','CALLED','IN_CONSULTATION') ORDER BY (state='IN_CONSULTATION') DESC, position ASC`
-served by `@@index([organizationId, doctorId, queueDate, state, position])`.
+`ORDER BY position ASC, tokenNumber ASC`. `position` starts equal to the
+token and only RECALL changes it (to -1). The board returns every entry for
+the day (all states) with a per-entry `actions` list computed server-side.
 
-Patient-facing view returns: `tokenNumber`, `state`, `nowServing` (current
-`CALLED`/`IN_CONSULTATION` token), `ahead` (count of `WAITING` with lower
-position). Example: *Token #24 · Now serving #21 · 3 ahead*.
+Patient-facing view (`GET /api/patient/token-status`) returns `tokenNumber`,
+`state`, `appointmentStatus`, `nowServingToken` (IN_CONSULTATION, else CALLED),
+`ahead` (WAITING entries ordered before this one) and a server-written
+`advice`. No ETA.
 
 ## Concurrency & correctness
 
@@ -70,15 +87,19 @@ position). Example: *Token #24 · Now serving #21 · 3 ahead*.
   constraint is the backstop.
 - Every transition is validated against the table above → invalid ⇒
   **409 `INVALID_QUEUE_TRANSITION`**.
-- Completing / cancelling the underlying appointment cascades to the queue
-  entry (`COMPLETED` / removed).
+- Cancelling the underlying appointment parks a WAITING / CALLED / HOLD entry
+  as `SKIPPED` (history kept, no further queue actions). Starting / completing
+  / no-showing the appointment moves the entry to match.
 - Queue entries are not deleted for history; end-of-day they simply age out of
   the active board by `queueDate`.
 
 ## Realtime delivery (MVP)
 
-Polling: the web board and patient app poll `GET /queue` every ~10 s. A
-push `Notification` (`QUEUE_UPDATE`) is sent on `call`/`recall`. Server-Sent
+Polling: the web board refreshes every 10 s and the web token panel every
+15 s while live; the Flutter token card polls `/patient/token-status` every
+20 s while the token is live and stops when it is finished or cancelled. A
+`QUEUE_UPDATE` notification is sent on every queue action except release /
+complete. Server-Sent
 Events / WebSockets are a post-MVP enhancement — not needed to be correct.
 
 ## Same-day tokens, HOLD and NO_SHOW

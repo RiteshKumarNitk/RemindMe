@@ -68,6 +68,15 @@ export default async function AppointmentDetailPage({
     token != null &&
     !["CANCELLED", "RESCHEDULED", "NO_SHOW", "COMPLETED"].includes(token.appointmentStatus) &&
     ["WAITING", "CALLED", "HOLD", "SKIPPED", "IN_CONSULTATION"].includes(token.state);
+  // Existing policy, unchanged: a patient may self-cancel only outside the
+  // clinic's cancellation window, measured from scheduledStart — for a token
+  // that is today's queue-start anchor. Don't offer a button that will refuse.
+  const patientCancelClosed =
+    isToken &&
+    canActAsPatient &&
+    !isStaff &&
+    cancelWindowHours != null &&
+    new Date(appt.scheduledStart).getTime() - Date.now() < cancelWindowHours * 3_600_000;
   const ADVICE_TONE = { WAIT: "indigo", ACT_NOW: "coral", SEE_RECEPTION: "warn", DONE: "ok", PROBLEM: "down" } as const;
 
   return (
@@ -184,7 +193,12 @@ export default async function AppointmentDetailPage({
               Reschedule
             </LinkButton>
           )}
-          {["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING"].includes(appt.status) && (isStaff || canActAsPatient) && (
+          {patientCancelClosed && ["CHECKED_IN", "WAITING"].includes(appt.status) ? (
+            <p className="max-w-xs text-[12px] text-ink-muted">
+              To cancel today&rsquo;s token, please contact the clinic reception.
+            </p>
+          ) : null}
+          {["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING"].includes(appt.status) && (isStaff || canActAsPatient) && !patientCancelClosed && (
             <div>
               <form action={cancelAppointmentAction.bind(null, orgId, appt.id)}>
                 <input type="hidden" name="reason" value={isStaff ? "Cancelled by staff" : "Cancelled by patient"} />
