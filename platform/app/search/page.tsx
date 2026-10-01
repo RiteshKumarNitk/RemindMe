@@ -136,6 +136,7 @@ export default async function SearchPage({
                     yearsOfExperience: d.yearsOfExperience,
                     languages: d.languages,
                     consultationFeeMinor: d.consultationFeeMinor,
+                    bookingMode: d.bookingMode,
                     organization: { name: d.organization.name, slug: d.organization.slug },
                   }}
                 />

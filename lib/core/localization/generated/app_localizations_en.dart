@@ -1573,4 +1573,82 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get hcUnavailableBody =>
       'It may have been unpublished. Go back and choose another provider.';
+
+  @override
+  String get hcTodaysToken => 'Today\'s token';
+
+  @override
+  String get hcTokenIntro =>
+      'Get a queue number for today\'s clinic. Patients are seen in token order — there is no fixed time.';
+
+  @override
+  String get hcTokenOpenNow => 'Today\'s token booking is open.';
+
+  @override
+  String hcTokenOpensAt(String time) {
+    return 'Today\'s token booking opens at $time.';
+  }
+
+  @override
+  String hcTokenOpensAtButton(String time) {
+    return 'Booking opens at $time';
+  }
+
+  @override
+  String get hcTokenClosed => 'Today\'s token booking is closed.';
+
+  @override
+  String get hcTokenLimitReached => 'Today\'s token limit has been reached.';
+
+  @override
+  String get hcBookTodaysToken => 'Book today\'s token';
+
+  @override
+  String hcTokenWindowTimes(String opens, String closes, String queueStart) {
+    return 'Booking $opens–$closes · queue starts $queueStart (clinic time)';
+  }
+
+  @override
+  String get hcConfirmToken => 'Confirm today\'s token';
+
+  @override
+  String hcYourToken(int token) {
+    return 'Your token: #$token';
+  }
+
+  @override
+  String get hcTokenAlreadyHave =>
+      'You already have a token for today\'s clinic.';
+
+  @override
+  String get hcViewToken => 'View token';
+
+  @override
+  String get hcTokenBooked => 'Your token is booked.';
+
+  @override
+  String hcNowServing(int token) {
+    return 'Now serving #$token';
+  }
+
+  @override
+  String get hcQueueOnHold => 'On hold';
+
+  @override
+  String get hcQueueSkipped => 'Skipped';
+
+  @override
+  String get hcQueueNoShow => 'Marked as not arrived';
+
+  @override
+  String hcTokenDay(String date, String time) {
+    return 'Same-day token · $date · queue starts $time';
+  }
+
+  @override
+  String get hcTokenRefreshNote =>
+      'Pull down to refresh. This updates by itself while you are in the queue.';
+
+  @override
+  String get hcOrScheduled => 'Or book a scheduled appointment';
 }

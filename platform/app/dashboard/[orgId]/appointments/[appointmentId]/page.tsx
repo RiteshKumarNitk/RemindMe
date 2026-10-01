@@ -3,6 +3,8 @@ import { requireOrgContext } from "@/lib/web-context.js";
 import { db } from "@/lib/db.js";
 import { getAppointment } from "@/modules/appointments/service.js";
 import { hasFamilyAccess } from "@/modules/family/service.js";
+import { getPatientTokenStatus } from "@/modules/tokens/service.js";
+import { AutoRefresh } from "../../../AutoRefresh.js";
 import { Badge, Button, Card, CardSubtitle, CardTitle, LinkButton, Notice, statusLabel, statusTone } from "@/components/ui/index.js";
 import { ConfirmSubmit } from "@/components/confirm-submit.js";
 import {
@@ -19,12 +21,12 @@ export default async function AppointmentDetailPage({
   searchParams,
 }: {
   params: Promise<{ orgId: string; appointmentId: string }>;
-  searchParams: Promise<{ error?: string; justBooked?: string }>;
+  searchParams: Promise<{ error?: string; justBooked?: string; existingToken?: string }>;
 }) {
   const { orgId, appointmentId } = await params;
   const ctx = await requireOrgContext(orgId);
   const role = ctx.org!.role;
-  const { error, justBooked } = await searchParams;
+  const { error, justBooked, existingToken } = await searchParams;
 
   const appt = await getAppointment(ctx, appointmentId);
 
@@ -58,13 +60,53 @@ export default async function AppointmentDetailPage({
       : null;
   const cancelWindowHours = settings?.cancellationWindowHours ?? null;
 
+  // Same-day token: live position from the same queue rows reception sees.
+  const isToken = appt.bookingKind === "SAME_DAY_TOKEN";
+  const token = isToken && appt.queueEntry ? await getPatientTokenStatus(ctx, appt.id) : null;
+  // The appointment status wins: a cancelled token's entry is parked as SKIPPED.
+  const tokenLive =
+    token != null &&
+    !["CANCELLED", "RESCHEDULED", "NO_SHOW", "COMPLETED"].includes(token.appointmentStatus) &&
+    ["WAITING", "CALLED", "HOLD", "SKIPPED", "IN_CONSULTATION"].includes(token.state);
+  const ADVICE_TONE = { WAIT: "indigo", ACT_NOW: "coral", SEE_RECEPTION: "warn", DONE: "ok", PROBLEM: "down" } as const;
+
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <Link href={`/dashboard/${orgId}/appointments`} className="text-sm text-indigo no-underline">
         ← All appointments
       </Link>
 
-      {justBooked ? <Notice tone="ok">Your appointment is booked.</Notice> : null}
+      {tokenLive ? <AutoRefresh seconds={15} /> : null}
+      {justBooked ? <Notice tone="ok">{isToken ? "Your token is booked." : "Your appointment is booked."}</Notice> : null}
+      {existingToken ? <Notice tone="ok">You already have a token for today&rsquo;s clinic.</Notice> : null}
+
+      {token ? (
+        <Card>
+          <CardSubtitle>My token</CardSubtitle>
+          <div className="mt-1 flex flex-wrap items-center gap-4">
+            <div className="font-display text-4xl font-bold tabular-nums text-indigo">#{token.tokenNumber}</div>
+            <div className="flex flex-col gap-1">
+              {token.appointmentStatus === "CANCELLED" || token.appointmentStatus === "RESCHEDULED" ? (
+                <Badge tone={statusTone(token.appointmentStatus)}>{statusLabel(token.appointmentStatus)}</Badge>
+              ) : (
+                <Badge tone={statusTone(token.state)}>{statusLabel(token.state)}</Badge>
+              )}
+              <span className="text-sm text-ink-muted">
+                {token.state === "WAITING"
+                  ? `${token.ahead} ${token.ahead === 1 ? "person" : "people"} ahead of you`
+                  : null}
+                {token.nowServingToken !== null && token.state === "WAITING" ? ` · now serving #${token.nowServingToken}` : null}
+              </span>
+            </div>
+          </div>
+          <div className="mt-3">
+            <Badge tone={ADVICE_TONE[token.adviceTone]}>{token.advice}</Badge>
+          </div>
+          {tokenLive ? (
+            <p className="mt-3 text-xs text-ink-muted">This page refreshes automatically. No exact time is given — patients are seen in token order.</p>
+          ) : null}
+        </Card>
+      ) : null}
       {error ? <Notice tone="down">{error}</Notice> : null}
 
       <Card>
@@ -79,6 +121,11 @@ export default async function AppointmentDetailPage({
           <Badge tone={statusTone(appt.status)}>{statusLabel(appt.status)}</Badge>
         </div>
 
+        {token ? (
+          <p className="mt-4 text-sm font-medium text-ink">
+            Same-day token · {token.queueDate} · queue starts {token.queueStartAt}
+          </p>
+        ) : (
         <p className="mt-4 text-sm font-medium text-ink">
           {new Date(appt.scheduledStart).toLocaleString(undefined, {
             weekday: "long",
@@ -88,6 +135,7 @@ export default async function AppointmentDetailPage({
             minute: "2-digit",
           })}
         </p>
+        )}
 
         {/* Ownership chain (request §27/§28): which branch, what kind of
             visit — shown to every role that can read the appointment. */}

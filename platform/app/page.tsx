@@ -167,6 +167,7 @@ export default async function HomePage() {
                     yearsOfExperience: doctor.yearsOfExperience,
                     languages: doctor.languages,
                     consultationFeeMinor: doctor.consultationFeeMinor,
+                    bookingMode: doctor.bookingMode,
                     organization: { name: doctor.organization.name, slug: doctor.organization.slug },
                   }}
                 />

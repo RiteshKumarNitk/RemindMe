@@ -165,6 +165,70 @@ export async function getTokenWindow(doctorId: string): Promise<TokenWindow> {
   return computeTokenWindow(toWindowConfig(doctor), org.timezone, now, counter?.lastToken ?? 0);
 }
 
+/**
+ * The same window, for staff inside the tenant (reception board, doctor
+ * dashboard). Unlike `getTokenWindow` it does not require the doctor to be
+ * publicly listed — an unlisted doctor can still run a walk-in token clinic.
+ */
+export async function getTokenWindowForStaff(
+  ctx: RequestContext,
+  doctorId: string,
+): Promise<TokenWindow & { issued: number; maxDailyTokens: number }> {
+  assertRole(ctx, "RECEPTIONIST", "CLINIC_ADMIN", "DOCTOR");
+  const { window, config } = await windowFor(db, ctx.org!.id, doctorId, null, new Date());
+  const counter = await db.queueTokenCounter.findFirst({
+    where: { organizationId: ctx.org!.id, doctorId, queueDate: clinicLocalDate(new Date(), window.timezone) },
+    select: { lastToken: true },
+  });
+  return { ...window, issued: counter?.lastToken ?? 0, maxDailyTokens: config.maxDailyTokens };
+}
+
+/**
+ * The caller's (or a dependent's) active token with this doctor today, if any.
+ * Lets the doctor page show "View token" instead of a second booking button.
+ * Only rows whose patient the caller owns or manages are considered.
+ */
+export async function findMyActiveToken(userId: string, doctorId: string) {
+  const doctor = await db.doctorProfile.findFirst({
+    where: { id: doctorId, isActive: true },
+    select: { organizationId: true, organization: { select: { timezone: true } } },
+  });
+  if (!doctor) return null;
+  const tokenDate = clinicLocalDate(new Date(), doctor.organization.timezone);
+  const now = new Date();
+  return db.appointment.findFirst({
+    where: {
+      organizationId: doctor.organizationId,
+      doctorId,
+      tokenDate,
+      bookingKind: "SAME_DAY_TOKEN",
+      status: { notIn: [...INACTIVE_TOKEN_STATUSES] },
+      patient: {
+        OR: [
+          { ownerUserId: userId },
+          {
+            accessGrants: {
+              some: {
+                granteeUserId: userId,
+                revokedAt: null,
+                permissions: { has: "VIEW_APPOINTMENTS" },
+                OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+              },
+            },
+          },
+        ],
+      },
+    },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      organizationId: true,
+      patient: { select: { firstName: true, lastName: true } },
+      queueEntry: { select: { tokenNumber: true, state: true } },
+    },
+  });
+}
+
 /** Token status a patient is allowed to see for their own record. */
 export interface PatientTokenStatus {
   appointmentId: string;
@@ -179,6 +243,9 @@ export interface PatientTokenStatus {
   /** The day's configured queue start, e.g. "09:00" — from the doctor's own setting. */
   queueStartAt: string;
   bookingKind: string;
+  /** The appointment's own status — authoritative when it disagrees with the
+   *  queue state (a cancelled token's entry is parked as SKIPPED). */
+  appointmentStatus: string;
   /** Server-rendered next step, so no client has to interpret queue state itself. */
   advice: string;
   adviceTone: "WAIT" | "ACT_NOW" | "SEE_RECEPTION" | "DONE" | "PROBLEM";
@@ -267,6 +334,42 @@ async function bookTokenForPatient(
 
   try {
     const booked = await runSerializable(async (tx) => {
+      // Never trust patientId/locationId from the client. Same rule as
+      // `bookAppointment`: a patient books for their own record, or for a
+      // dependent they hold an active MANAGE_APPOINTMENTS grant on — checked
+      // inside this transaction's snapshot.
+      const patient = await tx.patient.findFirst({
+        where: { id: args.patientId, organizationId: orgId },
+        select: { id: true, ownerUserId: true },
+      });
+      if (!patient) throw new AppError("NOT_FOUND", "Patient not found.");
+      if (ctx.org!.role === "PATIENT" && patient.ownerUserId !== ctx.userId) {
+        const grant = await tx.patientAccessGrant.findFirst({
+          where: {
+            patientId: patient.id,
+            organizationId: orgId,
+            granteeUserId: ctx.userId,
+            revokedAt: null,
+            permissions: { has: "MANAGE_APPOINTMENTS" },
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          },
+          select: { id: true },
+        });
+        if (!grant) {
+          throw new AppError(
+            "FORBIDDEN",
+            "You can only book for your own record or a dependent you manage.",
+          );
+        }
+      }
+      if (args.locationId) {
+        const loc = await tx.clinicLocation.findFirst({
+          where: { id: args.locationId, organizationId: orgId },
+          select: { id: true },
+        });
+        if (!loc) throw new AppError("NOT_FOUND", "Location not found.");
+      }
+
       const { window, timezone, config } = await windowFor(
         tx,
         orgId,
@@ -294,21 +397,13 @@ async function bookTokenForPatient(
           doctorName: doctor.displayName,
           queueDate: window.date,
           queueStartAt: window.queueStartAt,
-          notifyUserId: (await tx.patient.findFirstOrThrow({
-            where: { id: args.patientId, organizationId: orgId },
-            select: { ownerUserId: true },
-          })).ownerUserId,
+          notifyUserId: patient.ownerUserId,
         };
       }
 
       const queueStart = new Date(window.queueStartUtc);
       const queueEnd = new Date(queueStart.getTime() + config.consultationDurationMin * 60_000);
-      const notifyUserId = (
-        await tx.patient.findFirstOrThrow({
-          where: { id: args.patientId, organizationId: orgId },
-          select: { ownerUserId: true },
-        })
-      ).ownerUserId;
+      const notifyUserId = patient.ownerUserId;
 
       const appt = await tx.appointment.create({
         data: {
@@ -469,9 +564,8 @@ export async function bookSameDayToken(ctx: RequestContext, input: BookTokenInpu
   return bookTokenForPatient({ ...ctx, org }, {
     organizationId: org.id,
     doctorId: input.doctorId,
-    // Never trusted as an authorization decision — `bookTokenForPatient` resolves
-    // the patient inside the org, and a guardian's MANAGE_APPOINTMENTS grant is
-    // re-checked by the caller path in patient-booking.
+    // Never trusted as an authorization decision — `bookTokenForPatient`
+    // re-checks ownership or an active MANAGE_APPOINTMENTS grant.
     patientId: input.patientId ?? selfPatientId,
     locationId: input.locationId,
     reason: input.reason,
@@ -493,8 +587,12 @@ export async function walkInToken(
   const t = tenantDb(ctx);
   const doctor = await t.doctorProfile.findFirstOrThrow({
     where: { id: doctorId, organizationId: ctx.org!.id, isActive: true },
-    select: { id: true },
+    select: { id: true, userId: true },
   });
+  // Same rule as queueTransition: a doctor works their own queue only.
+  if (ctx.org!.role === "DOCTOR" && doctor.userId !== ctx.userId) {
+    throw new AppError("FORBIDDEN", "Doctors can only issue tokens for their own queue.");
+  }
   const patient = await t.patient.findFirst({
     where: { id: input.patientId, organizationId: ctx.org!.id },
     select: { id: true },
@@ -622,7 +720,10 @@ export async function getPatientTokenStatus(
     }),
   ]);
 
-  const advice = ADVICE[entry.state] ?? ADVICE.WAITING;
+  const cancelled = appt.status === "CANCELLED" || appt.status === "RESCHEDULED";
+  const advice = cancelled
+    ? { advice: "This booking was cancelled.", adviceTone: "PROBLEM" as const }
+    : (ADVICE[entry.state] ?? ADVICE.WAITING);
   return {
     appointmentId: appt.id,
     queueEntryId: entry.id,
@@ -634,6 +735,7 @@ export async function getPatientTokenStatus(
     queueDate: entry.queueDate.toISOString().slice(0, 10),
     queueStartAt: formatMinuteOfDay(appt.doctor.queueStartMinute),
     bookingKind: appt.bookingKind,
+    appointmentStatus: appt.status,
     advice: advice.advice,
     adviceTone: advice.adviceTone,
   };

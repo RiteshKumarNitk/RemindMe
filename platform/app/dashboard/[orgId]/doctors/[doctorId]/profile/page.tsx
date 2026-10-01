@@ -2,9 +2,16 @@ import { redirect } from "next/navigation";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { getDoctor } from "@/modules/doctors/service.js";
 import { Badge, Button, Card, CardSubtitle, CardTitle, Field, Input } from "@/components/ui/index.js";
-import { saveDoctorProfileAction } from "./actions.js";
+import { formatMinuteOfDay } from "@/modules/tokens/window.js";
+import { saveBookingPreferenceAction, saveDoctorProfileAction } from "./actions.js";
 
 export const dynamic = "force-dynamic";
+
+const BOOKING_MODES = [
+  { value: "SCHEDULED", label: "Scheduled appointments", hint: "Patients pick a time slot from your availability." },
+  { value: "SAME_DAY_TOKEN", label: "Same-day token booking", hint: "Patients take a numbered token for today and are seen in queue order." },
+  { value: "BOTH", label: "Both", hint: "Offer time slots and today's tokens side by side." },
+] as const;
 
 export default async function DoctorProfilePage({
   params,
@@ -62,6 +69,53 @@ export default async function DoctorProfilePage({
             {doctor.isPubliclyListed ? "Listed publicly" : "Not listed yet"}
           </Badge>
         </div>
+      </Card>
+
+      <Card id="booking">
+        <CardTitle>Appointment &amp; booking</CardTitle>
+        <p className="mt-1 text-sm text-ink-muted">
+          How patients book with {doctor.displayName}. Times are in the clinic&rsquo;s timezone.
+        </p>
+        <form
+          action={saveBookingPreferenceAction.bind(null, orgId, doctorId)}
+          className="mt-4 flex flex-col gap-4"
+        >
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-medium text-ink">Booking mode</legend>
+            {BOOKING_MODES.map((m) => (
+              <label key={m.value} className="flex items-start gap-2 text-sm text-ink">
+                <input
+                  type="radio"
+                  name="bookingMode"
+                  value={m.value}
+                  defaultChecked={doctor.bookingMode === m.value}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="font-medium">{m.label}</span>
+                  <span className="block text-xs text-ink-muted">{m.hint}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Booking opens at" hint="Used for same-day tokens only.">
+              <Input name="tokenOpens" type="time" required defaultValue={formatMinuteOfDay(doctor.tokenOpensMinute)} />
+            </Field>
+            <Field label="Booking closes at">
+              <Input name="tokenCloses" type="time" required defaultValue={formatMinuteOfDay(doctor.tokenClosesMinute)} />
+            </Field>
+            <Field label="Consultation / queue starts at" hint="Must fall inside the booking window.">
+              <Input name="queueStart" type="time" required defaultValue={formatMinuteOfDay(doctor.queueStartMinute)} />
+            </Field>
+            <Field label="Maximum tokens per day">
+              <Input name="maxDailyTokens" type="number" min={1} max={1000} required defaultValue={doctor.maxDailyTokens} />
+            </Field>
+          </div>
+          <div>
+            <Button type="submit">Save booking preferences</Button>
+          </div>
+        </form>
       </Card>
 
       <Card>

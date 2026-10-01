@@ -162,6 +162,12 @@ class HealthcareFormat {
       case 'COMPLETED':
         return l10n.hcStatusCompleted;
       case 'SKIPPED':
+        return l10n.hcQueueSkipped;
+      case 'HOLD':
+        return l10n.hcQueueOnHold;
+      case 'NO_SHOW':
+        return l10n.hcQueueNoShow;
+      case 'CANCELLED':
         return l10n.hcStatusCancelled;
       default:
         return l10n.hcStatusUnknown;

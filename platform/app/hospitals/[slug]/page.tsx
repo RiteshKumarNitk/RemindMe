@@ -164,6 +164,7 @@ export default async function HospitalDetailPage({
                     yearsOfExperience: doctor.yearsOfExperience,
                     languages: doctor.languages,
                     consultationFeeMinor: doctor.consultationFeeMinor,
+                    bookingMode: doctor.bookingMode,
                     organization: { name: org.name, slug: org.slug },
                   }}
                 />

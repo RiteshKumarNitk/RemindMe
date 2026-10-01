@@ -1568,4 +1568,82 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get hcUnavailableBody =>
       'यह हटा दिया गया हो सकता है। वापस जाकर दूसरा केंद्र चुनें।';
+
+  @override
+  String get hcTodaysToken => 'आज का टोकन';
+
+  @override
+  String get hcTokenIntro =>
+      'आज के क्लिनिक के लिए कतार नंबर लें। मरीज़ों को टोकन क्रम में देखा जाता है — कोई तय समय नहीं है।';
+
+  @override
+  String get hcTokenOpenNow => 'आज की टोकन बुकिंग खुली है।';
+
+  @override
+  String hcTokenOpensAt(String time) {
+    return 'आज की टोकन बुकिंग $time बजे खुलेगी।';
+  }
+
+  @override
+  String hcTokenOpensAtButton(String time) {
+    return 'बुकिंग $time बजे खुलेगी';
+  }
+
+  @override
+  String get hcTokenClosed => 'आज की टोकन बुकिंग बंद हो गई है।';
+
+  @override
+  String get hcTokenLimitReached => 'आज के सभी टोकन दिए जा चुके हैं।';
+
+  @override
+  String get hcBookTodaysToken => 'आज का टोकन बुक करें';
+
+  @override
+  String hcTokenWindowTimes(String opens, String closes, String queueStart) {
+    return 'बुकिंग $opens–$closes · कतार $queueStart से (क्लिनिक का समय)';
+  }
+
+  @override
+  String get hcConfirmToken => 'आज का टोकन पक्का करें';
+
+  @override
+  String hcYourToken(int token) {
+    return 'आपका टोकन: #$token';
+  }
+
+  @override
+  String get hcTokenAlreadyHave =>
+      'आज के क्लिनिक के लिए आपके पास पहले से टोकन है।';
+
+  @override
+  String get hcViewToken => 'टोकन देखें';
+
+  @override
+  String get hcTokenBooked => 'आपका टोकन बुक हो गया है।';
+
+  @override
+  String hcNowServing(int token) {
+    return 'अभी #$token की बारी';
+  }
+
+  @override
+  String get hcQueueOnHold => 'होल्ड पर';
+
+  @override
+  String get hcQueueSkipped => 'छोड़ा गया';
+
+  @override
+  String get hcQueueNoShow => 'नहीं पहुँचे के रूप में दर्ज';
+
+  @override
+  String hcTokenDay(String date, String time) {
+    return 'उसी दिन का टोकन · $date · कतार $time से';
+  }
+
+  @override
+  String get hcTokenRefreshNote =>
+      'रीफ़्रेश करने के लिए नीचे खींचें। कतार में रहते हुए यह अपने-आप अपडेट होता है।';
+
+  @override
+  String get hcOrScheduled => 'या तय समय की अपॉइंटमेंट बुक करें';
 }

@@ -80,3 +80,13 @@ position). Example: *Token #24 · Now serving #21 · 3 ahead*.
 Polling: the web board and patient app poll `GET /queue` every ~10 s. A
 push `Notification` (`QUEUE_UPDATE`) is sent on `call`/`recall`. Server-Sent
 Events / WebSockets are a post-MVP enhancement — not needed to be correct.
+
+## Same-day tokens, HOLD and NO_SHOW
+
+Token bookings (`Appointment.bookingKind = SAME_DAY_TOKEN`) enter this queue directly as
+`WAITING` and share the per-(organization, doctor, clinic-local day) token counter
+(`QueueTokenCounter`) with scheduled check-ins — one sequence per doctor per day, across that
+doctor's locations. Added states: `HOLD` (from WAITING or CALLED; `RECALL` → CALLED,
+`RELEASE` → WAITING) and `NO_SHOW` (terminal, also marks the appointment NO_SHOW). "Call next"
+is server-side and picks the earliest `WAITING` by `(position, tokenNumber)`; HOLD/SKIPPED are
+never auto-picked. Details: [TOKEN_BOOKING_ASSESSMENT.md](TOKEN_BOOKING_ASSESSMENT.md).

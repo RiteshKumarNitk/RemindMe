@@ -157,21 +157,28 @@ is the queue-start anchor and is explicitly labelled as such; the API returns
 than guessed — see §"Unresolved".
 
 ### 4.4 Who may do what (RBAC — no new capability)
-| Action | PATIENT | RECEPTIONIST | DOCTOR (own queue) | CLINIC_ADMIN |
+| Action | PATIENT | RECEPTIONIST | DOCTOR | CLINIC_ADMIN |
 |---|---|---|---|---|
-| Book today's token (self/dependent w/ MANAGE_APPOINTMENTS grant) | ✅ | — | — | — |
-| Register a walk-in token | — | ✅ | — | ✅ |
-| Read own token | ✅ | — | — | — |
-| Read the queue board | — | ✅ | ✅ (own doctor only) | ✅ |
-| call / hold / skip / no-show / callNext / recall | — | ✅ | — | ✅ |
-| start / complete consultation | — | — | ✅ (assigned doctor only, unchanged) | — |
-| Configure booking mode + window | — | — | ✅ (own profile) | ✅ (any doctor) |
+| Book today's token (self, or dependent with an active MANAGE_APPOINTMENTS grant) | ✅ | — | — | — |
+| Register a walk-in token | — | ✅ | ✅ own queue only | ✅ |
+| Read own token / dependent's token (VIEW_APPOINTMENTS) | ✅ | — | — | — |
+| Read the queue board | — | ✅ | ✅ | ✅ |
+| call / call-next / hold / release / skip / recall / no-show | — | ✅ | ✅ own queue only | ✅ |
+| start / complete consultation | — | — | ✅ assigned doctor only | — |
+| Configure booking mode + window | — | — | ✅ own profile | ✅ any doctor |
 
-Doctor cannot bypass reception on `call`/`hold`/`skip`/`no-show` — that matches
-the pre-existing `queueTransition` rule (`START`/`COMPLETE` are doctor-only,
-everything else is reception/admin), so no RBAC change was needed.
+The doctor's front-desk rights on their **own** queue are the pre-existing
+`queueTransition` rule (an assigned doctor could already CALL/RECALL/SKIP before
+this feature), preserved rather than widened or narrowed. A doctor can never act
+on another doctor's queue; the board's per-entry `actions` list mirrors that
+exactly, so no button is rendered that the API would refuse.
 Doctor self-service for booking preferences follows the existing
 `updateDoctor` "self or CLINIC_ADMIN" rule — a new restriction was not invented.
+
+### 4.5 Priority handling
+The product has no patient-priority concept, so there is nothing to interact
+with. Order is `(position, tokenNumber)`: `position` starts equal to the token
+and only RECALL changes it (to -1, "serve next"). Nothing reorders silently.
 
 ## 5. Rejected alternatives
 
@@ -201,3 +208,29 @@ Doctor self-service for booking preferences follows the existing
   future does not exist, so a reschedule target never does either.
 - **No per-location token lines.** Matches the existing unique constraint; see
   §3.5.
+
+## 7. Follow-up pass (2026-10-01) — gaps closed after the first implementation
+
+- **`CALLED → HOLD` was missing** from the state machine although §3.4 listed it;
+  the core "token called, nobody answered, hold them" case was impossible. Added
+  and unit-tested (`tests/unit/queue-state-machine.test.ts`).
+- **Dependent spoofing (security).** `bookSameDayToken` passed a client
+  `patientId` through with only an org check, so any patient could take a token
+  in another patient's name. It now enforces ownership or an active
+  MANAGE_APPOINTMENTS grant inside the booking transaction — the same rule as
+  `bookAppointment`. A client `locationId` must also belong to the org.
+- **Window validation** (`opens < closes`, queue start inside the window) was
+  documented but not wired into `updateDoctor`; it now validates the merged
+  stored+incoming window whenever any window field changes.
+- **Board actions** offered CALL/HOLD/SKIP to *any* doctor although the API only
+  allows the assigned one; now mirrors the API.
+- **Web UI:** booking preferences on the doctor profile page; "Today's token"
+  on the public doctor page (scheduled / token / both), `/doctors/:id/token`
+  confirm page; reception board regrouped into NOW / NEXT / WAITING / ON HOLD /
+  COMPLETED with server-decided "Call next" and a desk walk-in form; doctor
+  overview "Today's queue"; live "My token" panel on the appointment page;
+  booking-mode badge on search cards.
+- **Flutter:** `BookingMode`/`TokenWindow`/`TokenStatus` models, token window +
+  booking + status repository calls, "Today's token" card on the doctor
+  profile, `TokenBookingScreen`, and a live token card (server `ahead`, polled
+  every 20 s while live) that replaces the old `position - 1` estimate.

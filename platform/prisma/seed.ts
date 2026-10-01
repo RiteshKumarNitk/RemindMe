@@ -67,6 +67,9 @@ async function main() {
       displayName: "Dr. Demo Sharma",
       specialty: "General Medicine",
       consultationDurationMin: 15,
+      // Slots AND same-day tokens; window uses the schema defaults
+      // (07:00–11:00, queue from 09:00, 50 tokens) — editable in settings.
+      bookingMode: "BOTH",
       availabilityRules: {
         create: [
           // Mon–Fri 09:00–13:00, 15-min slots.

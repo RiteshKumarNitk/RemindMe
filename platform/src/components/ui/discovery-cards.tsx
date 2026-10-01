@@ -86,6 +86,17 @@ export interface PublicDoctorCardData {
   languages?: string[];
   consultationFeeMinor: number | null;
   organization: { name: string; slug: string };
+  /** How patients book — drives the "Today's token" / "Scheduled" badge. */
+  bookingMode?: "SCHEDULED" | "SAME_DAY_TOKEN" | "BOTH";
+}
+
+/** Public booking-method badge. Says how you book, never whether a token is
+ *  still left today — that needs the live window, which the doctor page shows. */
+export function BookingModeBadge({ mode }: { mode?: PublicDoctorCardData["bookingMode"] }) {
+  if (mode === "SAME_DAY_TOKEN") return <Badge tone="coral">Same-day tokens</Badge>;
+  if (mode === "BOTH") return <Badge tone="coral">Appointments · Same-day tokens</Badge>;
+  if (mode === "SCHEDULED") return <Badge tone="neutral">Scheduled appointments</Badge>;
+  return null;
 }
 
 export function DoctorCard({ doctor }: { doctor: PublicDoctorCardData }) {
@@ -110,6 +121,7 @@ export function DoctorCard({ doctor }: { doctor: PublicDoctorCardData }) {
         <p className="truncate text-sm text-ink-muted">{doctor.organization.name}</p>
         <div className="mt-auto flex flex-wrap items-center gap-2">
           {fee ? <Badge tone="indigo">{fee} / visit</Badge> : null}
+          <BookingModeBadge mode={doctor.bookingMode} />
           {doctor.languages?.length ? (
             <span className="truncate text-[11.5px] text-ink-faint">
               {doctor.languages.slice(0, 3).join(" · ")}
@@ -141,6 +153,9 @@ export function HospitalDoctorCard({ doctor }: { doctor: PublicDoctorCardData })
             {doctor.yearsOfExperience ? ` · ${doctor.yearsOfExperience} yrs` : ""}
           </CardSubtitle>
         </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <BookingModeBadge mode={doctor.bookingMode} />
       </div>
       <div className="mt-auto flex items-center justify-between gap-2">
         {fee ? <Badge tone="indigo">{fee} / visit</Badge> : <span />}

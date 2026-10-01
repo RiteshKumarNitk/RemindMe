@@ -125,10 +125,14 @@ export async function PatientOverview({ ctx, orgId }: { ctx: RequestContext; org
         <Hero>
           <HeroMain>
             <div>
-              <HeroLabel>Next appointment</HeroLabel>
+              <HeroLabel>{next.bookingKind === "SAME_DAY_TOKEN" ? "Today’s token" : "Next appointment"}</HeroLabel>
               <h2 className="relative mt-1 font-display text-xl font-bold">{next.doctor.displayName}</h2>
               {next.doctor.specialty ? <p className="relative text-sm text-white/85">{next.doctor.specialty}</p> : null}
-              <p className="relative mt-2 text-[13px] font-medium text-white/90">{nextWhen}</p>
+              <p className="relative mt-2 text-[13px] font-medium text-white/90">
+                {next.bookingKind === "SAME_DAY_TOKEN" && next.queueEntry
+                  ? `Token #${next.queueEntry.tokenNumber} · ${statusLabel(next.queueEntry.state)}`
+                  : nextWhen}
+              </p>
               <div className="relative mt-3 flex flex-wrap items-center gap-2">
                 <Badge tone="glass">{statusLabel(next.status)}</Badge>
                 {next.queueEntry ? <Badge tone="glass">Token {next.queueEntry.tokenNumber}</Badge> : null}
@@ -138,16 +142,18 @@ export async function PatientOverview({ ctx, orgId }: { ctx: RequestContext; org
               <LinkButton variant="light" href={`/dashboard/${orgId}/appointments/${next.id}`}>
                 View appointment
               </LinkButton>
-              <LinkButton variant="glass" href={`/dashboard/${orgId}/appointments/${next.id}/reschedule`}>
-                Reschedule
-              </LinkButton>
+              {next.bookingKind !== "SAME_DAY_TOKEN" ? (
+                <LinkButton variant="glass" href={`/dashboard/${orgId}/appointments/${next.id}/reschedule`}>
+                  Reschedule
+                </LinkButton>
+              ) : null}
             </HeroActions>
           </HeroMain>
           <HeroSide>
             <SideStat
               value={next.queueEntry ? next.queueEntry.tokenNumber : "—"}
               label={next.queueEntry ? "Your token" : "Not checked in yet"}
-              sub={next.queueEntry ? `Status: ${next.queueEntry.state.toLowerCase()}` : "Check in when you arrive"}
+              sub={next.queueEntry ? `Status: ${statusLabel(next.queueEntry.state)}` : "Check in when you arrive"}
             />
             <Card className="flex flex-1 flex-col gap-3">
               <CardSubtitle>Active prescriptions</CardSubtitle>

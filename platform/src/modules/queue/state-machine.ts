@@ -32,7 +32,9 @@ export type QueueAction =
 
 const TABLE: Record<QueueState, Partial<Record<QueueAction, QueueState>>> = {
   WAITING: { CALL: "CALLED", SKIP: "SKIPPED", HOLD: "HOLD", NO_SHOW: "NO_SHOW" },
-  CALLED: { RECALL: "WAITING", SKIP: "SKIPPED", START: "IN_CONSULTATION", NO_SHOW: "NO_SHOW" },
+  // CALLED -> HOLD is the everyday case: token called, nobody answered, park
+  // them and move on without losing them (spec §8).
+  CALLED: { RECALL: "WAITING", SKIP: "SKIPPED", HOLD: "HOLD", START: "IN_CONSULTATION", NO_SHOW: "NO_SHOW" },
   SKIPPED: { RECALL: "WAITING", NO_SHOW: "NO_SHOW" },
   IN_CONSULTATION: { COMPLETE: "COMPLETED" },
   COMPLETED: {},

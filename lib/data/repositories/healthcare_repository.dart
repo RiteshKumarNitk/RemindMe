@@ -3,6 +3,7 @@ import '../models/healthcare/availability.dart';
 import '../models/healthcare/doctor.dart';
 import '../models/healthcare/organization.dart';
 import '../models/healthcare/page.dart';
+import '../models/healthcare/token.dart';
 
 /// Public healthcare discovery.
 ///
@@ -122,6 +123,17 @@ class HealthcareRepository {
       },
     );
     return DoctorAvailability.fromJson(json);
+  }
+
+  /// Today's token window for a doctor, as the server computes it in the
+  /// clinic's timezone. Never cached: it flips from closed to open at a
+  /// configured minute, and the issued-token count changes constantly.
+  Future<TokenWindow> tokenWindow(String doctorId) async {
+    final json = await _client.getObject(
+      '/public/doctors/${Uri.encodeComponent(doctorId)}/token-window',
+      auth: AuthMode.none,
+    );
+    return TokenWindow.fromJson(json);
   }
 
   void clearCaches() {

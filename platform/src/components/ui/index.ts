@@ -18,4 +18,5 @@ export {
   HospitalDoctorCard,
   SectionHeading,
   VerificationBadge,
+  BookingModeBadge,
 } from "./discovery-cards.js";

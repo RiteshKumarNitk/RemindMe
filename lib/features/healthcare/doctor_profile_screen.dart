@@ -5,10 +5,12 @@ import '../../core/localization/generated/app_localizations.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../data/models/healthcare/clinic_location.dart';
 import '../../data/models/healthcare/doctor.dart';
+import '../../data/models/healthcare/token.dart';
 import '../../data/repositories/healthcare_repository.dart';
 import '../widgets/app_buttons.dart';
 import 'healthcare_format.dart';
 import 'slot_picker_screen.dart';
+import 'token_booking_screen.dart';
 import 'widgets/healthcare_widgets.dart';
 
 /// The public profile of one doctor, as published by their clinic.
@@ -34,9 +36,7 @@ class DoctorProfileScreen extends StatelessWidget {
     final repository = context.read<HealthcareRepository>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(organizationName ?? l10n.hcDoctorsTitle),
-      ),
+      appBar: AppBar(title: Text(organizationName ?? l10n.hcDoctorsTitle)),
       body: HcAsyncView<DoctorDetail>(
         load: () => repository.doctorById(doctorId),
         builder: (context, doctor, reload) {
@@ -91,22 +91,30 @@ class DoctorProfileScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
-              AppButton(
-                label: l10n.hcBookAppointment,
-                icon: Icons.event_available_rounded,
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => SlotPickerScreen(
-                      doctorId: doctor.id,
-                      doctorName: doctor.displayName,
-                      organizationId: doctor.organization.id,
-                      organizationName: doctor.organization.name,
-                      branch: branch,
-                      appointmentTypes: doctor.organization.appointmentTypes,
+              if (doctor.bookingMode.offersTokens) ...[
+                _TodaysTokenCard(doctor: doctor, branchId: branch?.id),
+                if (doctor.bookingMode.offersSlots) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  HcSectionHeader(title: l10n.hcOrScheduled),
+                ],
+              ],
+              if (doctor.bookingMode.offersSlots)
+                AppButton(
+                  label: l10n.hcBookAppointment,
+                  icon: Icons.event_available_rounded,
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => SlotPickerScreen(
+                        doctorId: doctor.id,
+                        doctorName: doctor.displayName,
+                        organizationId: doctor.organization.id,
+                        organizationName: doctor.organization.name,
+                        branch: branch,
+                        appointmentTypes: doctor.organization.appointmentTypes,
+                      ),
                     ),
                   ),
                 ),
-              ),
               const SizedBox(height: AppSpacing.xl),
               _DetailCard(
                 rows: [
@@ -129,16 +137,14 @@ class DoctorProfileScreen extends StatelessWidget {
               ],
               if (doctor.organization.locations.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.xl),
-                HcSectionHeader(title: l10n.hcLocations),                  for (final location in doctor.organization.locations)
+                HcSectionHeader(title: l10n.hcLocations),
+                for (final location in doctor.organization.locations)
                   Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          location.name,
-                          style: theme.textTheme.titleMedium,
-                        ),
+                        Text(location.name, style: theme.textTheme.titleMedium),
                         if (location.shortAddress.isNotEmpty)
                           Text(
                             location.shortAddress,
@@ -239,6 +245,125 @@ class _DetailCard extends StatelessWidget {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Today's token" — state comes from the server's window for the clinic's
+/// own timezone, never from this device's clock. Re-read on every open and
+/// on tap of the refresh icon, since it flips open at a configured minute.
+class _TodaysTokenCard extends StatefulWidget {
+  const _TodaysTokenCard({required this.doctor, this.branchId});
+
+  final DoctorDetail doctor;
+  final String? branchId;
+
+  @override
+  State<_TodaysTokenCard> createState() => _TodaysTokenCardState();
+}
+
+class _TodaysTokenCardState extends State<_TodaysTokenCard> {
+  late Future<TokenWindow> _window;
+
+  @override
+  void initState() {
+    super.initState();
+    _window = _load();
+  }
+
+  Future<TokenWindow> _load() =>
+      context.read<HealthcareRepository>().tokenWindow(widget.doctor.id);
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: FutureBuilder<TokenWindow>(
+          future: _window,
+          builder: (context, snapshot) {
+            final window = snapshot.data;
+            final String line;
+            if (window == null) {
+              line = snapshot.hasError ? l10n.hcLoadFailedTitle : '…';
+            } else if (window.bookable) {
+              line = l10n.hcTokenOpenNow;
+            } else if (window.isNotYetOpen) {
+              line = l10n.hcTokenOpensAt(window.opensAt);
+            } else if (window.isLimitReached) {
+              line = l10n.hcTokenLimitReached;
+            } else {
+              line = l10n.hcTokenClosed;
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.confirmation_number_rounded,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        l10n.hcTodaysToken,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: l10n.hcRetry,
+                      icon: const Icon(Icons.refresh_rounded),
+                      onPressed: () => setState(() => _window = _load()),
+                    ),
+                  ],
+                ),
+                Text(line, style: theme.textTheme.bodyLarge),
+                if (window != null) ...[
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    l10n.hcTokenWindowTimes(
+                      window.opensAt,
+                      window.closesAt,
+                      window.queueStartAt,
+                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.md),
+                AppButton(
+                  label: window != null && window.isNotYetOpen
+                      ? l10n.hcTokenOpensAtButton(window.opensAt)
+                      : l10n.hcBookTodaysToken,
+                  icon: Icons.confirmation_number_outlined,
+                  onPressed: window == null || !window.bookable
+                      ? null
+                      : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => TokenBookingScreen(
+                              organizationId: widget.doctor.organization.id,
+                              organizationName: widget.doctor.organization.name,
+                              doctorId: widget.doctor.id,
+                              doctorName: widget.doctor.displayName,
+                              window: window,
+                              locationId: widget.branchId,
+                            ),
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

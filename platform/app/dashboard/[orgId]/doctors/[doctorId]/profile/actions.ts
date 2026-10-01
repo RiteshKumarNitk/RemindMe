@@ -19,6 +19,51 @@ function numberOrNull(formData: FormData, key: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** "HH:MM" from an <input type="time"> -> minutes from local midnight. */
+function minuteOrUndefined(formData: FormData, key: string): number | undefined {
+  const m = /^(\d{2}):(\d{2})$/.exec(String(formData.get(key) ?? "").trim());
+  return m ? Number(m[1]) * 60 + Number(m[2]) : undefined;
+}
+
+/**
+ * Booking mode + same-day token window. Its own form and action so saving the
+ * window never re-submits (and can never clobber) the profile fields, and vice
+ * versa. RBAC is `updateDoctor`'s: the doctor themself or a clinic admin.
+ */
+export async function saveBookingPreferenceAction(orgId: string, doctorId: string, formData: FormData) {
+  const ctx = await requireOrgContext(orgId);
+  const back = `/dashboard/${orgId}/doctors/${doctorId}/profile`;
+  const mode = String(formData.get("bookingMode") ?? "");
+  const usesTokens = mode === "SAME_DAY_TOKEN" || mode === "BOTH";
+
+  const parsed = updateDoctorSchema.safeParse({
+    bookingMode: mode,
+    // Window fields are only sent when tokens are on, so switching back to
+    // SCHEDULED keeps the last window for next time instead of wiping it.
+    ...(usesTokens
+      ? {
+          tokenOpensMinute: minuteOrUndefined(formData, "tokenOpens"),
+          tokenClosesMinute: minuteOrUndefined(formData, "tokenCloses"),
+          queueStartMinute: minuteOrUndefined(formData, "queueStart"),
+          maxDailyTokens: numberOrNull(formData, "maxDailyTokens") ?? undefined,
+        }
+      : {}),
+  });
+  if (!parsed.success) {
+    redirect(`${back}?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? "Invalid input.")}#booking`);
+  }
+
+  try {
+    await updateDoctor(ctx, doctorId, parsed.data);
+  } catch (err) {
+    const message = err instanceof AppError ? err.message : "Could not save booking preferences.";
+    redirect(`${back}?error=${encodeURIComponent(message)}#booking`);
+  }
+  revalidatePath(back);
+  revalidatePath(`/doctors/${doctorId}`);
+  redirect(`${back}?saved=1#booking`);
+}
+
 export async function saveDoctorProfileAction(orgId: string, doctorId: string, formData: FormData) {
   const ctx = await requireOrgContext(orgId);
 

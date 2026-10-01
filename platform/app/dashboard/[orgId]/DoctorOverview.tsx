@@ -49,6 +49,12 @@ export async function DoctorOverview({
     ["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING", "IN_CONSULTATION"].includes(a.status),
   ).length;
 
+  const called = board.entries.find((e) => e.state === "CALLED") ?? null;
+  const onHold = board.entries.filter(
+    (e) => (e.state === "HOLD" || e.state === "SKIPPED") && !["CANCELLED", "RESCHEDULED"].includes(e.appointment.status),
+  );
+  const completedTokens = board.entries.filter((e) => e.state === "COMPLETED");
+
   const nextAppointmentId = (nextUp ?? inConsultation)?.appointmentId ?? null;
   const active = inConsultation ?? nextUp;
 
@@ -108,6 +114,31 @@ export async function DoctorOverview({
         <StatTile icon={<CloseIcon />} tone="danger" label="No-shows" value={noShowToday} />
       </div>
 
+      {board.entries.length > 0 ? (
+        <Card>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-display text-lg font-bold text-ink">Today&rsquo;s queue</h2>
+            <span className="text-sm tabular-nums text-ink-muted">{board.summary.total} tokens today</span>
+          </div>
+          <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[9rem_1fr]">
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Current patient</dt>
+            <dd className="text-ink">
+              {inConsultation ?? called
+                ? `#${(inConsultation ?? called)!.tokenNumber} — ${(inConsultation ?? called)!.patient.firstName} ${(inConsultation ?? called)!.patient.lastName}${inConsultation ? "" : " (called)"}`
+                : "—"}
+            </dd>
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Next patient</dt>
+            <dd className="text-ink">{nextUp ? `#${nextUp.tokenNumber} — ${nextUp.patient.firstName} ${nextUp.patient.lastName}` : "—"}</dd>
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Waiting ({waiting.length})</dt>
+            <dd className="tabular-nums text-ink-muted">{waiting.map((e) => `#${e.tokenNumber}`).join("  ") || "—"}</dd>
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">On hold ({onHold.length})</dt>
+            <dd className="tabular-nums text-ink-muted">{onHold.map((e) => `#${e.tokenNumber}`).join("  ") || "—"}</dd>
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Completed ({completedTokens.length})</dt>
+            <dd className="tabular-nums text-ink-muted">{completedTokens.map((e) => `#${e.tokenNumber}`).join("  ") || "—"}</dd>
+          </dl>
+        </Card>
+      ) : null}
+
       <div>
         <h2 className="mb-3 font-display text-lg font-bold text-ink">Today&rsquo;s schedule</h2>
         {todaysAppointments.length === 0 ? (
@@ -119,7 +150,9 @@ export async function DoctorOverview({
                 <Card className="flex flex-row items-center justify-between py-3 transition-colors hover:border-indigo">
                   <div className="flex items-center gap-3">
                     <span className="w-16 text-sm font-medium tabular-nums text-ink">
-                      {new Date(a.scheduledStart).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                      {a.bookingKind === "SAME_DAY_TOKEN" && a.queueEntry
+                        ? `Token ${a.queueEntry.tokenNumber}`
+                        : new Date(a.scheduledStart).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                     </span>
                     <span className="text-sm text-ink">
                       {a.patient.firstName} {a.patient.lastName}

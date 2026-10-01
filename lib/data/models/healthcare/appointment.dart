@@ -89,7 +89,8 @@ class QueueEntry {
   bool get isWaiting => state == 'WAITING';
   bool get isCalled => state == 'CALLED';
   bool get isInConsultation => state == 'IN_CONSULTATION';
-  bool get isDone => state == 'COMPLETED' || state == 'SKIPPED';
+  bool get isOnHold => state == 'HOLD';
+  bool get isDone => state == 'COMPLETED' || state == 'NO_SHOW';
 }
 
 /// An appointment as the platform stores it.
@@ -113,6 +114,8 @@ class Appointment {
     this.doctorName,
     this.patientName,
     this.queueEntry,
+    this.bookingKind = 'SCHEDULED',
+    this.tokenDate,
   });
 
   final String id;
@@ -138,6 +141,15 @@ class Appointment {
   final String? doctorName;
   final String? patientName;
   final QueueEntry? queueEntry;
+
+  /// `SCHEDULED` or `SAME_DAY_TOKEN`. A token's [scheduledStart] is only the
+  /// queue-start anchor, so screens must not present it as a booked time.
+  final String bookingKind;
+
+  /// Clinic-local token day, `YYYY-MM-DD` (token bookings only).
+  final String? tokenDate;
+
+  bool get isToken => bookingKind == 'SAME_DAY_TOKEN';
 
   factory Appointment.fromJson(Map<String, dynamic> json) {
     final doctor = asMap(json['doctor']);
@@ -167,6 +179,8 @@ class Appointment {
               asString(patient['lastName']),
             ].whereType<String>().join(' '),
       queueEntry: QueueEntry.fromJson(json['queueEntry']),
+      bookingKind: asStringOr(json['bookingKind'], 'SCHEDULED'),
+      tokenDate: asString(json['tokenDate'])?.substring(0, 10),
     );
   }
 }

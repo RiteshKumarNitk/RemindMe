@@ -211,12 +211,18 @@ export function alwaysOpenWindow(): {
   return { tokenOpensMinute: 0, tokenClosesMinute: 1439, queueStartMinute: 540, maxDailyTokens: 50 };
 }
 
-/** First free slot ~`daysAhead` from now for a doctor (uses the slots API). */
+/**
+ * First free slot ~`daysAhead` from now for a doctor (uses the slots API).
+ *
+ * Pass `after` (an ISO instant from a previous call) to get the *next* slot
+ * after it on the same day — needed to place two appointments on one day.
+ */
 export async function firstSlot(
   token: string,
   orgId: string,
   doctorId: string,
   daysAhead = 7,
+  after?: string,
 ): Promise<{ start: string; end: string; date: string }> {
   const d = new Date(Date.now() + daysAhead * 86_400_000);
   const date = d.toISOString().slice(0, 10);
@@ -228,7 +234,11 @@ export async function firstSlot(
   if (res.status !== 200 || !res.body.slots?.length) {
     throw new Error(`no slots for ${date}: ${res.status} ${JSON.stringify(res.body)}`);
   }
-  return { ...res.body.slots[0]!, date };
+  const slot = after
+    ? res.body.slots.find((s) => s.start > after)
+    : res.body.slots[0];
+  if (!slot) throw new Error(`no slot after ${after} on ${date}`);
+  return { ...slot, date };
 }
 
 export { PW as TEST_PASSWORD };

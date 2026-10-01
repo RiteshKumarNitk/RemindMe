@@ -35,6 +35,7 @@ const STATUS: Record<string, { label: string; tone: StatusTone }> = {
   // Queue board states (queue state machine; WAITING/IN_CONSULTATION above).
   CALLED: { label: "Called", tone: "coral" },
   SKIPPED: { label: "Skipped", tone: "neutral" },
+  HOLD: { label: "On hold", tone: "warn" },
 
   // Clinic / organization states (OrganizationVerificationStatus enum).
   DRAFT: { label: "Draft", tone: "neutral" },

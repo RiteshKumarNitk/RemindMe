@@ -4,7 +4,9 @@ import { AppError } from "@/lib/errors.js";
 import { notFound } from "next/navigation";
 import { getPublicDoctor } from "@/modules/public/service.js";
 import { getPublicDoctorSlots } from "@/modules/patient-booking/service.js";
-import { Badge, Card, CardSubtitle, CardTitle, DateStrip, InitialsAvatar } from "@/components/ui/index.js";
+import { findMyActiveToken, getTokenWindow } from "@/modules/tokens/service.js";
+import { optionalWebUser } from "@/lib/web-context.js";
+import { Badge, Button, Card, CardSubtitle, CardTitle, DateStrip, InitialsAvatar, LinkButton } from "@/components/ui/index.js";
 import { PublicHeader } from "../../public-header";
 
 export const dynamic = "force-dynamic";
@@ -78,13 +80,22 @@ export default async function DoctorDetailPage({
   const locations = doctor.organization.locations;
   const selectedLocation = locations.find((l) => l.id === locationParam) ?? null;
 
+  const offersTokens = doctor.bookingMode === "SAME_DAY_TOKEN" || doctor.bookingMode === "BOTH";
+  const offersSlots = doctor.bookingMode !== "SAME_DAY_TOKEN";
+  const viewer = offersTokens ? await optionalWebUser() : null;
+  const [tokenWindow, myToken] = offersTokens
+    ? await Promise.all([getTokenWindow(doctorId), viewer ? findMyActiveToken(viewer.userId, doctorId) : null])
+    : [null, null];
+
   const days = nextDays(14);
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : isoDate(days[0]!);
-  const { slots, timezone, durationMinutes, slotsHiddenByLeadTime, bookingLeadTimeMinutes } =
-    await getPublicDoctorSlots(doctorId, {
-      date: selectedDate,
-      ...(selectedType ? { appointmentTypeId: selectedType.id } : {}),
-    });
+  // A token-only doctor has no slot grid to show, so don't compute one.
+  const { slots, timezone, durationMinutes, slotsHiddenByLeadTime, bookingLeadTimeMinutes } = offersSlots
+    ? await getPublicDoctorSlots(doctorId, {
+        date: selectedDate,
+        ...(selectedType ? { appointmentTypeId: selectedType.id } : {}),
+      })
+    : { slots: [], timezone: "UTC", durationMinutes: 0, slotsHiddenByLeadTime: 0, bookingLeadTimeMinutes: 0 };
 
   // Every filter chip preserves the other selections — a date chip that
   // dropped `type`/`location` would silently reset the patient's choices
@@ -149,7 +160,50 @@ export default async function DoctorDetailPage({
           ) : null}
         </Card>
 
-        <h2 className="mt-10 text-lg font-semibold text-ink">Available appointments</h2>
+        {tokenWindow ? (
+          <>
+            <h2 className="mt-10 text-lg font-semibold text-ink">
+              {offersSlots ? "Book with this doctor" : "Today’s token booking"}
+            </h2>
+            <Card className="mt-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle as="p">Today&rsquo;s token</CardTitle>
+                  <p className="mt-1 text-sm text-ink-muted">
+                    Get a queue number for today&rsquo;s clinic. Booking {tokenWindow.opensAt}–{tokenWindow.closesAt},
+                    queue starts {tokenWindow.queueStartAt} (clinic time).
+                  </p>
+                  <p className="mt-2 text-sm text-ink">
+                    {myToken?.queueEntry
+                      ? `You have token #${myToken.queueEntry.tokenNumber} for today.`
+                      : tokenWindow.status === "OPEN"
+                        ? "Today’s token booking is open."
+                        : tokenWindow.status === "NOT_YET_OPEN"
+                          ? `Today’s token booking opens at ${tokenWindow.opensAt}.`
+                          : tokenWindow.errorCode === "TOKEN_LIMIT_REACHED"
+                            ? "Today’s token limit has been reached."
+                            : "Today’s token booking is closed."}
+                  </p>
+                </div>
+                {myToken?.queueEntry ? (
+                  <LinkButton href={`/dashboard/${myToken.organizationId}/appointments/${myToken.id}`}>View token</LinkButton>
+                ) : tokenWindow.bookable ? (
+                  <LinkButton href={`/doctors/${doctorId}/token`}>Book today&rsquo;s token</LinkButton>
+                ) : (
+                  <Button disabled>
+                    {tokenWindow.status === "NOT_YET_OPEN" ? `Booking opens at ${tokenWindow.opensAt}` : "Closed for today"}
+                  </Button>
+                )}
+              </div>
+            </Card>
+          </>
+        ) : null}
+
+        {offersSlots ? (
+        <>
+        <h2 className="mt-10 text-lg font-semibold text-ink">
+          {tokenWindow ? "Or choose a scheduled appointment" : "Available appointments"}
+        </h2>
 
         {types.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Appointment type">
@@ -264,6 +318,8 @@ export default async function DoctorDetailPage({
             ))}
           </div>
         )}
+        </>
+        ) : null}
       </main>
     </div>
   );

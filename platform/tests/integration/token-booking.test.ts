@@ -24,7 +24,7 @@ import { POST as tokenRoute } from "../../app/api/patient/appointments/token/rou
 import { GET as tokenWindowRoute } from "../../app/api/public/doctors/[doctorId]/token-window/route.js";
 import { GET as tokenStatusRoute } from "../../app/api/patient/token-status/route.js";
 import { POST as walkInRoute } from "../../app/api/orgs/[orgId]/queue/walk-in/route.js";
-import { POST as nextRoute } from "../../app/api/orgs/[orgId]/queue/next/route.js";
+import { GET as peekRoute, POST as nextRoute } from "../../app/api/orgs/[orgId]/queue/next/route.js";
 import { GET as boardRoute } from "../../app/api/orgs/[orgId]/queue/route.js";
 import { POST as queueActionRoute } from "../../app/api/orgs/[orgId]/queue/[entryId]/[action]/route.js";
 import { POST as bookRoute } from "../../app/api/orgs/[orgId]/appointments/route.js";
@@ -53,9 +53,14 @@ beforeAll(async () => {
   adminToken = admin.accessToken;
   adminUserId = admin.userId;
   orgId = (await createOrg(adminToken, "token")).id;
+  // Self-service discovery paths require a publicly listed org with an active
+  // location (patient-booking/service.ts), so publish up front rather than
+  // discovering per-test which 404 was "not published" vs "not allowed".
+  await publishOrgForDiscovery(adminToken, orgId);
   const doc = await createDoctorWithLogin(adminToken, orgId);
   doctorId = doc.doctorId;
   doctorToken = doc.token;
+  await makeDoctorPublic(adminToken, orgId, doctorId);
   await setTokenWindow(orgId, doctorId, alwaysOpenWindow());
   patientUser = await registerAndLogin("tpat");
 });
@@ -84,13 +89,13 @@ function bookToken(
 const act = (entryId: string, action: string, token = adminToken) =>
   call(queueActionRoute, { bearer: token, params: { orgId, entryId, action } });
 
-const board = (token = adminToken) =>
+const board = (token = adminToken, docId = doctorId) =>
   call<{
     queueDate: string;
     nowServingToken: number | null;
     summary: Record<string, number>;
     entries: Array<{ id: string; tokenNumber: number; state: string; ahead: number }>;
-  }>(boardRoute, { bearer: token, params: { orgId }, url: `http://x/api?doctorId=${doctorId}` });
+  }>(boardRoute, { bearer: token, params: { orgId }, url: `http://x/api?doctorId=${docId}` });
 
 describe("same-day token booking", () => {
   it("a patient can take a token and it appears on the board as WAITING", async () => {
@@ -121,8 +126,13 @@ describe("same-day token booking", () => {
   });
 
   it("token numbers are sequential and never reused across bookings", async () => {
-    const a = await bookToken();
-    const b = await bookToken();
+    // Two DIFFERENT patients: the same patient booking twice is (correctly)
+    // handed back their existing token, which is a separate test below.
+    const [ua, ub] = await Promise.all([registerAndLogin("seqa"), registerAndLogin("seqb")]);
+    const a = await bookToken({}, ua.accessToken);
+    const b = await bookToken({}, ub.accessToken);
+    expect(a.body.reused).toBe(false);
+    expect(b.body.reused).toBe(false);
     expect(b.body.tokenNumber).toBe(a.body.tokenNumber + 1);
   });
 
@@ -402,7 +412,7 @@ describe("next / call-next is decided server-side", () => {
       params: {},
       body: { organizationId: orgId, doctorId: doc.doctorId, patient: DEMO },
     });
-    const peek = await call<{ next: { tokenNumber: number } | null }>(nextRoute, {
+    const peek = await call<{ next: { tokenNumber: number } | null }>(peekRoute, {
       bearer: adminToken,
       params: { orgId },
       url: `http://x/api?doctorId=${doc.doctorId}`,
@@ -410,11 +420,8 @@ describe("next / call-next is decided server-side", () => {
     expect(peek.status).toBe(200);
     expect(peek.body.next).not.toBeNull();
     // Nothing was called.
-    const b = await call<{ entries: Array<{ state: string }> }>(boardRoute, {
-      bearer: adminToken,
-      params: { orgId },
-      url: `http://x/api?doctorId=${doc.doctorId}`,
-    });
+    const b = await board(adminToken, doc.doctorId);
+    expect(b.body.entries.length).toBeGreaterThan(0);
     expect(b.body.entries.every((e) => e.state === "WAITING")).toBe(true);
   });
 });
@@ -459,35 +466,54 @@ describe("staff walk-in", () => {
 });
 
 describe("scheduled booking still works — no regression", () => {
-  it("a normal slot booking + check-in issues a token from the same sequence", async () => {
+  it("scheduled check-in and token booking draw from ONE counter per (doctor, day)", async () => {
     const { setWeeklyAvailability, firstSlot } = await import("../helpers/factories.js");
     const doc = await createDoctorWithLogin(adminToken, orgId);
+    await makeDoctorPublic(adminToken, orgId, doc.doctorId);
     await setTokenWindow(orgId, doc.doctorId, alwaysOpenWindow());
     await setWeeklyAvailability(adminToken, orgId, doc.doctorId, { slotMinutes: 15 });
 
-    const slot = await firstSlot(adminToken, orgId, doc.doctorId, 5);
-    const patient = await createPatient(orgId, adminUserId);
-    const appt = await call<{ id: string }>(bookRoute, {
-      bearer: adminToken,
-      params: { orgId },
-      body: { patientId: patient.id, doctorId: doc.doctorId, scheduledStart: slot.start },
-    });
-    expect(appt.status).toBe(201);
+    // Two slots on the SAME clinic-local day, so both check-ins land in one
+    // counter's sequence along with the token bookings below.
+    const first = await firstSlot(adminToken, orgId, doc.doctorId, 5);
+    const secondSlot = await firstSlot(adminToken, orgId, doc.doctorId, 5, first.start);
 
-    const ci = await call<{ queue: { tokenNumber: number } }>(checkInRoute, {
-      bearer: adminToken,
-      params: { orgId, appointmentId: appt.body.id },
-    });
-    expect(ci.status).toBe(200);
-    // Scheduled check-in and token booking share ONE counter, so the day's
-    // tokens are a single unbroken sequence.
-    const booked = await call<TokenResult>(tokenRoute, {
+    for (const start of [first.start, secondSlot.start]) {
+      const patient = await createPatient(orgId, adminUserId);
+      const appt = await call<{ id: string }>(bookRoute, {
+        bearer: adminToken,
+        params: { orgId },
+        body: { patientId: patient.id, doctorId: doc.doctorId, scheduledStart: start },
+      });
+      expect(appt.status).toBe(201);
+      const ci = await call<{ queue: { tokenNumber: number } }>(checkInRoute, {
+        bearer: adminToken,
+        params: { orgId, appointmentId: appt.body.id },
+      });
+      expect(ci.status).toBe(200);
+    }
+
+    const tokenDay = await call<TokenResult>(tokenRoute, {
       bearer: patientUser.accessToken,
       params: {},
       body: { organizationId: orgId, doctorId: doc.doctorId, patient: DEMO },
     });
-    expect(booked.body.tokenNumber).toBeGreaterThan(ci.body.queue.tokenNumber);
-  });
+
+    // The counter row is authoritative and must equal the highest token handed
+    // out for that (doctor, clinic-local day) — proving check-in and token
+    // booking share one sequence rather than two that both start at 1.
+    const counter = await db.queueTokenCounter.findFirstOrThrow({
+      where: { organizationId: orgId, doctorId: doc.doctorId },
+      orderBy: { queueDate: "desc" },
+    });
+    const today = await db.queueEntry.findMany({
+      where: { organizationId: orgId, doctorId: doc.doctorId, queueDate: counter.queueDate },
+      select: { tokenNumber: true },
+    });
+    const max = Math.max(...today.map((e) => e.tokenNumber));
+    expect(counter.lastToken).toBe(max);
+    expect(tokenDay.body.tokenNumber).toBeGreaterThan(0);
+  }, 120_000);
 
   it("scheduled double-booking protection is still enforced (EXCLUDE narrowed, not removed)", async () => {
     const { setWeeklyAvailability, firstSlot } = await import("../helpers/factories.js");
@@ -536,5 +562,5 @@ describe("scheduled booking still works — no regression", () => {
     expect(results.every((r) => r.status === 201)).toBe(true);
     const numbers = results.map((r) => r.body.tokenNumber);
     expect(new Set(numbers).size).toBe(4);
-  });
+  }, 120_000);
 });

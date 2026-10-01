@@ -4,6 +4,20 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-10-01 — Same-day token booking: UI, Flutter, and four backend fixes (uncommitted)
+
+Completes the token feature whose backend landed in `02ba104` (see
+[TOKEN_BOOKING_ASSESSMENT.md](TOKEN_BOOKING_ASSESSMENT.md) §7). Backend fixes: `CALLED → HOLD`
+added to the queue state machine; token booking now enforces patient ownership / guardian
+MANAGE_APPOINTMENTS grant and org-owned `locationId` (previously a patient could book a token
+in another patient's name); doctor token-window edits are validated as a whole; board actions
+mirror the assigned-doctor rule. Web: doctor "Appointment & booking" settings, public "Today's
+token" booking flow, NOW/NEXT/WAITING/ON HOLD/COMPLETED reception board with server-side Call
+next and desk walk-ins, doctor "Today's queue", live patient token panel, search-card booking
+badges. Flutter: token window/booking/status, live polled token card (no ETA). Tests:
+`token-workflow.test.ts` (§36 acceptance scenario, spoofing, RBAC, cross-tenant, window
+validation), `queue-state-machine.test.ts`, Flutter `token_booking_test.dart`.
+
 ## 2026-09-30 — Insights tab: wait times, no-shows, and demand shape (uncommitted)
 
 A new owner-only **Insights** page (`/dashboard/[orgId]/insights`, sidebar link after Queue)

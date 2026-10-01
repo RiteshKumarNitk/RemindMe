@@ -1,6 +1,7 @@
 import 'appointment_type.dart';
 import 'clinic_location.dart';
 import 'json_utils.dart';
+import 'token.dart';
 
 /// A publicly listed doctor, as the discovery list endpoint returns it.
 class DoctorSummary {
@@ -16,6 +17,7 @@ class DoctorSummary {
     this.organizationName,
     this.organizationSlug,
     this.organizationLogoUrl,
+    this.bookingMode = BookingMode.scheduled,
   });
 
   final String id;
@@ -24,6 +26,9 @@ class DoctorSummary {
   final String? photoUrl;
   final int? yearsOfExperience;
   final List<String> languages;
+
+  /// How patients book this doctor (scheduled slots, same-day tokens, or both).
+  final BookingMode bookingMode;
 
   /// Consultation fee in currency minor units (paise). Null when the clinic
   /// has not published one — the UI then shows no fee at all rather than a
@@ -49,6 +54,7 @@ class DoctorSummary {
       organizationName: org == null ? null : asString(org['name']),
       organizationSlug: org == null ? null : asString(org['slug']),
       organizationLogoUrl: org == null ? null : asString(org['logoUrl']),
+      bookingMode: BookingMode.fromApi(json['bookingMode']),
     );
   }
 }
@@ -107,7 +113,12 @@ class DoctorDetail {
     this.languages = const [],
     this.consultationFeeMinor,
     required this.organization,
+    this.bookingMode = BookingMode.scheduled,
   });
+
+  /// How patients book this doctor. Token window *times* are not read from
+  /// here — the live window endpoint is the single source for those.
+  final BookingMode bookingMode;
 
   final String id;
   final String displayName;
@@ -136,6 +147,7 @@ class DoctorDetail {
       organization: DoctorOrganization.fromJson(
         asMap(json['organization']) ?? const {},
       ),
+      bookingMode: BookingMode.fromApi(json['bookingMode']),
     );
   }
 
@@ -151,5 +163,6 @@ class DoctorDetail {
     organizationName: organization.name,
     organizationSlug: organization.slug,
     organizationLogoUrl: organization.logoUrl,
+    bookingMode: bookingMode,
   );
 }

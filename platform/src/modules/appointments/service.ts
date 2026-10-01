@@ -9,7 +9,7 @@ import { tenantDb } from "@/lib/tenant.js";
 import { runSerializable } from "@/lib/serializable.js";
 import { notify } from "@/lib/notifications/notify.js";
 import { assertWithinAvailability } from "@/modules/availability/service.js";
-import { createEntryForCheckIn } from "@/modules/queue/service.js";
+import { createEntryForCheckIn, syncQueueEntryForAppointment } from "@/modules/queue/service.js";
 import { hasFamilyAccess } from "@/modules/family/service.js";
 import type { RequestContext } from "@/lib/context.js";
 import { nextStatus, type AppointmentAction } from "./state-machine.js";
@@ -528,9 +528,10 @@ export async function cancelAppointment(
         reason: input.reason,
       },
     });
-    // Drop any queue entry.
+    // Drop any queue entry that is still in play (HOLD included — a held
+    // token that is cancelled must not stay recallable).
     await tx.queueEntry.updateMany({
-      where: { appointmentId: id, state: { in: ["WAITING", "CALLED"] } },
+      where: { appointmentId: id, state: { in: ["WAITING", "CALLED", "HOLD"] } },
       data: { state: "SKIPPED", skippedAt: now },
     });
     await cancelReminders(tx, id);
@@ -761,6 +762,9 @@ async function applyStatusChange(
     }
     if (opts.cancelReminders) {
       await cancelReminders(tx, id);
+    }
+    if (action === "START" || action === "COMPLETE" || action === "NO_SHOW") {
+      await syncQueueEntryForAppointment(tx, ctx, id, action, new Date());
     }
     await writeAuditWith(tx, ctx, {
       action: auditAction,

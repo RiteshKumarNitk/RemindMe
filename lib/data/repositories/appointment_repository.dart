@@ -1,6 +1,7 @@
 import '../api/api_client.dart';
 import '../models/healthcare/appointment.dart';
 import '../models/healthcare/clinic_location.dart';
+import '../models/healthcare/token.dart';
 import 'healthcare_repository.dart';
 
 /// The demographic block the booking API requires the first time a patient
@@ -197,6 +198,43 @@ class AppointmentRepository {
       },
     );
     return Appointment.fromJson(json);
+  }
+
+  /// Takes today's same-day token. No date is sent: the server decides "today"
+  /// in the clinic's timezone and enforces the window, the daily cap and one
+  /// active token per patient. A second call returns the same token
+  /// (`reused: true`) rather than a new one.
+  Future<TokenBooking> bookToken({
+    required String organizationId,
+    required String doctorId,
+    required PatientDetails patient,
+    String? locationId,
+    String? reason,
+  }) async {
+    final json = await _client.post(
+      '/patient/appointments/token',
+      auth: AuthMode.required,
+      body: {
+        'organizationId': organizationId,
+        'doctorId': doctorId,
+        if (locationId != null && locationId.isNotEmpty) 'locationId': locationId,
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+        'patient': patient.toJson(),
+      },
+    );
+    return TokenBooking.fromJson(json);
+  }
+
+  /// Live token status for one of the patient's appointments — the same queue
+  /// rows the reception board reads. Works for any appointment that has a
+  /// queue ticket (a token booking, or a checked-in scheduled visit).
+  Future<TokenStatus> tokenStatus(String appointmentId) async {
+    final json = await _client.getObject(
+      '/patient/token-status',
+      auth: AuthMode.required,
+      query: {'appointmentId': appointmentId},
+    );
+    return TokenStatus.fromJson(json);
   }
 
   /// Cancels through the backend's lifecycle transition (which enforces the

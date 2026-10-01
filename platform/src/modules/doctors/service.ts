@@ -5,6 +5,7 @@ import { writeAudit } from "@/lib/audit.js";
 import { assertRole } from "@/lib/rbac.js";
 import { tenantDb } from "@/lib/tenant.js";
 import type { RequestContext } from "@/lib/context.js";
+import { assertValidTokenWindow } from "@/modules/tokens/window.js";
 import type { createDoctorSchema, updateDoctorSchema } from "./schema.js";
 
 /** Resolve or create a User for a staff/doctor row, and ensure a membership. */
@@ -105,12 +106,36 @@ export async function updateDoctor(
   const t = tenantDb(ctx);
   const current = await t.doctorProfile.findFirstOrThrow({
     where: { id: doctorId, organizationId: ctx.org!.id },
-    select: { id: true, userId: true },
+    select: {
+      id: true,
+      userId: true,
+      tokenOpensMinute: true,
+      tokenClosesMinute: true,
+      queueStartMinute: true,
+      maxDailyTokens: true,
+    },
   });
   const isSelf = current.userId === ctx.userId;
   if (!isSelf) assertRole(ctx, "CLINIC_ADMIN");
   if (isSelf && input.isActive === false && ctx.org!.role !== "CLINIC_ADMIN") {
     throw new AppError("FORBIDDEN", "Only an admin can deactivate a doctor.");
+  }
+
+  // Validate the token window as a whole, merged with what is stored, whenever
+  // any part of it changes — so saving only "opens at" can't leave a window
+  // that closes before it opens. Untouched windows are not re-validated.
+  const windowTouched =
+    input.tokenOpensMinute !== undefined ||
+    input.tokenClosesMinute !== undefined ||
+    input.queueStartMinute !== undefined ||
+    input.maxDailyTokens !== undefined;
+  if (windowTouched) {
+    assertValidTokenWindow({
+      tokenOpensMinute: input.tokenOpensMinute ?? current.tokenOpensMinute,
+      tokenClosesMinute: input.tokenClosesMinute ?? current.tokenClosesMinute,
+      queueStartMinute: input.queueStartMinute ?? current.queueStartMinute,
+      maxDailyTokens: input.maxDailyTokens ?? current.maxDailyTokens,
+    });
   }
 
   const updated = await t.doctorProfile.update({
@@ -139,11 +164,7 @@ export async function updateDoctor(
         ? { consultationFeeMinor: input.consultationFeeMinor }
         : {}),
       ...(input.isPubliclyListed !== undefined ? { isPubliclyListed: input.isPubliclyListed } : {}),
-      // Token booking config — only written when the caller provided the field
-      // (partial update). The window must be consistent if multiple fields are
-      // set in the same request; validation is enforced server-side by the
-      // window module's `assertValidTokenWindow` when needed. For now, trust the
-      // schema bounds.
+      // Token booking config — partial update; validated as a whole above.
       ...(input.bookingMode !== undefined ? { bookingMode: input.bookingMode } : {}),
       ...(input.tokenOpensMinute !== undefined ? { tokenOpensMinute: input.tokenOpensMinute } : {}),
       ...(input.tokenClosesMinute !== undefined ? { tokenClosesMinute: input.tokenClosesMinute } : {}),
@@ -155,7 +176,15 @@ export async function updateDoctor(
     action: "DOCTOR_UPDATED",
     entityType: "DoctorProfile",
     entityId: doctorId,
-    after: { displayName: updated.displayName, isActive: updated.isActive },
+    after: {
+      displayName: updated.displayName,
+      isActive: updated.isActive,
+      bookingMode: updated.bookingMode,
+      tokenOpensMinute: updated.tokenOpensMinute,
+      tokenClosesMinute: updated.tokenClosesMinute,
+      queueStartMinute: updated.queueStartMinute,
+      maxDailyTokens: updated.maxDailyTokens,
+    },
   });
   return updated;
 }

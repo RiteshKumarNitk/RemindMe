@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import type { QueueState } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { AppError } from "@/lib/errors.js";
 import { writeAuditWith } from "@/lib/audit.js";
@@ -112,6 +113,58 @@ export async function createEntryForCheckIn(
   return entry;
 }
 
+/** Appointment statuses after which the queue entry must never move again. */
+const CLOSED_APPOINTMENT_STATUSES = ["CANCELLED", "RESCHEDULED", "NO_SHOW"] as const;
+
+/**
+ * Keep the QueueEntry in step when the APPOINTMENT is moved directly — the
+ * consultation page's Start / Sign & complete and the appointment no-show
+ * action go through `applyStatusChange`, not the queue. Without this, a visit
+ * finished from the consultation page left its entry IN_CONSULTATION forever,
+ * which made "Call next" refuse for the rest of the day.
+ *
+ * Runs inside the caller's transaction. Only non-final entries move; a
+ * missing entry (appointment never checked in) is a no-op.
+ */
+export async function syncQueueEntryForAppointment(
+  tx: Prisma.TransactionClient,
+  ctx: RequestContext,
+  appointmentId: string,
+  action: "START" | "COMPLETE" | "NO_SHOW",
+  now: Date,
+): Promise<void> {
+  const entry = await tx.queueEntry.findFirst({
+    where: { appointmentId, organizationId: ctx.org!.id },
+    select: { id: true, state: true },
+  });
+  if (!entry) return;
+  const target =
+    action === "START" ? "IN_CONSULTATION" : action === "COMPLETE" ? "COMPLETED" : "NO_SHOW";
+  const from: QueueState[] =
+    action === "START"
+      ? ["WAITING", "CALLED", "HOLD", "SKIPPED"]
+      : action === "COMPLETE"
+        ? ["WAITING", "CALLED", "HOLD", "SKIPPED", "IN_CONSULTATION"]
+        : ["WAITING", "CALLED", "HOLD", "SKIPPED"];
+  if (!from.includes(entry.state)) return;
+
+  await tx.queueEntry.update({
+    where: { id: entry.id },
+    data: {
+      state: target,
+      ...(action === "START" ? { consultationStartedAt: now } : {}),
+      ...(action === "COMPLETE" ? { completedAt: now } : {}),
+    },
+  });
+  await writeAuditWith(tx, ctx, {
+    action: `QUEUE_${action}`,
+    entityType: "QueueEntry",
+    entityId: entry.id,
+    before: { state: entry.state },
+    after: { state: target, via: "appointment" },
+  });
+}
+
 /**
  * How many people are still ahead of this entry, counted from the LIVE queue
  * rows — never from a token-number subtraction and never into an estimated
@@ -157,7 +210,11 @@ function availableActions(
   state: string,
   role: string,
   isAssignedDoctor: boolean,
+  appointmentStatus: string,
 ): QueueAction[] {
+  // Same guard as queueTransition.
+  if ((CLOSED_APPOINTMENT_STATUSES as readonly string[]).includes(appointmentStatus)) return [];
+  if (appointmentStatus === "COMPLETED") state = state === "IN_CONSULTATION" ? state : "COMPLETED";
   const all: QueueAction[] = [
     "CALL",
     "RECALL",
@@ -172,7 +229,8 @@ function availableActions(
     if (!canQueueTransition(state as never, a)) return false;
     // Clinical actions belong to the assigned doctor; the rest to front desk.
     if (a === "START" || a === "COMPLETE") return isAssignedDoctor && role === "DOCTOR";
-    return role === "RECEPTIONIST" || role === "CLINIC_ADMIN" || role === "DOCTOR";
+    // Mirrors queueTransition: front desk, or the doctor on their OWN queue.
+    return role === "RECEPTIONIST" || role === "CLINIC_ADMIN" || isAssignedDoctor;
   });
 }
 
@@ -216,6 +274,7 @@ export async function getBoard(
       heldAt: true,
       checkedInAt: true,
       appointmentId: true,
+      appointment: { select: { status: true } },
       patient: { select: { id: true, firstName: true, lastName: true } },
     },
   });
@@ -243,7 +302,7 @@ export async function getBoard(
     entries: entries.map((e) => ({
       ...e,
       ahead: peopleAhead(entries, e),
-      actions: availableActions(e.state, ctx.org!.role, doctor.userId === ctx.userId),
+      actions: availableActions(e.state, ctx.org!.role, doctor.userId === ctx.userId, e.appointment.status),
     })),
   };
 }
@@ -318,6 +377,21 @@ export async function queueTransition(
     assertRole(ctx, "RECEPTIONIST", "CLINIC_ADMIN");
   }
 
+  // The appointment is the source of truth. A cancelled / rescheduled /
+  // no-show appointment's entry is parked as SKIPPED or NO_SHOW for history;
+  // it must not be recallable back into the line, or START would resurrect
+  // the appointment. A COMPLETED appointment only allows closing a stale entry.
+  const apptStatus = entry.appointment.status;
+  if ((CLOSED_APPOINTMENT_STATUSES as readonly string[]).includes(apptStatus)) {
+    throw new AppError(
+      "INVALID_QUEUE_TRANSITION",
+      `This appointment is ${apptStatus.toLowerCase().replace("_", "-")}; its queue entry can't be changed.`,
+    );
+  }
+  if (apptStatus === "COMPLETED" && action !== "COMPLETE") {
+    throw new AppError("INVALID_QUEUE_TRANSITION", "This visit is already completed.");
+  }
+
   const to = nextQueueState(entry.state, action);
   const now = new Date();
 
@@ -350,7 +424,9 @@ export async function queueTransition(
       );
     }
 
-    if (action === "START") {
+    // Started/completed from the consultation page first? Then the appointment
+    // is already there and only the queue row needed to catch up.
+    if (action === "START" && canAppointmentTransition(entry.appointment.status, "START")) {
       await tx.appointment.update({
         where: { id: entry.appointment.id },
         data: { status: "IN_CONSULTATION", consultationStartedAt: now },
@@ -366,7 +442,7 @@ export async function queueTransition(
         },
       });
     }
-    if (action === "COMPLETE") {
+    if (action === "COMPLETE" && entry.appointment.status === "IN_CONSULTATION") {
       await tx.appointment.update({
         where: { id: entry.appointment.id },
         data: { status: "COMPLETED", completedAt: now },

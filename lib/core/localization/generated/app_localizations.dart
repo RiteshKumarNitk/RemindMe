@@ -2929,6 +2929,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'It may have been unpublished. Go back and choose another provider.'**
   String get hcUnavailableBody;
+
+  /// No description provided for @hcTodaysToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s token'**
+  String get hcTodaysToken;
+
+  /// No description provided for @hcTokenIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a queue number for today\'s clinic. Patients are seen in token order — there is no fixed time.'**
+  String get hcTokenIntro;
+
+  /// No description provided for @hcTokenOpenNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s token booking is open.'**
+  String get hcTokenOpenNow;
+
+  /// No description provided for @hcTokenOpensAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s token booking opens at {time}.'**
+  String hcTokenOpensAt(String time);
+
+  /// No description provided for @hcTokenOpensAtButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking opens at {time}'**
+  String hcTokenOpensAtButton(String time);
+
+  /// No description provided for @hcTokenClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s token booking is closed.'**
+  String get hcTokenClosed;
+
+  /// No description provided for @hcTokenLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s token limit has been reached.'**
+  String get hcTokenLimitReached;
+
+  /// No description provided for @hcBookTodaysToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Book today\'s token'**
+  String get hcBookTodaysToken;
+
+  /// No description provided for @hcTokenWindowTimes.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking {opens}–{closes} · queue starts {queueStart} (clinic time)'**
+  String hcTokenWindowTimes(String opens, String closes, String queueStart);
+
+  /// No description provided for @hcConfirmToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm today\'s token'**
+  String get hcConfirmToken;
+
+  /// No description provided for @hcYourToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Your token: #{token}'**
+  String hcYourToken(int token);
+
+  /// No description provided for @hcTokenAlreadyHave.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have a token for today\'s clinic.'**
+  String get hcTokenAlreadyHave;
+
+  /// No description provided for @hcViewToken.
+  ///
+  /// In en, this message translates to:
+  /// **'View token'**
+  String get hcViewToken;
+
+  /// No description provided for @hcTokenBooked.
+  ///
+  /// In en, this message translates to:
+  /// **'Your token is booked.'**
+  String get hcTokenBooked;
+
+  /// No description provided for @hcNowServing.
+  ///
+  /// In en, this message translates to:
+  /// **'Now serving #{token}'**
+  String hcNowServing(int token);
+
+  /// No description provided for @hcQueueOnHold.
+  ///
+  /// In en, this message translates to:
+  /// **'On hold'**
+  String get hcQueueOnHold;
+
+  /// No description provided for @hcQueueSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get hcQueueSkipped;
+
+  /// No description provided for @hcQueueNoShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as not arrived'**
+  String get hcQueueNoShow;
+
+  /// No description provided for @hcTokenDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Same-day token · {date} · queue starts {time}'**
+  String hcTokenDay(String date, String time);
+
+  /// No description provided for @hcTokenRefreshNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull down to refresh. This updates by itself while you are in the queue.'**
+  String get hcTokenRefreshNote;
+
+  /// No description provided for @hcOrScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Or book a scheduled appointment'**
+  String get hcOrScheduled;
 }
 
 class _AppLocalizationsDelegate
