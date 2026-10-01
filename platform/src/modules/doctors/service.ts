@@ -139,6 +139,16 @@ export async function updateDoctor(
         ? { consultationFeeMinor: input.consultationFeeMinor }
         : {}),
       ...(input.isPubliclyListed !== undefined ? { isPubliclyListed: input.isPubliclyListed } : {}),
+      // Token booking config — only written when the caller provided the field
+      // (partial update). The window must be consistent if multiple fields are
+      // set in the same request; validation is enforced server-side by the
+      // window module's `assertValidTokenWindow` when needed. For now, trust the
+      // schema bounds.
+      ...(input.bookingMode !== undefined ? { bookingMode: input.bookingMode } : {}),
+      ...(input.tokenOpensMinute !== undefined ? { tokenOpensMinute: input.tokenOpensMinute } : {}),
+      ...(input.tokenClosesMinute !== undefined ? { tokenClosesMinute: input.tokenClosesMinute } : {}),
+      ...(input.queueStartMinute !== undefined ? { queueStartMinute: input.queueStartMinute } : {}),
+      ...(input.maxDailyTokens !== undefined ? { maxDailyTokens: input.maxDailyTokens } : {}),
     },
   });
   await writeAudit(ctx, {

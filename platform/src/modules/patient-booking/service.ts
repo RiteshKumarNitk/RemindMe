@@ -64,7 +64,7 @@ export async function getPublicDoctorSlots(
  * `Patient_organizationId_ownerUserId_key`) — a concurrent double-submit
  * can't create duplicate rows, Postgres's `ON CONFLICT` upsert serializes it.
  */
-async function ensurePatientMembership(
+export async function ensurePatientMembership(
   ctx: RequestContext,
   organizationId: string,
   details: z.infer<typeof selfPatientDetailsSchema>,

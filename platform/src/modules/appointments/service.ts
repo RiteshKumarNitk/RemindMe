@@ -79,7 +79,13 @@ function bookingSourceFor(role: string): BookingSource {
   }
 }
 
-async function resolveTimezone(
+/**
+ * The timezone a booking at `locationId` should be expressed in: the location's
+ * own zone when it has one, otherwise the organization's. Exported because token
+ * booking resolves "today" and the queue-start instant through the same rule —
+ * the clinic's zone, never the patient's device.
+ */
+export async function resolveTimezone(
   client: Prisma.TransactionClient,
   orgId: string,
   locationId?: string | null,

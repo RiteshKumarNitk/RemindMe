@@ -35,6 +35,12 @@ export const updateDoctorSchema = z
     languages: z.array(z.string().min(1).max(60)).max(20).optional(),
     consultationFeeMinor: z.number().int().min(0).max(100_000_00).nullable().optional(),
     isPubliclyListed: z.boolean().optional(),
+    // Per-doctor same-day token booking window (TOKEN_BOOKING_ASSESSMENT.md).
+    bookingMode: z.enum(["SCHEDULED", "SAME_DAY_TOKEN", "BOTH"]).optional(),
+    tokenOpensMinute: z.number().int().min(0).max(1439).optional(),
+    tokenClosesMinute: z.number().int().min(0).max(1439).optional(),
+    queueStartMinute: z.number().int().min(0).max(1439).optional(),
+    maxDailyTokens: z.number().int().min(1).max(1000).optional(),
   })
   .strict();
 

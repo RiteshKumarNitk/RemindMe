@@ -169,6 +169,48 @@ export async function createPatient(
   });
 }
 
+/**
+ * Set a doctor's same-day token window directly in the DB.
+ *
+ * Bypasses the HTTP route on purpose: the window tests need windows that are
+ * OPEN *now*, and the server clock can't be pinned through the API. Everything
+ * else (window validation, bookingMode checks, RBAC on the config route) is
+ * covered by its own tests.
+ */
+export async function setTokenWindow(
+  orgId: string,
+  doctorId: string,
+  cfg: {
+    bookingMode?: "SCHEDULED" | "SAME_DAY_TOKEN" | "BOTH";
+    tokenOpensMinute?: number;
+    tokenClosesMinute?: number;
+    queueStartMinute?: number;
+    maxDailyTokens?: number;
+  },
+): Promise<void> {
+  await db.doctorProfile.update({
+    where: { id: doctorId },
+    data: {
+      bookingMode: cfg.bookingMode ?? "SAME_DAY_TOKEN",
+      tokenOpensMinute: cfg.tokenOpensMinute ?? 0,
+      tokenClosesMinute: cfg.tokenClosesMinute ?? 1439,
+      queueStartMinute: cfg.queueStartMinute ?? 540,
+      maxDailyTokens: cfg.maxDailyTokens ?? 50,
+    },
+  });
+  void orgId;
+}
+
+/** A window that is unambiguously open at the current server clock. */
+export function alwaysOpenWindow(): {
+  tokenOpensMinute: number;
+  tokenClosesMinute: number;
+  queueStartMinute: number;
+  maxDailyTokens: number;
+} {
+  return { tokenOpensMinute: 0, tokenClosesMinute: 1439, queueStartMinute: 540, maxDailyTokens: 50 };
+}
+
 /** First free slot ~`daysAhead` from now for a doctor (uses the slots API). */
 export async function firstSlot(
   token: string,

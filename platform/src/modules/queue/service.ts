@@ -1,4 +1,5 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 import { AppError } from "@/lib/errors.js";
 import { writeAuditWith } from "@/lib/audit.js";
 import { assertRole } from "@/lib/rbac.js";
@@ -7,12 +8,70 @@ import { notify } from "@/lib/notifications/notify.js";
 import { db } from "@/lib/db.js";
 import { localPartsInZone } from "@/lib/time.js";
 import type { RequestContext } from "@/lib/context.js";
-import { nextQueueState, type QueueAction } from "./state-machine.js";
+import { nextQueueState, type QueueAction, canQueueTransition, hasUnfinishedCall } from "./state-machine.js";
+import { canTransition as canAppointmentTransition } from "@/modules/appointments/state-machine.js";
 
 /**
- * Allocate the next token and create a QueueEntry for a checked-in appointment.
- * Runs inside the caller's transaction; the `@@unique(org, doctor, queueDate,
- * tokenNumber)` constraint is the backstop against two receptionists racing.
+ * Allocate the next token number for a (org, doctor, clinic-local day).
+ *
+ * WHY NOT `count + 1` (what this used to do): two patients booking in the same
+ * millisecond — very much a real scenario at the opening minute, when a
+ * notification blast lands — both read the same max and both insert the same
+ * number. There is no client-side lock to make that safe.
+ *
+ * This is ONE statement:
+ *   INSERT … ON CONFLICT ("organizationId","doctorId","queueDate")
+ *   DO UPDATE SET "lastToken" = "lastToken" + 1 RETURNING "lastToken"
+ * Postgres serialises conflicting upserts on the unique index, so the RETURNING
+ * row is this caller's own number, and `lastToken + 1` is evaluated against the
+ * post-conflict (locked) row rather than a stale snapshot read.
+ *
+ * The INSERT branch back-fills from `MAX(QueueEntry.tokenNumber)` so a counter
+ * row first created *after* queue entries already exist for that day (e.g. the
+ * day's first entry came from a scheduled check-in) can't restart the sequence
+ * at 1 and collide with `@@unique(org, doctor, queueDate, tokenNumber)`.
+ *
+ * Must be called inside the caller's transaction. Together with `runSerializable`
+ * (which retries on 40001) and that unique index there are three independent
+ * layers between a client and a duplicate token number.
+ */
+export async function allocateTokenNumber(
+  tx: Prisma.TransactionClient,
+  args: { organizationId: string; doctorId: string; queueDate: Date },
+): Promise<number> {
+  const rows = await tx.$queryRaw<Array<{ lastToken: number }>>(Prisma.sql`
+    INSERT INTO "QueueTokenCounter"
+      ("id", "organizationId", "doctorId", "queueDate", "lastToken", "createdAt", "updatedAt")
+    VALUES (
+      ${randomUUID()},
+      ${args.organizationId},
+      ${args.doctorId},
+      ${args.queueDate},
+      COALESCE((
+        SELECT MAX("tokenNumber") FROM "QueueEntry"
+         WHERE "organizationId" = ${args.organizationId}
+           AND "doctorId" = ${args.doctorId}
+           AND "queueDate" = ${args.queueDate}
+      ), 0) + 1,
+      NOW(), NOW()
+    )
+    ON CONFLICT ("organizationId", "doctorId", "queueDate")
+    DO UPDATE SET "lastToken" = "QueueTokenCounter"."lastToken" + 1,
+                  "updatedAt" = NOW()
+    RETURNING "lastToken"
+  `);
+  const n = rows[0]?.lastToken;
+  if (typeof n !== "number") {
+    throw new AppError("INTERNAL", "Could not allocate a token number.");
+  }
+  return n;
+}
+
+/**
+ * Allocate a token and create a QueueEntry for a checked-in appointment.
+ * Runs inside the caller's transaction; the allocator plus the
+ * `@@unique(org, doctor, queueDate, tokenNumber)` constraint is the backstop
+ * against two receptionists racing.
  */
 export async function createEntryForCheckIn(
   tx: Prisma.TransactionClient,
@@ -29,11 +88,11 @@ export async function createEntryForCheckIn(
   const local = localPartsInZone(appt.scheduledStart, appt.timezone);
   const queueDate = new Date(Date.UTC(local.year, local.month - 1, local.day));
 
-  const agg = await tx.queueEntry.aggregate({
-    where: { organizationId: appt.organizationId, doctorId: appt.doctorId, queueDate },
-    _max: { tokenNumber: true },
+  const tokenNumber = await allocateTokenNumber(tx, {
+    organizationId: appt.organizationId,
+    doctorId: appt.doctorId,
+    queueDate,
   });
-  const tokenNumber = (agg._max.tokenNumber ?? 0) + 1;
 
   const entry = await tx.queueEntry.create({
     data: {
@@ -53,13 +112,68 @@ export async function createEntryForCheckIn(
   return entry;
 }
 
+/**
+ * How many people are still ahead of this entry, counted from the LIVE queue
+ * rows — never from a token-number subtraction and never into an estimated
+ * minutes-until-turn (a consultation length is a guess, so any ETA built on it
+ * is a fabrication; the UI shows position only).
+ *
+ * Only meaningful while WAITING: a CALLED/HOLD/SKIPPED/COMPLETED/NO_SHOW entry
+ * is out of the running order and reports 0.
+ */
 function peopleAhead(
-  entries: Array<{ position: number; state: string }>,
-  self: { position: number },
+  entries: Array<{ position: number; tokenNumber: number; state: string }>,
+  self: { position: number; tokenNumber: number; state: string },
 ): number {
+  if (self.state !== "WAITING") return 0;
   return entries.filter(
-    (e) => e.state === "WAITING" && e.position < self.position,
+    (e) =>
+      e.state === "WAITING" &&
+      (e.position < self.position ||
+        (e.position === self.position && e.tokenNumber < self.tokenNumber)),
   ).length;
+}
+
+const EMPTY_SUMMARY = {
+  waiting: 0,
+  called: 0,
+  inConsultation: 0,
+  onHold: 0,
+  completed: 0,
+  skipped: 0,
+  noShow: 0,
+};
+
+type BoardSummary = { total: number } & typeof EMPTY_SUMMARY;
+
+/**
+ * Which transitions this actor may legally perform on this entry right now.
+ *
+ * Derived from the state machine (never a hand-maintained list in the client)
+ * AND the same role rule `queueTransition` enforces server-side, so the board
+ * can never render a button that the API will reject.
+ */
+function availableActions(
+  state: string,
+  role: string,
+  isAssignedDoctor: boolean,
+): QueueAction[] {
+  const all: QueueAction[] = [
+    "CALL",
+    "RECALL",
+    "SKIP",
+    "START",
+    "COMPLETE",
+    "HOLD",
+    "RELEASE",
+    "NO_SHOW",
+  ];
+  return all.filter((a) => {
+    if (!canQueueTransition(state as never, a)) return false;
+    // Clinical actions belong to the assigned doctor; the rest to front desk.
+    if (a === "START" || a === "COMPLETE") return isAssignedDoctor && role === "DOCTOR";
+    return role === "RECEPTIONIST" || role === "CLINIC_ADMIN" || role === "DOCTOR";
+  });
 }
 
 export async function getBoard(
@@ -67,9 +181,9 @@ export async function getBoard(
   filter: { doctorId: string; date?: string },
 ) {
   const t = tenantDb(ctx);
-  await t.doctorProfile.findFirstOrThrow({
+  const doctor = await t.doctorProfile.findFirstOrThrow({
     where: { id: filter.doctorId, organizationId: ctx.org!.id },
-    select: { id: true },
+    select: { id: true, userId: true },
   });
 
   let queueDate: Date;
@@ -88,7 +202,10 @@ export async function getBoard(
 
   const entries = await t.queueEntry.findMany({
     where: { organizationId: ctx.org!.id, doctorId: filter.doctorId, queueDate },
-    orderBy: [{ position: "asc" }],
+    // position first, tokenNumber as the tiebreak: RECALL sets position = -1, so
+    // every recalled entry ties on position and the token order is what makes
+    // "served next" deterministic rather than DB-order-dependent.
+    orderBy: [{ position: "asc" }, { tokenNumber: "asc" }],
     select: {
       id: true,
       tokenNumber: true,
@@ -96,8 +213,10 @@ export async function getBoard(
       position: true,
       recallCount: true,
       calledAt: true,
-      patient: { select: { id: true, firstName: true, lastName: true } },
+      heldAt: true,
+      checkedInAt: true,
       appointmentId: true,
+      patient: { select: { id: true, firstName: true, lastName: true } },
     },
   });
 
@@ -106,14 +225,74 @@ export async function getBoard(
     entries.find((e) => e.state === "CALLED") ??
     null;
 
+  const summary: BoardSummary = { ...EMPTY_SUMMARY, total: entries.length };
+  for (const e of entries) {
+    if (e.state === "WAITING") summary.waiting++;
+    else if (e.state === "CALLED") summary.called++;
+    else if (e.state === "IN_CONSULTATION") summary.inConsultation++;
+    else if (e.state === "HOLD") summary.onHold++;
+    else if (e.state === "COMPLETED") summary.completed++;
+    else if (e.state === "SKIPPED") summary.skipped++;
+    else if (e.state === "NO_SHOW") summary.noShow++;
+  }
+
   return {
     queueDate: queueDate.toISOString().slice(0, 10),
     nowServingToken: nowServing?.tokenNumber ?? null,
+    summary,
     entries: entries.map((e) => ({
       ...e,
       ahead: peopleAhead(entries, e),
+      actions: availableActions(e.state, ctx.org!.role, doctor.userId === ctx.userId),
     })),
   };
+}
+
+/**
+ * The next eligible patient, chosen SERVER-SIDE from the live queue — the
+ * frontend must never compute this (it has no consistent snapshot, and two
+ * receptionists would disagree).
+ *
+ * "Eligible" = state WAITING, earliest by (position, tokenNumber). HOLD and
+ * SKIPPED are deliberately NOT auto-picked: a held patient is in the building
+ * but out of the running order, and a skipped one already missed their call —
+ * both need a human to RECALL them, which is exactly what RECALL is for.
+ *
+ * Refuses while someone is already CALLED or IN_CONSULTATION, because
+ * "call next" must never silently abandon the patient who is already up.
+ *
+ * The pick and the transition are two steps, so two receptionists pressing
+ * "next" simultaneously can both choose the same patient; the loser gets a 409
+ * from the state machine rather than a double-call. That is the intended
+ * failure mode — deterministic and safe.
+ */
+export async function callNext(
+  ctx: RequestContext,
+  filter: { doctorId: string; date?: string },
+) {
+  assertRole(ctx, "RECEPTIONIST", "CLINIC_ADMIN", "DOCTOR");
+  const board = await getBoard(ctx, filter);
+  if (hasUnfinishedCall(board.entries)) {
+    throw new AppError(
+      "CONFLICT",
+      "Someone is already called. Start or skip them first.",
+    );
+  }
+  const next = board.entries.find((e) => e.state === "WAITING");
+  if (!next) {
+    throw new AppError("CONFLICT", "Nobody is waiting in this queue.");
+  }
+  return queueTransition(ctx, next.id, "CALL");
+}
+
+/** The next WAITING entry without calling it — used to preview "NEXT" on the board. */
+export async function peekNext(
+  ctx: RequestContext,
+  filter: { doctorId: string; date?: string },
+) {
+  const board = await getBoard(ctx, filter);
+  const next = board.entries.find((e) => e.state === "WAITING") ?? null;
+  return { next, nowServingToken: board.nowServingToken, summary: board.summary };
 }
 
 export async function queueTransition(
@@ -143,8 +322,13 @@ export async function queueTransition(
   const now = new Date();
 
   const updated = await db.$transaction(async (tx) => {
-    const q = await tx.queueEntry.update({
-      where: { id: entryId },
+    // Compare-and-swap on `state`, not a blind update. Without the state
+    // predicate, two receptionists pressing "call next" at once both read
+    // WAITING, both pass the state machine check above, and both write CALLED —
+    // two "now serving" rows. With it, exactly one UPDATE matches a row and the
+    // other gets a 409 instead.
+    const swapped = await tx.queueEntry.updateMany({
+      where: { id: entryId, organizationId: ctx.org!.id, state: entry.state },
       data: {
         state: to,
         ...(action === "CALL" ? { calledAt: now } : {}),
@@ -152,10 +336,19 @@ export async function queueTransition(
         ...(action === "SKIP" ? { skippedAt: now } : {}),
         ...(action === "START" ? { consultationStartedAt: now } : {}),
         ...(action === "COMPLETE" ? { completedAt: now } : {}),
-        // A recalled entry is served next.
+        ...(action === "HOLD" ? { heldAt: now } : {}),
+        ...(action === "RELEASE" ? { heldAt: null } : {}),
+        // A recalled entry is served next. Applies to both RECALL shapes:
+        // SKIPPED/CALLED -> WAITING and HOLD -> CALLED.
         ...(action === "RECALL" ? { position: -1 } : {}),
       },
     });
+    if (swapped.count === 0) {
+      throw new AppError(
+        "CONFLICT",
+        "This patient was just moved by someone else. Reload the queue and try again.",
+      );
+    }
 
     if (action === "START") {
       await tx.appointment.update({
@@ -189,6 +382,28 @@ export async function queueTransition(
         },
       });
     }
+    if (action === "NO_SHOW") {
+      // The queue and the appointment must not disagree about whether the
+      // patient turned up, so a NO_SHOW on the queue drives the appointment
+      // too. Guarded: a cancelled/completed appointment can't be re-opened as
+      // NO_SHOW just because a stale board row was clicked.
+      if (canAppointmentTransition(entry.appointment.status, "NO_SHOW")) {
+        await tx.appointment.update({
+          where: { id: entry.appointment.id },
+          data: { status: "NO_SHOW", noShowMarkedAt: now },
+        });
+        await tx.appointmentEvent.create({
+          data: {
+            organizationId: ctx.org!.id,
+            appointmentId: entry.appointment.id,
+            fromStatus: entry.appointment.status,
+            toStatus: "NO_SHOW",
+            actorId: ctx.userId,
+            reason: "queue:no-show",
+          },
+        });
+      }
+    }
 
     await writeAuditWith(tx, ctx, {
       action: `QUEUE_${action}`,
@@ -197,10 +412,17 @@ export async function queueTransition(
       before: { state: entry.state },
       after: { state: to },
     });
-    return q;
+    return tx.queueEntry.findFirstOrThrow({
+      where: { id: entryId },
+      include: { patient: { select: { firstName: true, lastName: true } } },
+    });
   });
 
-  if (action === "CALL" || action === "RECALL") {
+  // The patient should hear about every state change that affects what they
+  // should do next — being called, being recalled, being held, being skipped,
+  // or being written off as a no-show all change their situation. RELEASE and
+  // COMPLETE don't: nothing is being asked of them.
+  if (action !== "RELEASE" && action !== "COMPLETE") {
     await notify({
       organizationId: ctx.org!.id,
       userId: entry.appointment.patient.ownerUserId,

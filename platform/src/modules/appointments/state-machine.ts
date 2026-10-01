@@ -32,10 +32,15 @@ const TABLE: Record<AppointmentStatus, Partial<Record<AppointmentAction, Appoint
     ENQUEUE: "WAITING",
     START: "IN_CONSULTATION",
     CANCEL: "CANCELLED",
+    // A patient who checked in and then never made it to the room. Only
+    // reachable for same-day token/walk-in flow where the appointment is
+    // already in the queue before the scheduled start.
+    NO_SHOW: "NO_SHOW",
   },
   WAITING: {
     START: "IN_CONSULTATION",
     CANCEL: "CANCELLED",
+    NO_SHOW: "NO_SHOW",
   },
   IN_CONSULTATION: {
     COMPLETE: "COMPLETED",

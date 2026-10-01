@@ -34,6 +34,7 @@ const SCOPE_FIELD: Record<string, "id" | "organizationId"> = {
   Appointment: "organizationId",
   AppointmentEvent: "organizationId",
   QueueEntry: "organizationId",
+  QueueTokenCounter: "organizationId",
   Consultation: "organizationId",
   Prescription: "organizationId",
   MedicalDocument: "organizationId",

@@ -41,6 +41,10 @@ const PUBLIC_DOCTOR_SUMMARY_SELECT = {
   yearsOfExperience: true,
   languages: true,
   consultationFeeMinor: true,
+  // Summary cards need to know whether to show a "Tokens today" affordance —
+  // that's the booking mode, nothing more (public-safe: it reveals availability
+  // policy, not PII).
+  bookingMode: true,
 } satisfies Prisma.DoctorProfileSelect;
 
 const PUBLIC_APPOINTMENT_TYPE_SELECT = {
@@ -109,6 +113,15 @@ const PUBLIC_DOCTOR_DETAIL_SELECT = {
   yearsOfExperience: true,
   languages: true,
   consultationFeeMinor: true,
+  // Token window visibility (public): booking mode + configured times are safe
+  // to show (they are operational availability info, not PII). We do NOT expose
+  // internal counters or the doctor's userId here.
+  bookingMode: true,
+  tokenOpensMinute: true,
+  tokenClosesMinute: true,
+  queueStartMinute: true,
+  maxDailyTokens: true,
+  consultationDurationMin: true,
   organization: {
     select: {
       id: true,

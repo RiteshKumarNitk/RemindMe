@@ -22,6 +22,7 @@ const TABLES = [
   "PrescriptionItem",
   "Prescription",
   "Consultation",
+  "QueueTokenCounter",
   "QueueEntry",
   "AppointmentEvent",
   "Appointment",

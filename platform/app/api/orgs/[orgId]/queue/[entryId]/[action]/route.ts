@@ -9,6 +9,9 @@ const ACTIONS: Record<string, QueueAction> = {
   skip: "SKIP",
   start: "START",
   complete: "COMPLETE",
+  hold: "HOLD",
+  release: "RELEASE",
+  "no-show": "NO_SHOW",
 };
 
 export const POST = withApi({ auth: "required" }, async ({ ctx, params }) => {

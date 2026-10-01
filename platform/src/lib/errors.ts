@@ -21,6 +21,15 @@ export type ErrorCode =
   | "INVALID_QUEUE_TRANSITION"
   | "OUTSIDE_AVAILABILITY"
   | "TOKEN_ALREADY_USED"
+  // Same-day token booking (TOKEN_BOOKING_ASSESSMENT.md). Distinct codes rather
+  // than one generic CONFLICT so the UI can explain *which* rule stopped the
+  // booking: too early, too late, doctor not offering tokens, day full, or
+  // "you already hold one" (which returns the existing token, not an error).
+  | "TOKEN_BOOKING_NOT_OPEN"
+  | "TOKEN_BOOKING_CLOSED"
+  | "TOKEN_BOOKING_UNAVAILABLE"
+  | "TOKEN_LIMIT_REACHED"
+  | "TOKEN_ALREADY_BOOKED"
   | "RATE_LIMITED"
   | "NOT_IMPLEMENTED"
   | "INTERNAL";
@@ -44,6 +53,11 @@ const STATUS: Record<ErrorCode, number> = {
   INVALID_QUEUE_TRANSITION: 409,
   OUTSIDE_AVAILABILITY: 409,
   TOKEN_ALREADY_USED: 409,
+  TOKEN_BOOKING_NOT_OPEN: 409,
+  TOKEN_BOOKING_CLOSED: 409,
+  TOKEN_BOOKING_UNAVAILABLE: 409,
+  TOKEN_LIMIT_REACHED: 409,
+  TOKEN_ALREADY_BOOKED: 409,
   RATE_LIMITED: 429,
   NOT_IMPLEMENTED: 501,
   INTERNAL: 500,
