@@ -76,6 +76,16 @@ class PlatformAuthService extends ChangeNotifier {
     );
   }
 
+  Future<bool> signInWithGoogleIdToken(String idToken) async {
+    return _authenticate(
+      () => _client.post(
+        '/auth/google/verify',
+        auth: AuthMode.none,
+        body: {'idToken': idToken},
+      ),
+    );
+  }
+
   /// Creates a platform account, then signs in (the register endpoint only
   /// returns an id, so a login is always required to obtain tokens).
   Future<bool> register({

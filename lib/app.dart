@@ -7,6 +7,8 @@ import 'core/theme/design_tokens.dart';
 import 'data/repositories/appointment_repository.dart';
 import 'data/repositories/healthcare_repository.dart';
 import 'services/platform_auth_service.dart';
+import 'features/healthcare/healthcare_home_screen.dart';
+import 'features/healthcare/appointments_screen.dart';
 import 'features/history/history_screen.dart';
 import 'features/home/dose_alarm_screen.dart';
 import 'features/home/home_screen.dart';
@@ -231,9 +233,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       body: IndexedStack(
         index: _index,
         children: [
+          const HealthcareHomeScreen(),
+          const AppointmentsScreen(),
           HomeScreen(onAddMedicine: _openAddMedicine),
-          const MedicinesScreen(),
-          const HistoryScreen(),
           const FamilySyncScreen(embedded: true),
         ],
       ),
@@ -241,9 +243,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         index: _index,
         onSelected: (i) => setState(() => _index = i),
         destinations: [
-          (Icons.home_rounded, l10n.navHome),
+          (Icons.local_hospital_rounded, l10n.hcFindTitle),
+          (Icons.event_note_rounded, l10n.hcAppointmentsTitle),
           (Icons.medication_rounded, l10n.navMeds),
-          (Icons.history_rounded, l10n.histTitle),
           (Icons.family_restroom_rounded, l10n.navFamily),
         ],
       ),

@@ -106,7 +106,17 @@ export async function handleCallback(input: {
   return linkOrCreate(claims);
 }
 
-async function linkOrCreate(claims: GoogleIdClaims): Promise<{ userId: string }> {
+export async function verifyIdToken(idToken: string): Promise<{ userId: string }> {
+  assertConfigured();
+  const { payload } = await jwtVerify(idToken, jwks, {
+    issuer: ["https://accounts.google.com", "accounts.google.com"],
+    audience: env.GOOGLE_CLIENT_ID,
+  });
+  const claims = payload as unknown as GoogleIdClaims;
+  return linkOrCreate(claims);
+}
+
+export async function linkOrCreate(claims: GoogleIdClaims): Promise<{ userId: string }> {
   const existing = await db.identityAccount.findUnique({
     where: { provider_providerAccountId: { provider: "google", providerAccountId: claims.sub } },
     select: { userId: true },

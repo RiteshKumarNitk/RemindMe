@@ -18,6 +18,7 @@ class AuthService extends ChangeNotifier {
   bool _firebaseInitializing = true;
   String? _error;
   String? _debugInfo;
+  String? _lastGoogleIdToken;
 
   bool get firebaseAvailable => _firebaseAvailable;
   bool get isSignedIn => user != null;
@@ -25,6 +26,7 @@ class AuthService extends ChangeNotifier {
   String? get error => _error;
   bool get initializing => _firebaseInitializing;
   String? get debugInfo => _debugInfo;
+  String? get lastGoogleIdToken => _lastGoogleIdToken;
 
   User? get user => _auth?.currentUser;
   String get displayName => user?.displayName ?? '';
@@ -129,6 +131,7 @@ class AuthService extends ChangeNotifier {
 
       _debugInfo = 'Signed in successfully: ${result.user!.email}';
       _error = null;
+      _lastGoogleIdToken = auth.idToken;
       developer.log('Signed in successfully', name: 'Auth');
       notifyListeners();
       return result.user;
