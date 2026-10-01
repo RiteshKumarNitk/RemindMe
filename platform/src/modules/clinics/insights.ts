@@ -1,4 +1,3 @@
-import { db } from "@/lib/db.js";
 import { tenantDb } from "@/lib/tenant.js";
 import type { RequestContext } from "@/lib/context.js";
 import {
@@ -165,28 +164,4 @@ export async function getOrgInsights(ctx: RequestContext, orgId: string): Promis
     completeness,
     lifecycle,
   };
-}
-
-/**
- * Used by the superadmin dashboard (extension of platformStats, request §9).
- * Counts outside any tenant context — the caller (superadmin module) has
- * already asserted `isPlatformAdmin`.
- */
-export async function platformWideVerificationCounts(): Promise<{
-  total: number;
-  active: number;
-  verified: number;
-  pendingVerification: number;
-  rejected: number;
-  publiclyListed: number;
-}> {
-  const [total, active, verified, pendingVerification, rejected, publiclyListed] = await Promise.all([
-    db.organization.count(),
-    db.organization.count({ where: { isActive: true } }),
-    db.organization.count({ where: { verificationStatus: "VERIFIED" } }),
-    db.organization.count({ where: { verificationStatus: "PENDING_VERIFICATION" } }),
-    db.organization.count({ where: { verificationStatus: "REJECTED" } }),
-    db.organization.count({ where: { isPubliclyListed: true, isActive: true } }),
-  ]);
-  return { total, active, verified, pendingVerification, rejected, publiclyListed };
 }

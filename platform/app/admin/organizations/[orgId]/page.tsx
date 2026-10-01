@@ -18,7 +18,7 @@ export default async function AdminOrganizationDetailPage({
   const { orgId } = await params;
   const { error } = await searchParams;
 
-  const { org, memberships } = await getOrganizationDetail(ctx, orgId);
+  const { org, verificationDocuments, memberships } = await getOrganizationDetail(ctx, orgId);
 
   return (
     <div className="flex flex-col gap-7">
@@ -76,6 +76,45 @@ export default async function AdminOrganizationDetailPage({
           ) : null}
         </div>
       </Card>
+
+      {/* Verification evidence — what the request button on the clinic side
+          uploads. Review these before approving/rejecting. */}
+      <div>
+        <h2 className="mb-3 font-display text-lg font-bold text-ink">
+          Verification documents ({verificationDocuments.length})
+        </h2>
+        <Card>
+          {verificationDocuments.length === 0 ? (
+            <p className="py-3 text-sm text-ink-muted">
+              No documents uploaded — decide without evidence or ask the clinic to attach some.
+            </p>
+          ) : (
+            <div className="flex flex-col">
+              {verificationDocuments.map((d, i) => (
+                <div
+                  key={d.id}
+                  className={`flex flex-wrap items-center gap-3 py-2.5 ${i < verificationDocuments.length - 1 ? "border-b border-border" : ""}`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <a
+                      href={`/api/orgs/${orgId}/verification-documents/${d.id}`}
+                      className="block truncate text-[13.5px] font-medium text-indigo underline underline-offset-2"
+                      title={d.fileName}
+                    >
+                      {d.fileName}
+                    </a>
+                    <div className="truncate text-[11.5px] text-ink-muted">
+                      {(d.sizeBytes / 1024).toFixed(0)} KB · uploaded {new Date(d.createdAt).toLocaleDateString()}
+                      {d.uploadedBy.fullName ? ` by ${d.uploadedBy.fullName}` : ""}
+                    </div>
+                  </div>
+                  <span className="text-[11.5px] text-ink-faint">{d.mimeType}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
 
       <div>
         <h2 className="mb-3 font-display text-lg font-bold text-ink">Members</h2>

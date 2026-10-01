@@ -46,6 +46,18 @@ export default async function AppointmentDetailPage({
   const canActAsPatient = isMyPatient || canManageAsFamily;
   const isMyAppointmentAsDoctor = role === "DOCTOR" && appt.doctorId === myDoctorId;
 
+  // Self-service cancellation closes this many hours before the start
+  // (enforced by the service; surfaced here so patients learn the rule from
+  // the UI instead of from an error).
+  const settings =
+    isStaff || canActAsPatient
+      ? await db.clinicSettings.findUnique({
+          where: { organizationId: orgId },
+          select: { cancellationWindowHours: true },
+        })
+      : null;
+  const cancelWindowHours = settings?.cancellationWindowHours ?? null;
+
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <Link href={`/dashboard/${orgId}/appointments`} className="text-sm text-indigo no-underline">
@@ -125,15 +137,27 @@ export default async function AppointmentDetailPage({
             </LinkButton>
           )}
           {["REQUESTED", "CONFIRMED", "CHECKED_IN", "WAITING"].includes(appt.status) && (isStaff || canActAsPatient) && (
-            <form action={cancelAppointmentAction.bind(null, orgId, appt.id)}>
-              <input type="hidden" name="reason" value="Cancelled by patient" />
-              <ConfirmSubmit
-                label="Cancel appointment"
-                variant="danger"
-                confirmTitle="Cancel this appointment?"
-                confirmMessage="The clinic and patient will be notified, and the time slot is released for others."
-              />
-            </form>
+            <div>
+              <form action={cancelAppointmentAction.bind(null, orgId, appt.id)}>
+                <input type="hidden" name="reason" value={isStaff ? "Cancelled by staff" : "Cancelled by patient"} />
+                <ConfirmSubmit
+                  label="Cancel appointment"
+                  variant="danger"
+                  confirmTitle="Cancel this appointment?"
+                  confirmMessage={
+                    isStaff
+                      ? "The patient will be notified, and the time slot is released for others."
+                      : "The clinic will be notified, and the time slot is released for others."
+                  }
+                />
+              </form>
+              {canActAsPatient && !isStaff && cancelWindowHours != null ? (
+                <p className="mt-2 max-w-xs text-[11.5px] text-ink-faint">
+                  You can cancel yourself up to {cancelWindowHours} {cancelWindowHours === 1 ? "hour" : "hours"} before the
+                  appointment — inside that window, contact the clinic.
+                </p>
+              ) : null}
+            </div>
           )}
         </div>
       </Card>

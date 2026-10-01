@@ -21,8 +21,23 @@ function describe(event: string, payload: unknown): { message: string; href: str
       return { message: "An appointment was cancelled.", href };
     case "APPOINTMENT_RESCHEDULED":
       return { message: "An appointment was rescheduled.", href };
-    case "APPOINTMENT_REMINDER":
-      return { message: "You have an upcoming appointment.", href };
+    case "APPOINTMENT_REMINDER": {
+      // Copy carries the actual time ("Tomorrow at 3:20 PM") when the payload
+      // has it — a bare "you have an appointment" makes the patient open the
+      // detail page just to learn when.
+      const start = typeof p.scheduledStart === "string" ? new Date(p.scheduledStart) : null;
+      const when =
+        start && !Number.isNaN(start.getTime())
+          ? start.toLocaleString(undefined, {
+              weekday: start.getTime() - Date.now() < 36 * 3600_000 ? "long" : "short",
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : null;
+      return { message: when ? `Reminder: appointment at ${when}.` : "You have an upcoming appointment.", href };
+    }
     case "CHECK_IN_CONFIRMED":
       return { message: "Checked in — you're in the queue.", href };
     case "QUEUE_UPDATE":
@@ -37,14 +52,29 @@ export async function listMyNotifications(
   query: z.infer<typeof listNotificationsQuerySchema>,
 ) {
   const t = tenantDb(ctx);
+  // Scheduled rows (future appointment reminders) are enqueued ahead of time
+  // and only become visible once `scheduledFor` passes — otherwise a reminder
+  // for next week would sit in the bell feed unread today, and its future
+  // "scheduled" unread state would also inflate the badge.
   const [rows, unreadCount] = await Promise.all([
     t.notification.findMany({
-      where: { userId: ctx.userId, channel: "IN_APP" },
+      where: {
+        userId: ctx.userId,
+        channel: "IN_APP",
+        OR: [{ scheduledFor: null }, { scheduledFor: { lte: new Date() } }],
+      },
       orderBy: { createdAt: "desc" },
       take: query.limit,
       select: { id: true, event: true, payload: true, createdAt: true, readAt: true },
     }),
-    t.notification.count({ where: { userId: ctx.userId, channel: "IN_APP", readAt: null } }),
+    t.notification.count({
+      where: {
+        userId: ctx.userId,
+        channel: "IN_APP",
+        readAt: null,
+        OR: [{ scheduledFor: null }, { scheduledFor: { lte: new Date() } }],
+      },
+    }),
   ]);
 
   return {

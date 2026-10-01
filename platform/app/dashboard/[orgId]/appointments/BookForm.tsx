@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Button, Field, InitialsAvatar, Input, Select } from "@/components/ui/index.js";
+import { Button, DateStrip, Field, InitialsAvatar, Input, Select } from "@/components/ui/index.js";
 
 type Doctor = { id: string; displayName: string; specialty?: string | null };
 type PatientOpt = { id: string; firstName: string; lastName: string };
 type Slot = { start: string; end: string };
+type SlotsResponse = { slots?: Slot[]; slotsHiddenByLeadTime?: number; bookingLeadTimeMinutes?: number };
 type TypeOpt = { id: string; name: string; durationMinutes: number };
 type LocationOpt = { id: string; name: string; city?: string | null };
 
@@ -17,6 +18,14 @@ function nextDays(n: number): Date[] {
 
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+
+function formatLeadTime(minutes: number): string {
+  if (minutes >= 60 && minutes % 60 === 0) {
+    const h = minutes / 60;
+    return `${h} hour${h === 1 ? "" : "s"}`;
+  }
+  return `${minutes} minutes`;
 }
 
 /**
@@ -49,6 +58,7 @@ export function BookForm({
   const days = useMemo(() => nextDays(14), []);
   const [date, setDate] = useState(() => isoDate(days[0]!));
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [leadInfo, setLeadInfo] = useState<{ hidden: number; minutes: number } | null>(null);
   const [selected, setSelected] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -63,8 +73,15 @@ export function BookForm({
     const typeQs = typeId ? `&appointmentTypeId=${encodeURIComponent(typeId)}` : "";
     fetch(`/api/orgs/${orgId}/doctors/${doctorId}/slots?date=${date}${typeQs}`)
       .then((r) => r.json())
-      .then((data: { slots?: Slot[] }) => {
-        if (!cancelled) setSlots(data.slots ?? []);
+      .then((data: SlotsResponse) => {
+        if (!cancelled) {
+          setSlots(data.slots ?? []);
+          setLeadInfo(
+            data.slotsHiddenByLeadTime && data.slotsHiddenByLeadTime > 0
+              ? { hidden: data.slotsHiddenByLeadTime, minutes: data.bookingLeadTimeMinutes ?? 0 }
+              : null,
+          );
+        }
       })
       .catch(() => {
         if (!cancelled) setSlots([]);
@@ -97,7 +114,7 @@ export function BookForm({
         <div className="mb-5 grid gap-4 sm:grid-cols-2">
           <Field label="Appointment type">
             <Select name="appointmentTypeId" value={typeId} onChange={(e) => setTypeId(e.target.value)} className="w-full">
-              <option value="">Default ({types.length > 0 ? "clinic standard" : "15 min"})</option>
+              <option value="">Default (clinic standard)</option>
               {types.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name} · {t.durationMinutes} min
@@ -121,12 +138,15 @@ export function BookForm({
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
-        <div className="flex flex-col gap-5">
+      {/* minmax(0,1fr) + min-w-0: grid/flex items default to min-width:auto,
+          which lets the 14-date strip's content width stretch the whole column
+          (and the page) sideways instead of scrolling inside it. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <div className="flex min-w-0 flex-col gap-5">
           {doctors.length > 1 ? (
             <div>
               <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Doctor</div>
-              <div className="flex gap-2 overflow-x-auto pb-1" role="radiogroup" aria-label="Choose a doctor">
+              <DateStrip role="radiogroup" ariaLabel="Choose a doctor">
                 {doctors.map((d) => (
                   <button
                     key={d.id}
@@ -144,14 +164,14 @@ export function BookForm({
                     </span>
                   </button>
                 ))}
-              </div>
+              </DateStrip>
             </div>
           ) : null}
           <input type="hidden" name="doctorId" value={doctorId} />
 
           <div>
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Date</div>
-            <div className="flex gap-2 overflow-x-auto pb-1" role="radiogroup" aria-label="Choose a date">
+            <DateStrip role="radiogroup" ariaLabel="Choose a date">
               {days.map((d) => {
                 const iso = isoDate(d);
                 const active = iso === date;
@@ -170,17 +190,23 @@ export function BookForm({
                     </div>
                     <div className="font-display mt-0.5 text-base font-bold">{d.getDate()}</div>
                   </button>
-                );
-              })}
+                );                })}
+              </DateStrip>
             </div>
-          </div>
 
           <div>
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Time</div>
             {loading ? (
               <p className="text-[13px] text-ink-muted">Loading available times…</p>
             ) : slots.length === 0 ? (
-              <p className="text-[13px] text-ink-muted">No slots available this day.</p>
+              // Two different reasons a day can be empty: genuinely no opening
+              // vs. everything inside the clinic's booking lead time. Only the
+              // second is non-obvious to the user, so only it gets explained.
+              <p className="text-[13px] text-ink-muted">
+                {leadInfo
+                  ? `No bookable slots this day — this clinic takes bookings at least ${formatLeadTime(leadInfo.minutes)} ahead. Try a later date.`
+                  : "No slots available this day."}
+              </p>
             ) : (
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Choose a time">
                 {slots.map((s) => {
@@ -209,7 +235,7 @@ export function BookForm({
           </Field>
         </div>
 
-        <div className="flex h-fit flex-col gap-3 rounded-2xl border border-border bg-surface-2 p-4 lg:sticky lg:top-20">
+        <div className="flex h-fit min-w-0 flex-col gap-3 rounded-2xl border border-border bg-surface-2 p-4 lg:sticky lg:top-20">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Your booking</div>
           {doctor ? (
             <div className="flex flex-col gap-0.5">

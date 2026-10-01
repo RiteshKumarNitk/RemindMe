@@ -253,7 +253,16 @@ export async function computeSlots(
   doctorId: string,
   dateStr: string,
   typeId?: string,
-): Promise<{ slots: Slot[]; timezone: string; durationMinutes: number }> {
+): Promise<{
+  slots: Slot[];
+  timezone: string;
+  durationMinutes: number;
+  /** Slots skipped only because they sit inside the booking lead time — lets
+   * an empty day be explained ("this clinic books ≥2h ahead") instead of
+   * looking like the doctor simply has no availability. */
+  slotsHiddenByLeadTime: number;
+  bookingLeadTimeMinutes: number;
+}> {
   const t = tenantDb(ctx);
   const orgId = ctx.org!.id;
   await t.doctorProfile.findFirstOrThrow({
@@ -295,18 +304,30 @@ export async function computeSlots(
   const durMs = duration * 60_000;
 
   const slots: Slot[] = [];
+  let slotsHiddenByLeadTime = 0;
   for (const w of windows) {
     for (let s = +w.start; s + durMs <= +w.end + 1; s += stepMs(w)) {
       const start = new Date(s);
       const end = new Date(s + durMs);
-      if (start < leadCutoff) continue;
+      if (start < leadCutoff) {
+        slotsHiddenByLeadTime++;
+        continue;
+      }
       if (busy.some((b) => rangesOverlap(start, end, b.scheduledStart, b.scheduledEnd))) {
         continue;
       }
       slots.push({ start: start.toISOString(), end: end.toISOString() });
     }
   }
-  return { slots, timezone, durationMinutes: duration };
+  return {
+    slots,
+    timezone,
+    durationMinutes: duration,
+    // Diagnostics so an empty day can be explained: "no availability" and
+    // "everything is inside the booking lead time" look identical without it.
+    slotsHiddenByLeadTime,
+    bookingLeadTimeMinutes: settings.bookingLeadTimeMinutes,
+  };
 }
 
 /**

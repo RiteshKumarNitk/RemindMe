@@ -4,6 +4,122 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-09-30 — Insights tab: wait times, no-shows, and demand shape (uncommitted)
+
+A new owner-only **Insights** page (`/dashboard/[orgId]/insights`, sidebar link after Queue)
+turns rows the clinic already produces into operational answers — no new writes, no new state,
+one read-only service (`src/modules/analytics/service.ts`) in the same composition style as
+`clinics/insights.ts`. **Wait time**: check-in → consultation-start from QueueEntry, shown as
+median / worst-10% (p90) / average plus a 4-bucket strip (under 15, 15–30, 30–60, 60+ min),
+because the median hides the tail patients actually feel. **No-shows**: decided-outcome rate
+(NO_SHOW ÷ completed + no-show — cancellations excluded so the cancellation window doesn't
+punish the number) with a nudge when ≥15%, plus the overall cancellation rate; RESCHEDULED rows
+are excluded everywhere. **When patients book**: bookings per clock hour as a mini histogram.
+**By doctor**: per-doctor appointments, no-show rate and median wait, with ≥15% no-show rates
+flagged. Empty clinics render nulls/empty states, never NaN. `analytics.test.ts` (4 tests) pins
+the math end to end: seeded 48h-old appointments produce exactly 33% no-show / 25% cancellation,
+wait stats of median 25 / avg 25 / p90 40 from two queue timelines, correct per-doctor rollup,
+and null-not-NaN for a fresh org. Verified: `tsc --noEmit` clean, unit 50/50,
+verification-documents + reminders integration 12/12, `next build` ✓, dev server rebuilt clean
+after the build corrupted its chunk manifest, demo DB reseeded.
+## 2026-09-30 — Verification evidence: clinics upload documents, reviewers see them (uncommitted)
+
+A verification request used to be a bare status flip — the reviewer approved or rejected with
+nothing to look at. Clinics can now attach evidence (registration certificate, trade license): a
+new `VerificationDocument` table stores the bytes **in Postgres** (this codebase deliberately
+runs on plain Postgres with no external object storage; admin-only downloads and a 10 MB cap keep
+the table small), so the deploy story is unchanged — one migration, no new infra. CLINIC_ADMINs
+upload/remove from the dashboard Profile page's new "Verification documents" section (client
+validation + server enforcement: ≤10 MB, PDF/JPEG/PNG/WebP, ≤10 docs per clinic, every change
+audited), posting multipart to `/api/orgs/:orgId/verification-documents`. Downloads go through a
+deliberately plain route (not `withApi`) because the two legitimate audiences — the owning
+clinic's admin and any platform admin — don't both map onto `withApi`'s single-membership `:orgId`
+resolution; audience checks happen in the route and again in the service, and everyone else gets
+the same 404 a missing document gets. The reviewer side: `/admin/organizations/[orgId]` gained a
+"Verification documents" section with inline links, and the `/admin/verification` queue shows a
+docs count badge per clinic so "decide without evidence" is visible at a glance.
+`tests/integration/verification-documents.test.ts` (6 tests) pins upload happy-path + metadata
+never leaking bytes, size/type/role rejections, byte-intact download by the owner, platform-admin
+review access, cross-clinic and anonymous denial, and delete-revokes-download. Verified:
+`tsc --noEmit` clean, unit 50/50, verification-documents 6/6, superadmin + reminders integration
+11/11, `next build` ✓, dev server restarted.
+## 2026-09-30 — Reminders actually reach patients; bell hides future reminders (uncommitted)
+
+The reminder pipeline existed end to end on paper (T-24H/T-2H rows enqueued on booking/confirm,
+suppressed on cancel/no-show/check-in, cron dispatcher with dedupe + retries), but a audit of the
+wiring found the reminders were enqueued `channel: "PUSH"` — and PUSH is SUPPRESSED until FCM is
+wired, so **no reminder had ever been delivered to anyone**. Reminders are now IN_APP (the one
+channel that delivers today), with a comment telling FCM-integrators to add a second PUSH row
+alongside. Three support fixes rode along: (1) the notification bell now filters out rows whose
+`scheduledFor` is still in the future, both in the feed and the unread count — otherwise a
+reminder for next week sat visibly unread in the bell from the day it was enqueued; (2) reminder
+copy carries the real time ("Reminder: appointment at Tue, Oct 6, 03:20 PM.") from the payload
+instead of a generic "You have an upcoming appointment."; (3) the appointment detail page now
+states the self-cancellation rule ("You can cancel yourself up to 4 hours before…") so patients
+learn the policy from the UI rather than from an OUTSIDE_CANCELLATION_WINDOW error, and the
+confirm dialog no longer tells patients "the clinic and patient will be notified" when the
+patient *is* the one cancelling. New `tests/integration/reminders.test.ts` (6 tests) pins the
+whole chain: booking schedules two future-dated deduped IN_APP rows; future rows are invisible
+to the bell query; the dispatcher delivers a due reminder exactly once; cancellation suppresses
+the appointment's pending reminders; confirming a REQUESTED appointment schedules the pair that
+wasn't scheduled before. Verified: `tsc --noEmit` clean, unit 50/50, reminders + dispatch +
+appointments + patient-booking integration 31/31, `next build` ✓, dev server restarted.
+## 2026-09-30 — Loose ends: dead ternary, unused export, unexplained empty slot days (uncommitted)
+
+The three reported-not-fixed items from the adversarial review, cleared. (1) BookForm's
+appointment-type dropdown had a `types.length > 0 ? "clinic standard" : "15 min"` ternary that
+sat inside a `types.length > 0` branch — always "clinic standard", so it collapsed to the plain
+"Default (clinic standard)" label. (2) `platformWideVerificationCounts` in insights.ts had zero
+callers (the superadmin console queries counts directly); deleted along with the `db` import it
+was keeping alive. (3) An empty slot day now explains itself when the reason is the booking lead
+time: `computeSlots` counts the slots it skipped for sitting inside
+`ClinicSettings.bookingLeadTimeMinutes` and returns that alongside the settings value, so the
+staff BookForm and the patient-facing doctor profile can distinguish "no availability this day"
+from "this clinic takes bookings at least 2 hours ahead — try a later date" (message only shown
+when lead time is actually why the day is empty, and formatted as hours when whole). Verified:
+`tsc --noEmit` clean, unit 50/50, availability + acceptance-e2e integration 8/8 (the suite that
+exercises slots end to end), `next build` ✓, and a live browser check on the reseeded demo
+clinic: today's date in BookForm shows the lead-time message (16 slots hidden by lead time,
+lead 120 min, 0 bookable) and the page still does not overflow horizontally.
+## 2026-09-30 — Booking date strips no longer overflow the page (uncommitted)
+
+On the appointment booking surfaces — the staff BookForm (`/dashboard/[orgId]/appointments` and
+the reschedule page) and the patient-facing doctor profile — the 14-day date-picker rows were
+plain `flex … overflow-x-auto` divs sitting inside flex/grid children. Because those items
+default to `min-width: auto`, the scroll container could not shrink below its content: the strip
+stretched the card and the page sideways (measured 860px strip inside a 511px card) instead of
+scrolling. Fixed at the root with a shared kit `DateStrip` (`src/components/ui/date-strip.tsx`):
+the scroller pins `min-w-0 max-w-full`, its grid parents use `minmax(0,1fr)` + `min-w-0`, and it
+adds left/right arrow buttons plus an end fade so off-screen dates are discoverable and
+reachable without a touchpad gesture (arrows hide themselves at the ends, disabled in the tab
+order when inert). BookForm's doctor strip and date strip now both use it, as does the doctor
+profile page. Verified in the live browser: strip 469px inside a 511px card, internally
+scrollable (arrow moved it 328px), zero page overflow at a 543px viewport on both the
+appointments page and the doctor profile; `tsc --noEmit` clean, unit 50/50, `next build` ✓,
+dev server restarted post-build.
+## 2026-09-30 — Public site facelift, modern post-login hub, theme cascade fix (uncommitted)
+
+Four user-visible surfaces rebuilt on the shared design kit, plus two real bugs the work
+flushed out. `/hospitals` is now a directory page worth the name: indigo gradient hero with an
+embedded search bar, provider-type filter chips (Hospitals/Clinics/Polyclinics/Diagnostic
+centres — the backend `orgType` filter existed but the page never parsed it), a removable city
+pill, a live result count, a "clear all filters" empty state, styled pagination, and every link
+(chip/page/search) preserving the other active filters. `/doctors` got the identical treatment (specialty chips + hero) so both directories feel like one product. The homepage became a single-page
+explainer: "What is DoseWise?" feature cards, a 4-step Search→Book→Visit→Records walkthrough, a
+"For clinics" gradient pitch band with kit `light`/`glass` CTAs, and a real footer. The header
+(`PublicHeader`) is now session-aware — logged-in visitors see Dashboard + Sign out instead of
+Log in/Sign up — so returning users are one click from their clinics. The post-login hub
+(`/dashboard`) was rebuilt from inline styles to the kit and now **collects each clinic's
+important details** into its card: verification and publish badges, role, primary city, live
+counts (active doctors, appointment types, branches), and the *same honest profile-completeness percentage* the onboarding checklist computes (shared pure module, one enriched query in
+`listMyOrganizations`; additive, no test pins the old shape) — plus a compact meter, a "Next: …" fix-it hint, portfolio summary tiles, and a client-side `ClinicGrid` with instant search (name/slug/city) and sort (newest/oldest/name/needs-setup-first). The bugs: (1) `globals.css` had `a { color: var(--indigo) }` and the new `font: inherit` control rule as *unlayered* CSS, which in the cascade beats **all**
+Tailwind v4 utilities (they live in `@layer utilities`) — silently killing `text-white` on every
+anchor styled as a button; both moved into `@layer base`. (2) The clinic grid's empty state originally unmounted the search box itself, stranding the user with no way to clear the query — the toolbar now always stays mounted (caught by driving the real input in the browser). Verified: `tsc --noEmit` clean, unit
+50/50, `next build` ✓, dev server restarted post-build, and a real browser pass: fresh user
+registered → logged in through the form → created a clinic through `/dashboard/new` → hub showed
+summary tiles, city, Draft/Not published/Admin badges, the 25% completeness meter, a search/sort round-trip including the empty state; `/doctors` and `/hospitals` render the new hero + chips; console clean
+on `/` and `/hospitals`.
+
 ## 2026-09-29 — End-to-end acceptance suite: the 34-step clinic→publish→book→treat flow is now one proven path (uncommitted)
 
 The dashboard/directory/appointment work (guided onboarding, setup checklist, lifecycle +

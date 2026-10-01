@@ -4,7 +4,7 @@ import { AppError } from "@/lib/errors.js";
 import { notFound } from "next/navigation";
 import { getPublicDoctor } from "@/modules/public/service.js";
 import { getPublicDoctorSlots } from "@/modules/patient-booking/service.js";
-import { Badge, Card, CardSubtitle, CardTitle, InitialsAvatar } from "@/components/ui/index.js";
+import { Badge, Card, CardSubtitle, CardTitle, DateStrip, InitialsAvatar } from "@/components/ui/index.js";
 import { PublicHeader } from "../../public-header";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +36,14 @@ function formatFee(minor: number | null): string | null {
 
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+
+function formatLeadTime(minutes: number): string {
+  if (minutes >= 60 && minutes % 60 === 0) {
+    const h = minutes / 60;
+    return `${h} hour${h === 1 ? "" : "s"}`;
+  }
+  return `${minutes} minutes`;
 }
 
 function nextDays(n: number): Date[] {
@@ -72,10 +80,11 @@ export default async function DoctorDetailPage({
 
   const days = nextDays(14);
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : isoDate(days[0]!);
-  const { slots, timezone, durationMinutes } = await getPublicDoctorSlots(doctorId, {
-    date: selectedDate,
-    ...(selectedType ? { appointmentTypeId: selectedType.id } : {}),
-  });
+  const { slots, timezone, durationMinutes, slotsHiddenByLeadTime, bookingLeadTimeMinutes } =
+    await getPublicDoctorSlots(doctorId, {
+      date: selectedDate,
+      ...(selectedType ? { appointmentTypeId: selectedType.id } : {}),
+    });
 
   // Every filter chip preserves the other selections — a date chip that
   // dropped `type`/`location` would silently reset the patient's choices
@@ -208,7 +217,7 @@ export default async function DoctorDetailPage({
             : `${durationMinutes}-minute appointments (the clinic's default)`}
         </p>
 
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Choose a date">
+        <DateStrip role="group" ariaLabel="Choose a date" className="mt-3">
           {days.map((d) => {
             const iso = isoDate(d);
             const active = iso === selectedDate;
@@ -227,10 +236,17 @@ export default async function DoctorDetailPage({
               </a>
             );
           })}
-        </div>
+        </DateStrip>
 
         {slots.length === 0 ? (
-          <p className="mt-6 text-sm text-ink-muted">No open slots on this day — try another date.</p>
+          // Explain lead time only when it's actually why the day is empty —
+          // "no availability today" and "this clinic books ≥2h ahead" look
+          // identical to a patient otherwise.
+          <p className="mt-6 text-sm text-ink-muted">
+            {slotsHiddenByLeadTime > 0
+              ? `No open slots this day — this clinic takes bookings at least ${formatLeadTime(bookingLeadTimeMinutes)} ahead. Try a later date.`
+              : "No open slots on this day — try another date."}
+          </p>
         ) : (
           <div className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
             {slots.map((slot) => (

@@ -36,6 +36,9 @@ export default async function AdminVerificationQueuePage() {
               </div>
               <Badge tone={o.isPubliclyListed ? "ok" : "neutral"}>{o.isPubliclyListed ? "Listed" : "Not listed"}</Badge>
               <span className="text-[11.5px] text-ink-faint">{o._count.memberships} members</span>
+              <Badge tone={o._count.verificationDocuments > 0 ? "indigo" : "warn"}>
+                {o._count.verificationDocuments} doc{o._count.verificationDocuments === 1 ? "" : "s"}
+              </Badge>
               <LinkButton variant="secondary" size="sm" href={`/admin/organizations/${o.id}`}>
                 Review
               </LinkButton>

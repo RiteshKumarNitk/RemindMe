@@ -5,6 +5,7 @@ export { Badge } from "./badge";
 export { Field, Input, Select, Textarea } from "./input";
 export { EmptyState, ErrorState, Notice, Skeleton } from "./states";
 export { SearchBar } from "./search-bar";
+export { DateStrip } from "./date-strip";
 export { Hero, HeroMain, HeroSide, HeroLabel, HeroActions, SideStat } from "./hero";
 export { StatTile } from "./stat-tile";
 export { InitialsAvatar } from "./avatar";

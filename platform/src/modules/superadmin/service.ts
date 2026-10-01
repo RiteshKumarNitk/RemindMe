@@ -38,7 +38,9 @@ const ORG_LIST_SELECT = {
   createdAt: true,
   verificationStatus: true,
   isPubliclyListed: true,
-  _count: { select: { memberships: true, patients: true, appointments: true } },
+  _count: {
+    select: { memberships: true, patients: true, appointments: true, verificationDocuments: true },
+  },
 } satisfies Prisma.OrganizationSelect;
 
 export async function listOrganizations(
@@ -94,6 +96,20 @@ export async function getOrganizationDetail(ctx: RequestContext, orgId: string) 
       },
     },
   });
+  // Verification evidence (metadata only; bytes stream via the download
+  // route on demand) so the reviewer can inspect documents before deciding.
+  const verificationDocuments = await db.verificationDocument.findMany({
+    where: { organizationId: orgId },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      fileName: true,
+      mimeType: true,
+      sizeBytes: true,
+      createdAt: true,
+      uploadedBy: { select: { fullName: true, email: true } },
+    },
+  });
   const memberships = await db.membership.findMany({
     where: { organizationId: orgId },
     select: {
@@ -105,7 +121,7 @@ export async function getOrganizationDetail(ctx: RequestContext, orgId: string) 
     },
     orderBy: { createdAt: "asc" },
   });
-  return { org, memberships };
+  return { org, verificationDocuments, memberships };
 }
 
 export async function setOrganizationActive(

@@ -239,6 +239,7 @@ model Organization {
   appointmentTypes       AppointmentType[]
   availabilityRules      AvailabilityRule[]
   availabilityExceptions AvailabilityException[]
+  verificationDocuments  VerificationDocument[]
   appointments           Appointment[]
   appointmentEvents      AppointmentEvent[]
   queueEntries           QueueEntry[]
@@ -325,6 +326,7 @@ model User {
   guardianLinks    FamilyRelationship[] @relation("FamilyGuardian")
   accessGrants     PatientAccessGrant[] @relation("AccessGrantee")
   notifications    Notification[]
+  uploadedVerificationDocs VerificationDocument[] @relation("VerificationDocumentUploader")
 }
 
 model IdentityAccount {
@@ -954,6 +956,26 @@ model Notification {
   @@index([status, nextAttemptAt])
   @@index([userId])
   @@index([userId, channel, readAt])
+}
+
+/// Evidence a clinic attaches to its verification request (license,
+/// registration certificate…). Bytes live in Postgres — no external object
+/// storage in this phase; the table stays small because access is
+/// CLINIC_ADMIN-of-this-org + platform-admin only and rows are capped (10 MB).
+model VerificationDocument {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  fileName    String
+  mimeType    String
+  sizeBytes   Int
+  data        Bytes
+  uploadedById String
+  uploadedBy   User     @relation("VerificationDocumentUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+  createdAt    DateTime @default(now())
+
+  @@index([organizationId, createdAt])
 }
 
 model AuditLog {

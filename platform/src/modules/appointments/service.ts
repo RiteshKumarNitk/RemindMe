@@ -272,9 +272,13 @@ async function scheduleReminders(
       {
         organizationId: orgId,
         userId: patientUserId,
-        channel: "PUSH",
+        // IN_APP, not PUSH: IN_APP is the only channel the dispatcher actually
+        // delivers today (PUSH is SUPPRESSED until FCM is wired), so PUSH-only
+        // reminders silently never reached anyone. When FCM ships, add a
+        // second PUSH row alongside (with its own dedupe key suffix).
+        channel: "IN_APP",
         event: "APPOINTMENT_REMINDER",
-        payload: { appointmentId, label },
+        payload: { appointmentId, label, scheduledStart: start.toISOString() },
         scheduledFor: when,
         dedupeKey: `APPOINTMENT_REMINDER:${appointmentId}:${label}`,
       },

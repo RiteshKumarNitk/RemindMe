@@ -1,31 +1,43 @@
 import Link from "next/link";
 import { requireWebUser } from "@/lib/web-context.js";
 import { listMyOrganizations } from "@/modules/tenancy/service.js";
-import {
-  Badge,
-  Button,
-  EmptyState,
-  InitialsAvatar,
-  LinkButton,
-} from "@/components/ui/index.js";
+import { Button, EmptyState, LinkButton } from "@/components/ui/index.js";
 import { logoutAction } from "../login/actions.js";
+import { ClinicGrid, type ClinicCardData } from "./clinic-grid";
 
 export const dynamic = "force-dynamic";
 
-const ROLE_LABEL: Record<string, string> = {
-  CLINIC_ADMIN: "Admin",
-  RECEPTION: "Reception",
-  DOCTOR: "Doctor",
-};
-
 /**
- * The post-login hub: every clinic the signed-in user belongs to, one card
- * each, with a direct path into onboarding when they have none. Replaces the
- * old inline-styled page with the shared design kit.
+ * The post-login hub: every clinic the signed-in user belongs to. Cards
+ * collect the clinic's important details — type, city, verification, publish
+ * state, live counts, and the same honest profile-completeness percentage the
+ * onboarding checklist shows — with instant search/sort (client component).
  */
 export default async function DashboardHome() {
   const ctx = await requireWebUser();
   const orgs = await listMyOrganizations(ctx);
+
+  // Completeness is a plain object (safe to cross the server/client boundary);
+  // dates must be serialized to ISO strings for the client sort.
+  const cards: ClinicCardData[] = orgs.map((o) => ({
+    id: o.id,
+    name: o.name,
+    slug: o.slug,
+    orgType: o.orgType,
+    tagline: o.tagline,
+    isActive: o.isActive,
+    isPubliclyListed: o.isPubliclyListed,
+    verificationStatus: o.verificationStatus,
+    role: o.role,
+    city: o.location?.city ?? null,
+    counts: o.counts,
+    createdAt: o.createdAt.toISOString(),
+    completeness: o.completeness,
+  }));
+
+  const verifiedCount = cards.filter((o) => o.verificationStatus === "VERIFIED").length;
+  const publishedCount = cards.filter((o) => o.isPubliclyListed && o.isActive).length;
+  const totalDoctors = cards.reduce((sum, o) => sum + o.counts.doctorProfiles, 0);
 
   return (
     <div className="min-h-screen bg-surface-2">
@@ -60,13 +72,13 @@ export default async function DashboardHome() {
           <div>
             <h1 className="font-display text-2xl font-bold text-ink">Your clinics</h1>
             <p className="mt-1 text-sm text-ink-muted">
-              Pick a clinic to open its dashboard, or create a new one.
+              Pick a clinic to open its dashboard — each card shows its live profile at a glance.
             </p>
           </div>
           <LinkButton href="/dashboard/new">+ New clinic</LinkButton>
         </div>
 
-        {orgs.length === 0 ? (
+        {cards.length === 0 ? (
           <div className="mt-8">
             <EmptyState
               title="You're not part of a clinic yet"
@@ -79,32 +91,32 @@ export default async function DashboardHome() {
             />
           </div>
         ) : (
-          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {orgs.map((o) => (
-              <Link
-                key={o.id}
-                href={`/dashboard/${o.id}`}
-                className="group no-underline"
-                aria-label={`Open ${o.name} dashboard`}
-              >
-                <div className="flex h-full flex-col gap-4 rounded-card border border-border bg-card p-5 transition-colors group-hover:border-indigo">
-                  <div className="flex items-start gap-3">
-                    <InitialsAvatar name={o.name} size="md" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-ink">{o.name}</p>
-                      <p className="truncate text-[12px] text-ink-faint">{o.slug}</p>
-                    </div>
+          <>
+            {/* Portfolio-at-a-glance summary for multi-clinic users. */}
+            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {[
+                { label: "Clinics", value: cards.length, tone: "indigo" as const },
+                { label: "Verified", value: verifiedCount, tone: "ok" as const },
+                { label: "Published", value: publishedCount, tone: "coral" as const },
+                { label: "Doctors", value: totalDoctors, tone: "neutral" as const },
+              ].map((t) => (
+                <div key={t.label} className="rounded-card border border-border bg-card px-5 py-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                    {t.label}
                   </div>
-                  <div className="mt-auto flex flex-wrap items-center gap-2">
-                    <Badge tone={o.role === "CLINIC_ADMIN" ? "coral" : "indigo"}>
-                      {ROLE_LABEL[o.role] ?? o.role}
-                    </Badge>
-                    {!o.isActive ? <Badge tone="warn">Deactivated</Badge> : null}
+                  <div
+                    className={`mt-1 font-display text-2xl font-bold tabular-nums ${
+                      t.tone === "ok" ? "text-ok" : t.tone === "coral" ? "text-coral" : "text-ink"
+                    }`}
+                  >
+                    {t.value}
                   </div>
                 </div>
-              </Link>
-            ))}
-          </div>
+              ))}
+            </div>
+
+            <ClinicGrid orgs={cards} />
+          </>
         )}
       </main>
     </div>

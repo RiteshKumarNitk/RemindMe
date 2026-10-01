@@ -1,8 +1,12 @@
 import { redirect } from "next/navigation";
 import { requireOrgContext } from "@/lib/web-context.js";
 import { getOrgInsights } from "@/modules/clinics/insights.js";
+import { listMyVerificationDocuments } from "@/modules/verification-documents/service.js";
 import { Badge, Button, Card, CardSubtitle, CardTitle, CompletionMeter, Field, Input, LinkButton, Select } from "@/components/ui/index.js";
+import { ConfirmSubmit } from "@/components/confirm-submit.js";
 import { publishAction, requestVerificationAction, saveProfileAction, unpublishAction } from "./actions.js";
+import { deleteVerificationDocAction } from "./verification-actions.js";
+import { VerificationDocUpload } from "./verification-docs";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +33,7 @@ export default async function OrganizationProfilePage({
   const insights = await getOrgInsights(ctx, orgId);
   const org = { ...insights.org, locations: insights.locations };
   const readiness = { ready: insights.lifecycle.readinessReasons.length === 0, reasons: insights.lifecycle.readinessReasons };
+  const documents = await listMyVerificationDocuments(ctx);
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">
@@ -121,7 +126,7 @@ export default async function OrganizationProfilePage({
         </div>
       </Card>
 
-      {/* Verification */}
+      {/* Verification — with the evidence documents the review team sees. */}
       <Card>
         <CardTitle>Verification</CardTitle>
         {org.verificationStatus === "VERIFIED" ? (
@@ -149,6 +154,45 @@ export default async function OrganizationProfilePage({
             </div>
           </>
         )}
+
+        {/* Evidence for the reviewer — upload any time, and the request button
+            above stays available whether or not documents exist yet. */}
+        <div className="mt-5 border-t border-border pt-4">
+          <CardSubtitle>Verification documents</CardSubtitle>
+          <p className="mt-1 text-sm text-ink-muted">
+            Registration certificate, trade license, or similar proof of the clinic&rsquo;s identity.
+          </p>
+          {documents.length > 0 ? (
+            <ul className="mt-3 flex flex-col gap-1.5">
+              {documents.map((d) => (
+                <li key={d.id} className="flex flex-wrap items-center gap-2 text-sm">
+                  <a
+                    href={`/api/orgs/${orgId}/verification-documents/${d.id}`}
+                    className="min-w-0 truncate text-indigo underline underline-offset-2"
+                    title={d.fileName}
+                  >
+                    {d.fileName}
+                  </a>
+                  <span className="text-[11.5px] text-ink-faint">
+                    {(d.sizeBytes / 1024).toFixed(0)} KB · {new Date(d.createdAt).toLocaleDateString()}
+                  </span>
+                  <form action={deleteVerificationDocAction.bind(null, orgId, d.id)}>
+                    <ConfirmSubmit
+                      label="Remove"
+                      variant="ghost"
+                      size="sm"
+                      confirmTitle="Remove this document?"
+                      confirmMessage={`“${d.fileName}” will be deleted for the whole clinic.`}
+                    />
+                  </form>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-ink-faint">No documents uploaded yet.</p>
+          )}
+          <VerificationDocUpload orgId={orgId} />
+        </div>
       </Card>
 
       {/* Edit form */}

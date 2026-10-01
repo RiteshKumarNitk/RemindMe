@@ -12,6 +12,7 @@ export const db = new PrismaClient();
 // Every app table (keep _prisma_migrations). Child-first not required — CASCADE.
 const TABLES = [
   "AuditLog",
+  "VerificationDocument",
   "Notification",
   "VitalReading",
   "MedicationDose",
