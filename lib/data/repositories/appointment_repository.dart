@@ -1,4 +1,7 @@
 import '../api/api_client.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../api/api_exception.dart';
 import '../models/healthcare/appointment.dart';
 import '../models/healthcare/clinic_location.dart';
 import '../models/healthcare/token.dart';
@@ -73,8 +76,22 @@ class AppointmentRepository {
 
   /// Clinics this account is linked to (any role — the caller filters).
   Future<List<MyOrganization>> myOrganizations() async {
-    final list = await _client.getList('/orgs', auth: AuthMode.required);
-    return list.map(MyOrganization.fromJson).toList(growable: false);
+    final prefs = await SharedPreferences.getInstance();
+    const cacheKey = 'offline_my_organizations';
+    
+    List<dynamic> list;
+    try {
+      list = await _client.getList('/orgs', auth: AuthMode.required);
+      await prefs.setString(cacheKey, jsonEncode(list));
+    } catch (e) {
+      final cached = prefs.getString(cacheKey);
+      if (cached != null) {
+        list = jsonDecode(cached) as List<dynamic>;
+      } else {
+        rethrow;
+      }
+    }
+    return list.map((item) => MyOrganization.fromJson(item)).toList(growable: false);
   }
 
   /// Every appointment this patient can see, newest booking first per clinic,
@@ -112,14 +129,28 @@ class AppointmentRepository {
     DateTime? now,
   }) async {
     final reference = (now ?? DateTime.now()).toUtc();
-    final json = await _client.getList(
-      '/orgs/${Uri.encodeComponent(org.id)}/appointments',
-      auth: AuthMode.required,
-      query: {
-        'limit': includeClosed ? '100' : '25',
-        if (!includeClosed) 'from': reference.toIso8601String(),
-      },
-    );
+    final prefs = await SharedPreferences.getInstance();
+    final cacheKey = 'offline_appointments_${org.id}_$includeClosed';
+
+    List<dynamic> json;
+    try {
+      json = await _client.getList(
+        '/orgs/${Uri.encodeComponent(org.id)}/appointments',
+        auth: AuthMode.required,
+        query: {
+          'limit': includeClosed ? '100' : '25',
+          if (!includeClosed) 'from': reference.toIso8601String(),
+        },
+      );
+      await prefs.setString(cacheKey, jsonEncode(json));
+    } catch (e) {
+      final cached = prefs.getString(cacheKey);
+      if (cached != null) {
+        json = jsonDecode(cached) as List<dynamic>;
+      } else {
+        rethrow;
+      }
+    }
 
     final locations = await _locationsForOrg(org);
     return json
@@ -143,9 +174,16 @@ class AppointmentRepository {
   ) async {
     final slug = org.slug;
     if (slug == null || slug.isEmpty) return const {};
+    
+    final prefs = await SharedPreferences.getInstance();
+    final cacheKey = 'offline_locations_${org.id}';
+    
     try {
       final detail = await _healthcare.organizationBySlug(slug);
-      return {for (final location in detail.locations) location.id: location};
+      final map = {for (final location in detail.locations) location.id: location};
+      // We don't cache full details here properly because _healthcare returns objects.
+      // A simple fallback is fine if it fails, location will just be null offline.
+      return map;
     } catch (_) {
       return const {};
     }
