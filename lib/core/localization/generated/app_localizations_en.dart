@@ -922,6 +922,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginSkip => 'Use Offline';
 
   @override
+  String get loginGuest => 'Continue with Guest';
+
+  @override
   String get loginOfflineNote => 'You can always sign in later from Settings.';
 
   @override
@@ -1651,4 +1654,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hcOrScheduled => 'Or book a scheduled appointment';
+
+  @override
+  String get hcAppointmentsTitle => 'Appointments';
 }

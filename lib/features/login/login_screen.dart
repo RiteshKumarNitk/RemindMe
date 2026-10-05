@@ -110,8 +110,8 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
 
             AppButton.secondary(
-              label: l10n.loginSkip,
-              icon: Icons.arrow_forward_rounded,
+              label: l10n.loginGuest,
+              icon: Icons.person_outline_rounded,
               onPressed: _busy ? null : widget.onSkip,
             ),
 

@@ -20,10 +20,13 @@ class PlatformApiConfig {
 
   static const String _overrideKey = 'platform_api_base_url_override';
 
-  /// Compile-time base URL, e.g. `http://10.0.2.2:3000/api`.
+  /// Compile-time base URL, e.g. `http://10.0.2.2:3100/api`.
+  ///
+  /// 3100 matches the platform dev server this repo actually runs
+  /// (`next dev -p 3100`); override at build time for other hosts.
   static const String compiledBaseUrl = String.fromEnvironment(
     'PLATFORM_API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:3000/api',
+    defaultValue: 'http://10.0.2.2:3100/api',
   );
 
   static String? _override;

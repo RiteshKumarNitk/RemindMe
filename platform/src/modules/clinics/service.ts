@@ -220,6 +220,18 @@ export async function updateSettings(
   const before = await t.clinicSettings.findFirstOrThrow({
     where: { organizationId: ctx.org!.id },
   });
+  // Cross-field sanity (a PATCH may send either side alone, so resolve each
+  // against the stored row): the cancellation window and the advance horizon
+  // both count from "now", so a window longer than the horizon would make
+  // every patient self-cancellation impossible.
+  const nextWindowHours = input.cancellationWindowHours ?? before.cancellationWindowHours;
+  const nextHorizonDays = input.maxAdvanceBookingDays ?? before.maxAdvanceBookingDays;
+  if (nextWindowHours > nextHorizonDays * 24) {
+    throw new AppError(
+      "VALIDATION_FAILED",
+      "The cancellation window can't exceed the advance-booking horizon — patients would never be able to cancel in time.",
+    );
+  }
   const updated = await t.clinicSettings.update({
     where: { organizationId: ctx.org!.id },
     data: input,

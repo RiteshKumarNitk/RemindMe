@@ -397,7 +397,7 @@
   "loginSubtitle": "Sign in to sync your medicines with family members, or use the app offline.",
   "loginWithGoogle": "Continue with Google",
   "loginOr": "or",
-  "loginSkip": "Use Offline",
+  "loginSkip": "Use Offline", "loginGuest": "Continue with Guest",
   "loginOfflineNote": "You can always sign in later from Settings.",
   "familySyncNotConfigured": "Firebase is not configured. Family sync requires Firebase setup. The app works fully offline without it.",
   "profileTitle": "Profile",
@@ -681,5 +681,5 @@
   "hcTokenDay": "Same-day token · {date} · queue starts {time}",
   "@hcTokenDay": {"placeholders": {"date": {"type": "String"}, "time": {"type": "String"}}},
   "hcTokenRefreshNote": "Pull down to refresh. This updates by itself while you are in the queue.",
-  "hcOrScheduled": "Or book a scheduled appointment"
+  "hcOrScheduled": "Or book a scheduled appointment", "hcAppointmentsTitle": "Appointments"
 }

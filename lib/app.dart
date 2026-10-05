@@ -111,7 +111,8 @@ class _RootScreenState extends State<RootScreen> {
     if (auth.isSignedIn || settings.onboardingDone) {
       setState(() => _stage = _AppStage.main);
     } else {
-      setState(() => _stage = _AppStage.login);
+      // BYPASS LOGIN FOR NOW
+      setState(() => _stage = _AppStage.main);
     }
   }
 

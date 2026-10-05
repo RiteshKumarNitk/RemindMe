@@ -2,7 +2,7 @@ import { withApi } from "@/lib/http.js";
 import { parseBody, z } from "@/lib/validation.js";
 import { authSuccessResponse } from "@/lib/auth/respond.js";
 import { verifyIdToken } from "@/lib/auth/oauth-google.js";
-import { accessClaimsFor } from "@/lib/auth/tokens.js";
+import { accessClaimsFor } from "@/modules/auth/service.js";
 
 const verifySchema = z.object({
   idToken: z.string().min(1),

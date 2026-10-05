@@ -1766,6 +1766,12 @@ abstract class AppLocalizations {
   /// **'Use Offline'**
   String get loginSkip;
 
+  /// No description provided for @loginGuest.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Guest'**
+  String get loginGuest;
+
   /// No description provided for @loginOfflineNote.
   ///
   /// In en, this message translates to:
@@ -3055,6 +3061,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Or book a scheduled appointment'**
   String get hcOrScheduled;
+
+  /// No description provided for @hcAppointmentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointments'**
+  String get hcAppointmentsTitle;
 }
 
 class _AppLocalizationsDelegate

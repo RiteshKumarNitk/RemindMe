@@ -46,6 +46,13 @@ async function main() {
       name: "Demo Clinic (synthetic data — not real patients)",
       slug: DEMO_SLUG,
       timezone: "Asia/Kolkata",
+      // Publicly discoverable so the demo has something to show in the
+      // app's clinic/doctor lists and the website's /hospitals directory —
+      // the platform deliberately hides non-listed orgs from discovery.
+      isPubliclyListed: true,
+      orgType: "CLINIC",
+      tagline: "A synthetic demo clinic for trying out DoseWise end to end.",
+      publicPhone: "+91 90000 00001",
       settings: { create: {} },
       locations: { create: { name: "Demo Clinic — Main Branch", city: "Bengaluru" } },
       memberships: {
@@ -67,6 +74,8 @@ async function main() {
       displayName: "Dr. Demo Sharma",
       specialty: "General Medicine",
       consultationDurationMin: 15,
+      // Listed so the demo doctor appears in public discovery (app + website).
+      isPubliclyListed: true,
       // Slots AND same-day tokens; window uses the schema defaults
       // (07:00–11:00, queue from 09:00, 50 tokens) — editable in settings.
       bookingMode: "BOTH",

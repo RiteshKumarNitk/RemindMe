@@ -4,6 +4,44 @@ Dated log of what actually shipped, newest first. Each entry says what changed, 
 was verified. See [DECISIONS.md](DECISIONS.md) for the reasoning behind non-obvious choices, and
 [STATUS.md](STATUS.md) for the current plain-English state.
 
+## 2026-10-01 — Demo data discoverable + app base URL matches the dev port (uncommitted)
+
+"The app doesn't show the clinic/doctor lists": the discovery API was (correctly) returning an
+almost-empty index — the seed never set `isPubliclyListed` on the demo org/doctor, and the only
+"listed" clinic in the dev DB was a leftover integration-test org. The app was faithfully
+rendering an empty directory.
+- **Seed now publishes the demo clinic and doctor** (`isPubliclyListed: true`, plus orgType/
+  tagline/publicPhone so the public profile looks complete). Demo data is synthetic by design;
+  discoverability is what makes it useful for QA. Cleared leftover `csclinic-*`/`csother-*`
+  test orgs and `@test.local` users from the dev DB.
+- **Flutter default base URL `10.0.2.2:3000` → `:3100`** to match the dev server this repo
+  actually runs (`next dev -p 3100`). Emulator installs hit a dead port by default before
+  this; build-time `--dart-define` and the debug runtime override still win.
+Verified: `/api/public/organizations` + `/doctors` return the demo clinic/doctor, weekday
+slots flow (`slotsHiddenByLeadTime: 0`, Mon–Fri 09:00–13:00 IST), /hospitals and /doctors
+render them, `flutter analyze` 0 errors, `flutter test` 111/111.
+
+## 2026-10-01 — Clinic settings: validation, UX polish, first test coverage (uncommitted)
+
+The `/settings` page's booking-rules form existed but was silent (no success feedback, no bounds
+in the UI) and the whole update path had zero test coverage despite gating booking, self-booking
+and cancellation everywhere:
+- **New cross-field rule**: the cancellation window can no longer exceed the advance-booking
+  horizon (a window longer than the horizon would make every patient self-cancellation
+  impossible). 422 with an explanatory message; the 14-day / 336-hour boundary stays legal.
+  Each side of an unmentioned pair resolves against the stored row.
+- **Form polish**: per-field hints stating the real behavior (lead time also hides slots from
+  patients; the cancellation window never limits staff), native min/max mirroring the zod
+  bounds, required fields, and a "Settings saved." Notice via `?saved=1` (same convention as
+  the profile pages).
+- **Fixed a broken pre-existing import**: `app/api/auth/google/verify/route.ts` imported
+  `accessClaimsFor` from `@/lib/auth/tokens` (no such export) instead of
+  `@/modules/auth/service` — `tsc --noEmit` and `next build` failed on `main` before this.
+Tests: `tests/integration/clinic-settings.test.ts` (6) — defaults, update + audit trail,
+self-booking off refuses patients but not staff, lead time rejects too-soon bookings,
+strict-mode/bounds 422s, cancellation-window gating for patients vs staff, RBAC (receptionist
+403, foreign admin 404). Verified: tsc clean, unit 59/59, `next build` ✓.
+
 ## 2026-10-01 — Token/queue production-hardening QA pass (uncommitted)
 
 Real-clinic walk-through of the token day (API, database, browser, Flutter). Defects fixed —

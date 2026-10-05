@@ -19,12 +19,12 @@ export default async function SettingsPage({
   searchParams,
 }: {
   params: Promise<{ orgId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; saved?: string }>;
 }) {
   const { orgId } = await params;
   const ctx = await requireOrgContext(orgId);
   if (ctx.org!.role !== "CLINIC_ADMIN") redirect(`/dashboard/${orgId}`);
-  const { error } = await searchParams;
+  const { error, saved } = await searchParams;
   const [settings, locations, types] = await Promise.all([
     getSettings(ctx),
     listLocations(ctx),
@@ -36,33 +36,76 @@ export default async function SettingsPage({
       <h1 className="font-display text-2xl font-bold text-ink">Clinic settings</h1>
 
       {error ? <Notice tone="down">{error}</Notice> : null}
+      {saved ? <Notice tone="ok">Settings saved.</Notice> : null}
 
       <Card className="max-w-lg">
         <CardSubtitle>Booking rules</CardSubtitle>
         <form action={saveSettingsAction.bind(null, orgId)} className="mt-4 flex flex-col gap-4">
-          <label className="flex items-center gap-2.5 text-sm text-ink">
-            <input
-              type="checkbox"
-              name="allowPatientSelfBooking"
-              defaultChecked={settings.allowPatientSelfBooking}
-              className="h-4 w-4 accent-indigo"
-            />
-            Allow patients to book their own appointments
-          </label>
+          <div className="flex flex-col gap-1">
+            <label className="flex items-center gap-2.5 text-sm text-ink">
+              <input
+                type="checkbox"
+                name="allowPatientSelfBooking"
+                defaultChecked={settings.allowPatientSelfBooking}
+                className="h-4 w-4 accent-indigo"
+              />
+              Allow patients to book their own appointments
+            </label>
+            <p className="text-xs text-ink-muted">
+              When off, patients who try to book themselves from the public site or app are
+              refused — reception can still book for anyone.
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Booking lead time (minutes)">
-              <Input name="bookingLeadTimeMinutes" type="number" defaultValue={String(settings.bookingLeadTimeMinutes)} className="w-full" />
+            <Field
+              label="Booking lead time (minutes)"
+              hint="Slots starting sooner than this from now can't be booked — they're hidden from patients too."
+            >
+              <Input
+                name="bookingLeadTimeMinutes"
+                type="number"
+                min={0}
+                max={10080}
+                required
+                defaultValue={String(settings.bookingLeadTimeMinutes)}
+                className="w-full"
+              />
             </Field>
-            <Field label="Cancellation window (hours)">
-              <Input name="cancellationWindowHours" type="number" defaultValue={String(settings.cancellationWindowHours)} className="w-full" />
+            <Field
+              label="Cancellation window (hours)"
+              hint="How late patients may cancel their own appointment (staff can always cancel)."
+            >
+              <Input
+                name="cancellationWindowHours"
+                type="number"
+                min={0}
+                max={336}
+                required
+                defaultValue={String(settings.cancellationWindowHours)}
+                className="w-full"
+              />
             </Field>
-            <Field label="Max advance booking (days)">
-              <Input name="maxAdvanceBookingDays" type="number" defaultValue={String(settings.maxAdvanceBookingDays)} className="w-full" />
+            <Field label="Max advance booking (days)" hint="How far ahead patients can book.">
+              <Input
+                name="maxAdvanceBookingDays"
+                type="number"
+                min={1}
+                max={365}
+                required
+                defaultValue={String(settings.maxAdvanceBookingDays)}
+                className="w-full"
+              />
             </Field>
-            <Field label="Default appointment length (min)">
+            <Field
+              label="Default appointment length (min)"
+              hint="Used when a booking has no specific appointment type."
+            >
               <Input
                 name="defaultAppointmentDurationMin"
                 type="number"
+                min={5}
+                max={240}
+                required
                 defaultValue={String(settings.defaultAppointmentDurationMin)}
                 className="w-full"
               />

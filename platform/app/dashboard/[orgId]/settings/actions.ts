@@ -29,6 +29,7 @@ export async function saveSettingsAction(orgId: string, formData: FormData) {
     fail(orgId, err instanceof AppError ? err.message : "Could not save settings.");
   }
   revalidatePath(`/dashboard/${orgId}/settings`);
+  redirect(`/dashboard/${orgId}/settings?saved=1`);
 }
 
 export async function addLocationAction(orgId: string, formData: FormData) {
