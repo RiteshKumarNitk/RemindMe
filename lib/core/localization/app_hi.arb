@@ -630,5 +630,13 @@
   "hcQueueNoShow": "नहीं पहुँचे के रूप में दर्ज",
   "hcTokenDay": "उसी दिन का टोकन · {date} · कतार {time} से",
   "hcTokenRefreshNote": "रीफ़्रेश करने के लिए नीचे खींचें। कतार में रहते हुए यह अपने-आप अपडेट होता है।",
-  "hcOrScheduled": "या तय समय की अपॉइंटमेंट बुक करें"
+  "hcOrScheduled": "या तय समय की अपॉइंटमेंट बुक करें",
+  "hcAppointmentsTitle": "Appointments",
+  "hcRecordsTitle": "Records",
+  "hcConsultations": "Consultations",
+  "hcPrescriptions": "Prescriptions",
+  "hcNoRecords": "No medical records found.",
+  "hcDownloadPDF": "Download PDF",
+  "hcNotes": "Notes",
+  "hcMedications": "Medications"
 }

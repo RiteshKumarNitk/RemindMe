@@ -9,6 +9,7 @@ import '../../data/api/api_exception.dart';
 import '../../data/models/healthcare/appointment.dart';
 import '../../data/models/healthcare/token.dart';
 import '../../data/repositories/appointment_repository.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'healthcare_format.dart';
 import 'slot_picker_screen.dart';
 import 'widgets/healthcare_widgets.dart';
@@ -140,7 +141,17 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                   ),
                 const SizedBox(height: AppSpacing.xl),
                 Card(
-                  child: Padding(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          theme.colorScheme.surface,
+                          theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        ],
+                      ),
+                    ),
                     padding: const EdgeInsets.all(AppSpacing.md),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,7 +198,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                       ],
                     ),
                   ),
-                ),
+                ).animate().fade(duration: 400.ms).slideY(begin: 0.05, end: 0, duration: 400.ms, curve: Curves.easeOutQuad),
                 if (queue != null) ...[
                   const SizedBox(height: AppSpacing.xl),
                   HcSectionHeader(title: l10n.hcQueueTitle),

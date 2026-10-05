@@ -681,5 +681,13 @@
   "hcTokenDay": "Same-day token · {date} · queue starts {time}",
   "@hcTokenDay": {"placeholders": {"date": {"type": "String"}, "time": {"type": "String"}}},
   "hcTokenRefreshNote": "Pull down to refresh. This updates by itself while you are in the queue.",
-  "hcOrScheduled": "Or book a scheduled appointment", "hcAppointmentsTitle": "Appointments"
+  "hcOrScheduled": "Or book a scheduled appointment", 
+  "hcAppointmentsTitle": "Appointments",
+  "hcRecordsTitle": "Records",
+  "hcConsultations": "Consultations",
+  "hcPrescriptions": "Prescriptions",
+  "hcNoRecords": "No medical records found.",
+  "hcDownloadPDF": "Download PDF",
+  "hcNotes": "Notes",
+  "hcMedications": "Medications"
 }

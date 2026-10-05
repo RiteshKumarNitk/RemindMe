@@ -17,16 +17,16 @@ class AppTheme {
 
   /// Calm medical teal — trustworthy, low-arousal, distinct from the red/amber
   /// used for "due now" and "missed".
-  static const Color seed = Color(0xFF0F6B63);
+  static const Color seed = Color(0xFF00BFA5);
 
   static ThemeData light() {
     final scheme = ColorScheme.fromSeed(
       seedColor: seed,
       brightness: Brightness.light,
     ).copyWith(
-      primary: const Color(0xFF0F6B63),
+      primary: const Color(0xFF00BFA5),
       onPrimary: Colors.white,
-      primaryContainer: const Color(0xFFD3EDE8),
+      primaryContainer: const Color(0xFFB2DFDB),
       onPrimaryContainer: const Color(0xFF05332E),
       secondary: const Color(0xFF45615D),
       onSecondary: Colors.white,
@@ -61,7 +61,7 @@ class AppTheme {
       seedColor: seed,
       brightness: Brightness.dark,
     ).copyWith(
-      primary: const Color(0xFF7FD3CA),
+      primary: const Color(0xFF64FFDA),
       onPrimary: const Color(0xFF00332E),
       primaryContainer: const Color(0xFF0E4A45),
       onPrimaryContainer: const Color(0xFFCDECE7),

@@ -44,6 +44,7 @@ dependencies:
   # Calling a clinic / opening its website from the organization profile.
   url_launcher: ^6.3.1
   firebase_crashlytics: ^5.4.0
+  flutter_animate: ^4.5.2
 
 dev_dependencies:
   flutter_test:

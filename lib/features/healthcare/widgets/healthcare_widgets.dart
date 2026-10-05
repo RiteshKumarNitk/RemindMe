@@ -6,6 +6,7 @@ import '../../../data/api/api_exception.dart';
 import '../../../data/models/healthcare/appointment.dart';
 import '../../../data/models/healthcare/doctor.dart';
 import '../../../data/models/healthcare/organization.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../healthcare_format.dart';
 
 /// A section heading with an optional trailing action.
@@ -378,7 +379,7 @@ class HcOrganizationCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ).animate().fade(duration: 400.ms).slideY(begin: 0.1, end: 0, duration: 400.ms, curve: Curves.easeOutQuad);
   }
 }
 
@@ -461,7 +462,7 @@ class HcDoctorCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ).animate().fade(duration: 400.ms).slideX(begin: 0.05, end: 0, duration: 400.ms, curve: Curves.easeOutQuad);
   }
 }
 

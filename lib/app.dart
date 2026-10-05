@@ -6,9 +6,11 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/design_tokens.dart';
 import 'data/repositories/appointment_repository.dart';
 import 'data/repositories/healthcare_repository.dart';
+import 'data/repositories/medical_record_repository.dart';
 import 'services/platform_auth_service.dart';
 import 'features/healthcare/healthcare_home_screen.dart';
 import 'features/healthcare/appointments_screen.dart';
+import 'features/healthcare/medical_records_screen.dart';
 import 'features/history/history_screen.dart';
 import 'features/home/dose_alarm_screen.dart';
 import 'features/home/home_screen.dart';
@@ -37,6 +39,7 @@ class MediReminderApp extends StatelessWidget {
     required this.platformAuth,
     required this.healthcare,
     required this.appointments,
+    required this.medicalRecords,
   });
 
   final AppState appState;
@@ -50,6 +53,7 @@ class MediReminderApp extends StatelessWidget {
   final PlatformAuthService platformAuth;
   final HealthcareRepository healthcare;
   final AppointmentRepository appointments;
+  final MedicalRecordRepository medicalRecords;
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +67,7 @@ class MediReminderApp extends StatelessWidget {
         ChangeNotifierProvider<PlatformAuthService>.value(value: platformAuth),
         Provider<HealthcareRepository>.value(value: healthcare),
         Provider<AppointmentRepository>.value(value: appointments),
+        Provider<MedicalRecordRepository>.value(value: medicalRecords),
       ],
       child: Consumer<SettingsController>(
         builder: (context, s, _) {
@@ -250,6 +255,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         children: [
           const HealthcareHomeScreen(),
           const AppointmentsScreen(),
+          const MedicalRecordsScreen(),
           HomeScreen(onAddMedicine: _openAddMedicine),
           const FamilySyncScreen(embedded: true),
         ],
@@ -260,6 +266,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         destinations: [
           (Icons.local_hospital_rounded, l10n.hcFindTitle),
           (Icons.event_note_rounded, l10n.hcAppointmentsTitle),
+          (Icons.folder_shared_rounded, l10n.hcRecordsTitle),
           (Icons.medication_rounded, l10n.navMeds),
           (Icons.family_restroom_rounded, l10n.navFamily),
         ],

@@ -3067,6 +3067,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Appointments'**
   String get hcAppointmentsTitle;
+
+  /// No description provided for @hcRecordsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Records'**
+  String get hcRecordsTitle;
+
+  /// No description provided for @hcConsultations.
+  ///
+  /// In en, this message translates to:
+  /// **'Consultations'**
+  String get hcConsultations;
+
+  /// No description provided for @hcPrescriptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Prescriptions'**
+  String get hcPrescriptions;
+
+  /// No description provided for @hcNoRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'No medical records found.'**
+  String get hcNoRecords;
+
+  /// No description provided for @hcDownloadPDF.
+  ///
+  /// In en, this message translates to:
+  /// **'Download PDF'**
+  String get hcDownloadPDF;
+
+  /// No description provided for @hcNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get hcNotes;
+
+  /// No description provided for @hcMedications.
+  ///
+  /// In en, this message translates to:
+  /// **'Medications'**
+  String get hcMedications;
 }
 
 class _AppLocalizationsDelegate

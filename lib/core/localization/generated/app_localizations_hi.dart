@@ -1652,4 +1652,25 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get hcAppointmentsTitle => 'Appointments';
+
+  @override
+  String get hcRecordsTitle => 'Records';
+
+  @override
+  String get hcConsultations => 'Consultations';
+
+  @override
+  String get hcPrescriptions => 'Prescriptions';
+
+  @override
+  String get hcNoRecords => 'No medical records found.';
+
+  @override
+  String get hcDownloadPDF => 'Download PDF';
+
+  @override
+  String get hcNotes => 'Notes';
+
+  @override
+  String get hcMedications => 'Medications';
 }

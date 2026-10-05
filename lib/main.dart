@@ -21,6 +21,7 @@ import 'data/database/app_database.dart';
 import 'data/repositories/appointment_repository.dart';
 import 'data/repositories/dose_repository.dart';
 import 'data/repositories/healthcare_repository.dart';
+import 'data/repositories/medical_record_repository.dart';
 import 'data/repositories/medicine_repository.dart';
 import 'data/repositories/settings_repository.dart';
 import 'data/repositories/sync_repository.dart';
@@ -169,6 +170,10 @@ Future<void> _bootstrap() async {
     client: apiClient,
     healthcare: healthcareRepository,
   );
+  final medicalRecordRepository = MedicalRecordRepository(
+    client: apiClient,
+    appointments: appointmentRepository,
+  );
   final platformAuth = PlatformAuthService(client: apiClient);
 
   await _guard(
@@ -205,6 +210,7 @@ Future<void> _bootstrap() async {
     platformAuth: platformAuth,
     healthcare: healthcareRepository,
     appointments: appointmentRepository,
+    medicalRecords: medicalRecordRepository,
   ));
 
   // Everything below happens AFTER the UI is on screen. Nothing here may block
