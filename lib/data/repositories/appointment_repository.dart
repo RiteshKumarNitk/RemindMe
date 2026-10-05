@@ -90,6 +90,7 @@ class AppointmentRepository {
       } else {
         rethrow;
       }
+    }
     return list.map((item) => MyOrganization.fromJson(item as Map<String, dynamic>)).toList(growable: false);
   }
 
