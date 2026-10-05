@@ -90,8 +90,7 @@ class AppointmentRepository {
       } else {
         rethrow;
       }
-    }
-    return list.map((item) => MyOrganization.fromJson(item)).toList(growable: false);
+    return list.map((item) => MyOrganization.fromJson(item as Map<String, dynamic>)).toList(growable: false);
   }
 
   /// Every appointment this patient can see, newest booking first per clinic,
@@ -154,7 +153,7 @@ class AppointmentRepository {
 
     final locations = await _locationsForOrg(org);
     return json
-        .map(Appointment.fromJson)
+        .map((item) => Appointment.fromJson(item as Map<String, dynamic>))
         .map(
           (appointment) => PatientAppointment(
             appointment: appointment,
