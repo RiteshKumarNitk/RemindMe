@@ -2,7 +2,9 @@ import os
 import pg8000.native
 from urllib.parse import urlparse
 
-db_url_str = 'postgresql://neondb_owner:npg_T12CpNcLxUgw@ep-jolly-hill-b3m6nj1g-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&pgbouncer=true&connection_limit=10'
+db_url_str = os.environ.get('DATABASE_URL')
+if not db_url_str:
+    raise ValueError("DATABASE_URL environment variable is not set")
 db_url = urlparse(db_url_str)
 
 con = pg8000.native.Connection(

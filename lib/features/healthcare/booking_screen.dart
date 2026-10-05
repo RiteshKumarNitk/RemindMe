@@ -12,7 +12,7 @@ import '../../services/platform_auth_service.dart';
 import '../widgets/app_buttons.dart';
 import 'booking_confirmation_screen.dart';
 import 'healthcare_format.dart';
-import 'platform_sign_in_screen.dart';
+import '../../core/auth/auth_prompt.dart';
 import 'widgets/healthcare_widgets.dart';
 
 /// Collects the details the clinic needs and books the chosen slot.
@@ -117,11 +117,7 @@ class _BookingScreenState extends State<BookingScreen> {
           const SizedBox(height: AppSpacing.lg),
           if (!account.isSignedIn)
             _SignInGate(
-              onSignIn: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const PlatformSignInScreen(),
-                ),
-              ),
+              onSignIn: () => requirePlatformAuth(context),
             )
           else
             Form(

@@ -151,6 +151,22 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Silently attempts to refresh/re-acquire the Google ID token.
+  /// Useful when the platform session expires but the Google session is still valid.
+  Future<String?> getGoogleIdTokenSilently() async {
+    if (!_firebaseAvailable || _google == null) return null;
+    try {
+      final account = await _google!.signInSilently();
+      if (account == null) return null;
+      final auth = await account.authentication;
+      _lastGoogleIdToken = auth.idToken;
+      return auth.idToken;
+    } catch (e) {
+      developer.log('Silent sign-in failed', name: 'Auth', error: e);
+      return null;
+    }
+  }
+
   /// Translates Firebase Auth error codes to user-friendly messages.
   String _firebaseAuthErrorMessage(FirebaseAuthException e) {
     switch (e.code) {

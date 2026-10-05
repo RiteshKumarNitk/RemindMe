@@ -8,7 +8,7 @@ import '../../data/repositories/appointment_repository.dart';
 import '../../services/platform_auth_service.dart';
 import 'appointment_detail_screen.dart';
 import 'healthcare_format.dart';
-import 'platform_sign_in_screen.dart';
+import '../../core/auth/auth_prompt.dart';
 import 'widgets/healthcare_widgets.dart';
 
 /// Every appointment this patient has with any clinic on the platform,
@@ -50,11 +50,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 title: l10n.hcAppointmentsSignInTitle,
                 body: l10n.hcAppointmentsSignInBody,
                 actionLabel: l10n.hcSignIn,
-                onAction: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const PlatformSignInScreen(),
-                  ),
-                ),
+                onAction: () => requirePlatformAuth(context),
               )
             : HcAsyncView<List<PatientAppointment>>(
                 load: _load,

@@ -106,13 +106,27 @@ class _RootScreenState extends State<RootScreen> {
     if (!mounted) return;
 
     final auth = context.read<AuthService>();
+    final platformAuth = context.read<PlatformAuthService>();
     final settings = context.read<SettingsController>();
 
-    if (auth.isSignedIn || settings.onboardingDone) {
+    await platformAuth.restore();
+
+    // If Firebase is signed in but Platform is not, try to silently sync them.
+    if (auth.isSignedIn && !platformAuth.isSignedIn) {
+      final idToken = await auth.getGoogleIdTokenSilently();
+      if (idToken != null) {
+        await platformAuth.signInWithGoogleIdToken(idToken);
+      }
+    }
+
+    if (auth.isSignedIn && platformAuth.isSignedIn) {
+      setState(() => _stage = _AppStage.main);
+    } else if (settings.onboardingDone && !auth.isSignedIn) {
+      // Guest mode: continue to main shell
       setState(() => _stage = _AppStage.main);
     } else {
-      // BYPASS LOGIN FOR NOW
-      setState(() => _stage = _AppStage.main);
+      // Need to login or complete onboarding
+      setState(() => _stage = _AppStage.login);
     }
   }
 

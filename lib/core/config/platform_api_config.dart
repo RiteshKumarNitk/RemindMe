@@ -26,7 +26,7 @@ class PlatformApiConfig {
   /// (`next dev -p 3100`); override at build time for other hosts.
   static const String compiledBaseUrl = String.fromEnvironment(
     'PLATFORM_API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:3100/api',
+    defaultValue: 'https://remind-me-indol.vercel.app/api',
   );
 
   static String? _override;

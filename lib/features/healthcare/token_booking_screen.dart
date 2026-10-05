@@ -9,7 +9,7 @@ import '../../data/repositories/appointment_repository.dart';
 import '../../services/platform_auth_service.dart';
 import '../widgets/app_buttons.dart';
 import 'appointment_detail_screen.dart';
-import 'platform_sign_in_screen.dart';
+import '../../core/auth/auth_prompt.dart';
 import 'widgets/healthcare_widgets.dart';
 
 /// Confirms today's same-day token: sign in → details → confirm.
@@ -142,11 +142,7 @@ class _TokenBookingScreenState extends State<TokenBookingScreen> {
                     AppButton(
                       label: l10n.hcSignIn,
                       icon: Icons.login_rounded,
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const PlatformSignInScreen(),
-                        ),
-                      ),
+                      onPressed: () => requirePlatformAuth(context),
                     ),
                   ],
                 ),

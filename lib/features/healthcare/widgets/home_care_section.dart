@@ -9,7 +9,7 @@ import '../appointment_detail_screen.dart';
 import '../appointments_screen.dart';
 import '../healthcare_format.dart';
 import '../healthcare_home_screen.dart';
-import '../platform_sign_in_screen.dart';
+import '../../../core/auth/auth_prompt.dart';
 import 'healthcare_widgets.dart';
 
 /// The healthcare block on the medicine-first home screen.
@@ -117,11 +117,7 @@ class _SignInRow extends StatelessWidget {
     return Card(
       child: InkWell(
         borderRadius: AppRadius.cardRadius,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => const PlatformSignInScreen(),
-          ),
-        ),
+        onTap: () => requirePlatformAuth(context),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(

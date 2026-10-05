@@ -12,7 +12,7 @@ import '../../services/platform_auth_service.dart';
 import 'appointments_screen.dart';
 import 'doctor_profile_screen.dart';
 import 'organization_profile_screen.dart';
-import 'platform_sign_in_screen.dart';
+import '../../core/auth/auth_prompt.dart';
 import 'widgets/healthcare_widgets.dart';
 
 /// Find healthcare: every clinic, hospital or diagnostic centre that the
@@ -265,11 +265,7 @@ class _HealthcareHomeScreenState extends State<HealthcareHomeScreen> {
             onSelected: (value) async {
               switch (value) {
                 case 'signin':
-                  await Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const PlatformSignInScreen(),
-                    ),
-                  );
+                  await requirePlatformAuth(context);
                 case 'signout':
                   await context.read<PlatformAuthService>().signOut();
                 case 'server':
