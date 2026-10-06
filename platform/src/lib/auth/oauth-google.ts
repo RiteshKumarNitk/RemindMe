@@ -107,10 +107,21 @@ export async function handleCallback(input: {
 }
 
 export async function verifyIdToken(idToken: string): Promise<{ userId: string }> {
-  assertConfigured();
+  // Allow the token if the audience is the Web app client ID OR the Android client ID.
+  // We hardcode the known Google OAuth client IDs from google-services.json to ensure
+  // mobile logins work even if Vercel env vars are misconfigured.
+  const audiences = [
+    env.GOOGLE_CLIENT_ID,
+    "883368917967-1lcbvobp9pinb009ijtc4cb75hkeobe3.apps.googleusercontent.com", // Web
+    "883368917967-tsanedci0tqn75rjf293p8db2jaa8bhf.apps.googleusercontent.com" // Android
+  ].filter(Boolean);
+  if (env.GOOGLE_ANDROID_CLIENT_ID) {
+    audiences.push(env.GOOGLE_ANDROID_CLIENT_ID);
+  }
+
   const { payload } = await jwtVerify(idToken, jwks, {
     issuer: ["https://accounts.google.com", "accounts.google.com"],
-    audience: env.GOOGLE_CLIENT_ID,
+    audience: audiences,
   });
   const claims = payload as unknown as GoogleIdClaims;
   return linkOrCreate(claims);

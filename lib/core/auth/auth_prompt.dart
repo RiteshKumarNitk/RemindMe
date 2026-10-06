@@ -16,7 +16,14 @@ Future<void> requirePlatformAuth(BuildContext context) async {
   // If Firebase is already signed in but the platform session expired:
   if (auth.isSignedIn) {
     // Show a loading indicator if we want, but let's just trigger Google Sign-In again
-    // which might be silent if they are already signed in.
+    // silently so it doesn't prompt the user again.
+    final idToken = await auth.getGoogleIdTokenSilently();
+    if (idToken != null) {
+      final success = await platformAuth.signInWithGoogleIdToken(idToken);
+      if (success) return;
+    }
+    
+    // If silent token retrieval failed or platform login failed, fallback to prompting.
     final user = await auth.signInWithGoogle();
     if (user != null && auth.lastGoogleIdToken != null) {
       await platformAuth.signInWithGoogleIdToken(auth.lastGoogleIdToken!);

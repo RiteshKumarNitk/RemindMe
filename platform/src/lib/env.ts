@@ -20,6 +20,7 @@ const schema = z.object({
   ARGON2_PARALLELISM: z.coerce.number().int().positive().default(1),
 
   GOOGLE_CLIENT_ID: z.string().default(""),
+  GOOGLE_ANDROID_CLIENT_ID: z.string().default(""),
   GOOGLE_CLIENT_SECRET: z.string().default(""),
   GOOGLE_OAUTH_REDIRECT_URL: z
     .string()
