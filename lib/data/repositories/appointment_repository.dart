@@ -37,6 +37,25 @@ class PatientDetails {
   };
 }
 
+/// The dependent demographics for booking on behalf of a family member.
+class DependentDetails {
+  const DependentDetails({
+    required this.firstName,
+    required this.lastName,
+    required this.relation,
+  });
+
+  final String firstName;
+  final String lastName;
+  final String relation;
+
+  Map<String, dynamic> toJson() => {
+    'firstName': firstName,
+    'lastName': lastName,
+    'relation': relation,
+  };
+}
+
 /// An appointment together with the clinic it belongs to, and — when the
 /// clinic's public profile is available — the branch it was booked at.
 class PatientAppointment {
@@ -217,6 +236,8 @@ class AppointmentRepository {
     required String doctorId,
     required DateTime scheduledStart,
     required PatientDetails patient,
+    DependentDetails? dependent,
+    String? patientId,
     String? locationId,
     String? appointmentTypeId,
     String? reason,
@@ -233,6 +254,8 @@ class AppointmentRepository {
           'appointmentTypeId': appointmentTypeId,
         if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
         'patient': patient.toJson(),
+        if (patientId != null && patientId.isNotEmpty) 'patientId': patientId,
+        if (dependent != null) 'dependent': dependent.toJson(),
       },
     );
     return Appointment.fromJson(json);
@@ -246,6 +269,8 @@ class AppointmentRepository {
     required String organizationId,
     required String doctorId,
     required PatientDetails patient,
+    DependentDetails? dependent,
+    String? patientId,
     String? locationId,
     String? reason,
   }) async {
@@ -258,6 +283,8 @@ class AppointmentRepository {
         if (locationId != null && locationId.isNotEmpty) 'locationId': locationId,
         if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
         'patient': patient.toJson(),
+        if (patientId != null && patientId.isNotEmpty) 'patientId': patientId,
+        if (dependent != null) 'dependent': dependent.toJson(),
       },
     );
     return TokenBooking.fromJson(json);

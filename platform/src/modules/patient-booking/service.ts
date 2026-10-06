@@ -169,11 +169,68 @@ export async function selfBookAppointment(
   const { org, patientId: selfPatientId } = await ensurePatientMembership(ctx, input.organizationId, input.patient);
   const orgCtx: RequestContext = { ...ctx, org };
 
+  let targetPatientId = input.patientId ?? selfPatientId;
+
+  if (input.dependent && !input.patientId) {
+    // Upsert a dependent patient on the fly
+    const user = await db.user.findUniqueOrThrow({
+      where: { id: ctx.userId },
+      select: { email: true },
+    });
+    const depResult = await db.$transaction(async (tx) => {
+      const depPatient = await tx.patient.create({
+        data: {
+          organizationId: input.organizationId,
+          firstName: input.dependent!.firstName.trim(),
+          lastName: input.dependent!.lastName.trim(),
+          email: user.email,
+          createdById: ctx.userId,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      await tx.familyRelationship.create({
+        data: {
+          organizationId: input.organizationId,
+          guardianUserId: ctx.userId,
+          dependentPatientId: depPatient.id,
+          relation: input.dependent!.relation as any,
+          createdById: ctx.userId,
+        },
+      });
+
+      await tx.patientAccessGrant.create({
+        data: {
+          organizationId: input.organizationId,
+          patientId: depPatient.id,
+          granteeUserId: ctx.userId,
+          permissions: ["MANAGE_APPOINTMENTS", "VIEW_MEDICATIONS"],
+          grantedById: ctx.userId,
+        },
+      });
+
+      return depPatient.id;
+    });
+
+    await writeAudit(
+      orgCtx,
+      {
+        action: "PATIENT_SELF_REGISTERED",
+        entityType: "Patient",
+        entityId: depResult,
+        after: { organizationId: input.organizationId, isDependent: true },
+      },
+    );
+
+    targetPatientId = depResult;
+  }
+
   // `input.patientId` (a dependent) is trusted only as far as `bookAppointment`'s
   // own PatientAccessGrant check allows — a mismatched/tampered id just 403s,
   // same as every other patientId this module never authorizes itself.
   return bookAppointment(orgCtx, {
-    patientId: input.patientId ?? selfPatientId,
+    patientId: targetPatientId,
     doctorId: input.doctorId,
     scheduledStart: input.scheduledStart,
     appointmentTypeId: input.appointmentTypeId,

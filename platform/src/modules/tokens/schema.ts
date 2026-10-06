@@ -30,6 +30,20 @@ export const bookTokenSchema = z
      * grant before using it.
      */
     patientId: z.string().uuid().optional(),
+    dependent: z
+      .object({
+        firstName: z.string().min(1).max(120),
+        lastName: z.string().min(1).max(120),
+        relation: z.enum([
+          "SPOUSE",
+          "FATHER",
+          "MOTHER",
+          "CHILD",
+          "GUARDIAN",
+          "OTHER",
+        ]),
+      })
+      .optional(),
   })
   .strict();
 export type BookTokenInput = z.infer<typeof bookTokenSchema>;

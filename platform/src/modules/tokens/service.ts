@@ -591,13 +591,65 @@ async function bookTokenForPatient(
   }
 }
 
-/** Patient-facing: take a token for yourself, or for a dependent you manage. */
 export async function bookSameDayToken(ctx: RequestContext, input: BookTokenInput) {
   const { org, patientId: selfPatientId } = await ensurePatientMembership(
     ctx,
     input.organizationId,
     input.patient,
   );
+
+  let targetPatientId = input.patientId ?? selfPatientId;
+
+  if (input.dependent && !input.patientId) {
+    const user = await db.user.findUniqueOrThrow({
+      where: { id: ctx.userId },
+      select: { email: true },
+    });
+    const depResult = await db.$transaction(async (tx) => {
+      const depPatient = await tx.patient.create({
+        data: {
+          organizationId: input.organizationId,
+          firstName: input.dependent!.firstName.trim(),
+          lastName: input.dependent!.lastName.trim(),
+          email: user.email,
+          createdById: ctx.userId,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      await tx.familyRelationship.create({
+        data: {
+          organizationId: input.organizationId,
+          guardianUserId: ctx.userId,
+          dependentPatientId: depPatient.id,
+          relation: input.dependent!.relation as any,
+          createdById: ctx.userId,
+        },
+      });
+
+      await tx.patientAccessGrant.create({
+        data: {
+          organizationId: input.organizationId,
+          patientId: depPatient.id,
+          granteeUserId: ctx.userId,
+          permissions: ["MANAGE_APPOINTMENTS", "VIEW_MEDICATIONS"],
+          grantedById: ctx.userId,
+        },
+      });
+
+      return depPatient.id;
+    });
+
+    await writeAuditWith(db, ctx, {
+      action: "PATIENT_SELF_REGISTERED",
+      entityType: "Patient",
+      entityId: depResult,
+      after: { organizationId: input.organizationId, isDependent: true },
+    });
+
+    targetPatientId = depResult;
+  }
 
   // A clinic that turned patient self-booking off must not accept self-service
   // tokens either, or "booking off" would only mean "off the slot grid".
@@ -617,7 +669,7 @@ export async function bookSameDayToken(ctx: RequestContext, input: BookTokenInpu
     doctorId: input.doctorId,
     // Never trusted as an authorization decision — `bookTokenForPatient`
     // re-checks ownership or an active MANAGE_APPOINTMENTS grant.
-    patientId: input.patientId ?? selfPatientId,
+    patientId: targetPatientId,
     locationId: input.locationId,
     reason: input.reason,
     auditAction: "TOKEN_BOOKED",

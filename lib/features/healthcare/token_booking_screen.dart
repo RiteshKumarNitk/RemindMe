@@ -48,8 +48,14 @@ class _TokenBookingScreenState extends State<TokenBookingScreen> {
   final _lastName = TextEditingController();
   final _phone = TextEditingController();
   final _reason = TextEditingController();
+
+  final _dependentFirstName = TextEditingController();
+  final _dependentLastName = TextEditingController();
+
   bool _submitting = false;
   bool _prefilled = false;
+  bool _isDependent = false;
+  String _dependentRelation = 'CHILD';
 
   @override
   void dispose() {
@@ -57,6 +63,8 @@ class _TokenBookingScreenState extends State<TokenBookingScreen> {
     _lastName.dispose();
     _phone.dispose();
     _reason.dispose();
+    _dependentFirstName.dispose();
+    _dependentLastName.dispose();
     super.dispose();
   }
 
@@ -155,6 +163,86 @@ class _TokenBookingScreenState extends State<TokenBookingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   HcSectionHeader(title: l10n.hcYourDetailsTitle),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: RadioListTile<bool>(
+                          title: const Text('Myself'),
+                          value: false,
+                          groupValue: _isDependent,
+                          onChanged: (val) => setState(() => _isDependent = val ?? false),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      Expanded(
+                        child: RadioListTile<bool>(
+                          title: const Text('Someone else'),
+                          value: true,
+                          groupValue: _isDependent,
+                          onChanged: (val) => setState(() => _isDependent = val ?? true),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  if (_isDependent) ...[
+                    Text(
+                      'Dependent Details',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextFormField(
+                      controller: _dependentFirstName,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Dependent First Name',
+                        prefixIcon: Icon(Icons.person_rounded),
+                      ),
+                      validator: (value) => _isDependent && (value ?? '').trim().isEmpty
+                          ? l10n.hcFieldRequired
+                          : null,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextFormField(
+                      controller: _dependentLastName,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Dependent Last Name',
+                        prefixIcon: Icon(Icons.person_outline_rounded),
+                      ),
+                      validator: (value) => _isDependent && (value ?? '').trim().isEmpty
+                          ? l10n.hcFieldRequired
+                          : null,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    DropdownButtonFormField<String>(
+                      value: _dependentRelation,
+                      decoration: const InputDecoration(
+                        labelText: 'Relation',
+                        prefixIcon: Icon(Icons.family_restroom_rounded),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'CHILD', child: Text('Child')),
+                        DropdownMenuItem(value: 'SPOUSE', child: Text('Spouse')),
+                        DropdownMenuItem(value: 'FATHER', child: Text('Father')),
+                        DropdownMenuItem(value: 'MOTHER', child: Text('Mother')),
+                        DropdownMenuItem(value: 'GUARDIAN', child: Text('Guardian')),
+                        DropdownMenuItem(value: 'OTHER', child: Text('Other')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setState(() => _dependentRelation = val);
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'Your Details (Guardian)',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
                   TextFormField(
                     controller: _firstName,
                     textCapitalization: TextCapitalization.words,
@@ -221,6 +309,11 @@ class _TokenBookingScreenState extends State<TokenBookingScreen> {
           lastName: _lastName.text.trim(),
           phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
         ),
+        dependent: _isDependent ? DependentDetails(
+          firstName: _dependentFirstName.text.trim(),
+          lastName: _dependentLastName.text.trim(),
+          relation: _dependentRelation,
+        ) : null,
       );
       if (!mounted) return;
       navigator.pushReplacement(

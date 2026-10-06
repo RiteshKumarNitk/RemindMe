@@ -34,6 +34,21 @@ export const selfBookAppointmentSchema = z
     // (re-checked server-side inside the booking transaction; this being
     // present is never itself an authorization decision).
     patientId: z.string().uuid().optional(),
+    // Details for booking on behalf of a new dependent who does not have a patientId yet.
+    dependent: z
+      .object({
+        firstName: z.string().min(1).max(120),
+        lastName: z.string().min(1).max(120),
+        relation: z.enum([
+          "SPOUSE",
+          "FATHER",
+          "MOTHER",
+          "CHILD",
+          "GUARDIAN",
+          "OTHER",
+        ]),
+      })
+      .optional(),
   })
   .strict();
 export type SelfBookAppointmentInput = z.infer<typeof selfBookAppointmentSchema>;
