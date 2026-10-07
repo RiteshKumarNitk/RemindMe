@@ -4,13 +4,6 @@ import 'package:provider/provider.dart';
 import 'core/localization/generated/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/design_tokens.dart';
-import 'data/repositories/appointment_repository.dart';
-import 'data/repositories/healthcare_repository.dart';
-import 'data/repositories/medical_record_repository.dart';
-import 'services/platform_auth_service.dart';
-import 'features/healthcare/healthcare_home_screen.dart';
-import 'features/healthcare/appointments_screen.dart';
-import 'features/healthcare/medical_records_screen.dart';
 import 'features/history/history_screen.dart';
 import 'features/home/dose_alarm_screen.dart';
 import 'features/home/home_screen.dart';
@@ -36,10 +29,6 @@ class MediReminderApp extends StatelessWidget {
     required this.sync,
     required this.auth,
     required this.accountDeletion,
-    required this.platformAuth,
-    required this.healthcare,
-    required this.appointments,
-    required this.medicalRecords,
   });
 
   final AppState appState;
@@ -47,13 +36,6 @@ class MediReminderApp extends StatelessWidget {
   final SyncService sync;
   final AuthService auth;
   final AccountDeletionService accountDeletion;
-
-  /// Healthcare-platform account (clinic bookings) — separate from the
-  /// Firebase account that powers family sync.
-  final PlatformAuthService platformAuth;
-  final HealthcareRepository healthcare;
-  final AppointmentRepository appointments;
-  final MedicalRecordRepository medicalRecords;
 
   @override
   Widget build(BuildContext context) {
@@ -64,10 +46,6 @@ class MediReminderApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: sync),
         ChangeNotifierProvider.value(value: auth),
         Provider<AccountDeletionService>.value(value: accountDeletion),
-        ChangeNotifierProvider<PlatformAuthService>.value(value: platformAuth),
-        Provider<HealthcareRepository>.value(value: healthcare),
-        Provider<AppointmentRepository>.value(value: appointments),
-        Provider<MedicalRecordRepository>.value(value: medicalRecords),
       ],
       child: Consumer<SettingsController>(
         builder: (context, s, _) {
@@ -111,26 +89,13 @@ class _RootScreenState extends State<RootScreen> {
     if (!mounted) return;
 
     final auth = context.read<AuthService>();
-    final platformAuth = context.read<PlatformAuthService>();
     final settings = context.read<SettingsController>();
 
-    await platformAuth.restore();
-
-    // If Firebase is signed in but Platform is not, try to silently sync them.
-    if (auth.isSignedIn && !platformAuth.isSignedIn) {
-      final idToken = await auth.getGoogleIdTokenSilently();
-      if (idToken != null) {
-        await platformAuth.signInWithGoogleIdToken(idToken);
-      }
-    }
-
-    if (auth.isSignedIn && platformAuth.isSignedIn) {
-      setState(() => _stage = _AppStage.main);
-    } else if (settings.onboardingDone && !auth.isSignedIn) {
-      // Guest mode: continue to main shell
+    // Reminders are fully on-device: a signed-in user or a guest who finished
+    // onboarding goes straight in. No network check can bounce them to login.
+    if (auth.isSignedIn || settings.onboardingDone) {
       setState(() => _stage = _AppStage.main);
     } else {
-      // Need to login or complete onboarding
       setState(() => _stage = _AppStage.login);
     }
   }
@@ -253,10 +218,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       body: IndexedStack(
         index: _index,
         children: [
-          const HealthcareHomeScreen(),
-          const AppointmentsScreen(),
-          const MedicalRecordsScreen(),
           HomeScreen(onAddMedicine: _openAddMedicine),
+          const MedicinesScreen(),
+          const HistoryScreen(),
           const FamilySyncScreen(embedded: true),
         ],
       ),
@@ -264,10 +228,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         index: _index,
         onSelected: (i) => setState(() => _index = i),
         destinations: [
-          (Icons.local_hospital_rounded, l10n.hcFindTitle),
-          (Icons.event_note_rounded, l10n.hcAppointmentsTitle),
-          (Icons.folder_shared_rounded, l10n.hcRecordsTitle),
+          (Icons.home_rounded, l10n.navHome),
           (Icons.medication_rounded, l10n.navMeds),
+          (Icons.history_rounded, l10n.histTitle),
           (Icons.family_restroom_rounded, l10n.navFamily),
         ],
       ),

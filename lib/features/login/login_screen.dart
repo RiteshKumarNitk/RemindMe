@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../core/localization/generated/app_localizations.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../services/auth_service.dart';
-import '../../services/platform_auth_service.dart';
 import '../widgets/app_buttons.dart';
 import '../widgets/app_surfaces.dart';
 
@@ -28,13 +27,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _signInWithGoogle() async {
     final auth = context.read<AuthService>();
-    final platformAuth = context.read<PlatformAuthService>();
     setState(() => _busy = true);
 
     final user = await auth.signInWithGoogle();
-    if (user != null && auth.lastGoogleIdToken != null) {
-      await platformAuth.signInWithGoogleIdToken(auth.lastGoogleIdToken!);
-    }
 
     if (!mounted) return;
     setState(() => _busy = false);

@@ -10,7 +10,6 @@ import '../../data/models/dose_status.dart';
 import '../../services/auth_service.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
-import '../healthcare/widgets/home_care_section.dart';
 import '../history/adherence_report_screen.dart';
 import '../history/doctor_report_screen.dart';
 import '../history/history_screen.dart';
@@ -254,14 +253,6 @@ class _HomeScreenState extends State<HomeScreen> {
             AppSectionHeader(title: l10n.homeDailyProgress),
             const SizedBox(height: AppSpacing.sm),
             ProgressCard(stats: stats),
-
-            const SizedBox(height: AppSpacing.xxl),
-
-            // ── Healthcare discovery ─────────────────────────────────────
-            // An extra capability below the medicine dashboard: find a clinic
-            // or hospital from the platform, and see the next real appointment.
-            // A failed clinic lookup stays silent — reminders come first.
-            const HomeCareSection(),
 
             const SizedBox(height: AppSpacing.xxl),
 

@@ -13,22 +13,14 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
-import 'core/config/platform_api_config.dart';
 import 'core/notifications/notification_service.dart';
-import 'data/api/api_client.dart';
-import 'data/api/secure_token_store.dart';
 import 'data/database/app_database.dart';
-import 'data/repositories/appointment_repository.dart';
 import 'data/repositories/dose_repository.dart';
-import 'data/repositories/healthcare_repository.dart';
-import 'data/repositories/medical_record_repository.dart';
 import 'data/repositories/medicine_repository.dart';
 import 'data/repositories/settings_repository.dart';
 import 'data/repositories/sync_repository.dart';
 import 'services/account_deletion_service.dart';
-import 'services/platform_auth_service.dart';
 import 'services/auth_service.dart';
-import 'core/auth/session_sync.dart';
 import 'services/dose_action_handler.dart';
 import 'services/dose_scheduler.dart';
 import 'services/settings_controller.dart';
@@ -161,23 +153,6 @@ Future<void> _bootstrap() async {
     notifications: notifications,
   );
 
-  // Healthcare features (clinic discovery + appointment booking) read and
-  // write the clinic platform through its REST API — a separate account and
-  // a separate server from the medicine-reminder data above.
-  await _guard('platformApiConfig', () => PlatformApiConfig.load());
-  final apiClient = ApiClient(tokenStore: SecureTokenStore());
-  final healthcareRepository = HealthcareRepository(client: apiClient);
-  final appointmentRepository = AppointmentRepository(
-    client: apiClient,
-    healthcare: healthcareRepository,
-  );
-  final medicalRecordRepository = MedicalRecordRepository(
-    client: apiClient,
-    appointments: appointmentRepository,
-  );
-  final platformAuth = PlatformAuthService(client: apiClient);
-  final sessionSync = SessionSyncManager(auth, platformAuth);
-
   await _guard(
     'notifications.init',
     () => notifications.init(
@@ -209,16 +184,12 @@ Future<void> _bootstrap() async {
     sync: sync,
     auth: auth,
     accountDeletion: accountDeletion,
-    platformAuth: platformAuth,
-    healthcare: healthcareRepository,
-    appointments: appointmentRepository,
-    medicalRecords: medicalRecordRepository,
   ));
 
   // Everything below happens AFTER the UI is on screen. Nothing here may block
   // launch — permission prompts open system Activities, TTS/cloud init can be
   // slow, and none of it is needed for the first frame.
-  unawaited(_postLaunch(notifications, appState, sync, voice, platformAuth));
+  unawaited(_postLaunch(notifications, appState, sync, voice));
 }
 
 Future<void> _postLaunch(
@@ -226,13 +197,9 @@ Future<void> _postLaunch(
   AppState appState,
   SyncService sync,
   VoiceService voice,
-  PlatformAuthService platformAuth,
 ) async {
   await _guard('voice.init', () => voice.init());
   await _guard('sync.init', () => sync.init());
-  // Restores a stored clinic-platform session in the background; the
-  // medicine reminder flow above never waits on the network.
-  await _guard('platformSession.restore', platformAuth.restore);
 
   await _guard('notif.permission', () async {
     final enabled = await notifications.areNotificationsEnabled();
