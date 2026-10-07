@@ -11,6 +11,7 @@ import '../../data/repositories/medical_record_repository.dart';
 import '../../services/platform_auth_service.dart';
 import 'healthcare_format.dart';
 import 'widgets/healthcare_widgets.dart';
+import '../login/login_screen.dart';
 
 class MedicalRecordsScreen extends StatefulWidget {
   const MedicalRecordsScreen({super.key});
@@ -38,12 +39,9 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
           ),
         ),
         body: !account.isSignedIn
-            ? HcEmptyView(
-                icon: Icons.lock_outline_rounded,
-                title: l10n.hcAppointmentsSignInTitle,
-                body: l10n.hcAppointmentsSignInBody,
-                actionLabel: l10n.hcSignIn,
-                onAction: () => requirePlatformAuth(context),
+            ? LoginScreen(
+                onSkip: () {},
+                onSignedIn: () {},
               )
             : const TabBarView(
                 children: [

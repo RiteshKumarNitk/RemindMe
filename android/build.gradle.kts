@@ -5,6 +5,9 @@ allprojects {
     }
 }
 
+// Provide kotlin_version for Flutter plugins that still read from rootProject.ext
+extra["kotlin_version"] = "2.3.0"
+
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory
         .dir("../../build")

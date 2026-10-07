@@ -10,6 +10,7 @@ import 'appointment_detail_screen.dart';
 import 'healthcare_format.dart';
 import '../../core/auth/auth_prompt.dart';
 import 'widgets/healthcare_widgets.dart';
+import '../login/login_screen.dart';
 
 /// Every appointment this patient has with any clinic on the platform,
 /// grouped the way a patient thinks about them: what's coming, what's done,
@@ -45,12 +46,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           ),
         ),
         body: !account.isSignedIn
-            ? HcEmptyView(
-                icon: Icons.lock_outline_rounded,
-                title: l10n.hcAppointmentsSignInTitle,
-                body: l10n.hcAppointmentsSignInBody,
-                actionLabel: l10n.hcSignIn,
-                onAction: () => requirePlatformAuth(context),
+            ? LoginScreen(
+                onSkip: () {}, 
+                onSignedIn: () {},
               )
             : HcAsyncView<List<PatientAppointment>>(
                 load: _load,

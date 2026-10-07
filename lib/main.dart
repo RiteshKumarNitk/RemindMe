@@ -28,6 +28,7 @@ import 'data/repositories/sync_repository.dart';
 import 'services/account_deletion_service.dart';
 import 'services/platform_auth_service.dart';
 import 'services/auth_service.dart';
+import 'core/auth/session_sync.dart';
 import 'services/dose_action_handler.dart';
 import 'services/dose_scheduler.dart';
 import 'services/settings_controller.dart';
@@ -175,6 +176,7 @@ Future<void> _bootstrap() async {
     appointments: appointmentRepository,
   );
   final platformAuth = PlatformAuthService(client: apiClient);
+  final sessionSync = SessionSyncManager(auth, platformAuth);
 
   await _guard(
     'notifications.init',
