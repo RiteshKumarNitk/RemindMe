@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { db } from "../db.js";
 import { env } from "../env.js";
+import { fcmConfigured, sendPushToUser } from "./fcm.js";
+import { pushCopy } from "./push-copy.js";
 
 /**
  * Notification dispatcher (NOTIFICATION_ARCHITECTURE.md). Plain Postgres,
@@ -16,7 +18,6 @@ export interface DispatchResult {
   reaped: number;
 }
 
-const fcmConfigured = false; // wired in a later phase
 
 function backoffMs(attempts: number): number {
   const table = [60_000, 300_000, 900_000, 3_600_000, 10_800_000];
@@ -40,7 +41,14 @@ export async function runDispatch(): Promise<DispatchResult> {
 
   // 2) Claim a batch atomically.
   const claimedRows = await db.$queryRaw<
-    Array<{ id: string; channel: string; attempts: number }>
+    Array<{
+      id: string;
+      channel: string;
+      attempts: number;
+      userId: string | null;
+      event: string;
+      payload: unknown;
+    }>
   >(Prisma.sql`
     WITH due AS (
       SELECT "id" FROM "Notification"
@@ -55,7 +63,8 @@ export async function runDispatch(): Promise<DispatchResult> {
        SET "status" = 'SENDING', "claimedAt" = now(), "attempts" = n."attempts" + 1
       FROM due
      WHERE n."id" = due."id"
-    RETURNING n."id", n."channel"::text AS channel, n."attempts";
+    RETURNING n."id", n."channel"::text AS channel, n."attempts",
+              n."userId", n."event", n."payload";
   `);
   result.claimed = claimedRows.length;
 
@@ -63,9 +72,18 @@ export async function runDispatch(): Promise<DispatchResult> {
   for (const row of claimedRows) {
     try {
       let outcome: "SENT" | "SUPPRESSED";
-      if (row.channel === "IN_APP") outcome = "SENT";
-      else if (row.channel === "PUSH") outcome = fcmConfigured ? "SENT" : "SUPPRESSED";
-      else outcome = "SUPPRESSED"; // EMAIL/SMS/WHATSAPP not in MVP
+      const isPhoneChannel = row.channel === "IN_APP" || row.channel === "PUSH";
+      // IN_APP rows are also pushed to the user's phones when FCM is on, so a
+      // reminder reaches them without opening the app.
+      const copy = isPhoneChannel && row.userId ? pushCopy(row.event, row.payload) : null;
+      if (copy && fcmConfigured()) {
+        const result = await sendPushToUser(row.userId!, copy);
+        if (result.failed > 0 && result.sent === 0) {
+          throw new Error(`push failed for ${result.failed} device(s)`);
+        }
+        outcome = "SENT";
+      } else if (row.channel === "IN_APP") outcome = "SENT";
+      else outcome = "SUPPRESSED"; // PUSH without FCM; EMAIL/SMS/WHATSAPP not in MVP
 
       await db.notification.update({
         where: { id: row.id },

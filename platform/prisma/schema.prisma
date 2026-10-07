@@ -310,6 +310,10 @@ model ClinicLocation {
   country      String?
   phone        String?
   timezone     String? // overrides Organization.timezone when set
+  // WGS84 coordinates for "clinics near me". Optional: a branch without them
+  // is still listed, just never ranked by distance.
+  latitude     Float?
+  longitude    Float?
   isActive     Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -349,6 +353,7 @@ model User {
   guardianLinks            FamilyRelationship[]   @relation("FamilyGuardian")
   accessGrants             PatientAccessGrant[]   @relation("AccessGrantee")
   notifications            Notification[]
+  deviceTokens             DeviceToken[]
   uploadedVerificationDocs VerificationDocument[] @relation("VerificationDocumentUploader")
 }
 
@@ -1006,6 +1011,21 @@ model VitalReading {
 // -----------------------------------------------------------------------------
 // Platform: notifications & audit
 // -----------------------------------------------------------------------------
+
+/// A phone that should receive push notifications for this user (Firebase
+/// Cloud Messaging registration token). One row per token; a token moving to
+/// another account (shared phone) is re-pointed, never duplicated.
+model DeviceToken {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   String // "android" | "ios"
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+}
 
 model Notification {
   id             String        @id @default(uuid())

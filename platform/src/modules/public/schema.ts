@@ -9,6 +9,9 @@ export const listPublicOrganizationsQuerySchema = z
     q: z.string().trim().max(200).optional(),
     city: z.string().trim().max(120).optional(),
     orgType: organizationTypeEnum.optional(),
+    // "Near me": both or neither. Ranks by the closest active branch.
+    lat: z.coerce.number().min(-90).max(90).optional(),
+    lng: z.coerce.number().min(-180).max(180).optional(),
     page: pageSchema,
     pageSize: pageSizeSchema,
   })

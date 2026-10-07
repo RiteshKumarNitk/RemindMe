@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import type { z } from "zod";
 import { db } from "@/lib/db.js";
 import { AppError } from "@/lib/errors.js";
@@ -29,7 +29,11 @@ const PUBLIC_ORG_SUMMARY_SELECT = {
   logoUrl: true,
   orgType: true,
   verificationStatus: true,
-  locations: { where: { isActive: true }, select: { city: true }, take: 5 },
+  locations: {
+    where: { isActive: true },
+    select: { city: true, latitude: true, longitude: true },
+    take: 5,
+  },
   _count: { select: { doctorProfiles: { where: { isActive: true, isPubliclyListed: true } } } },
 } satisfies Prisma.OrganizationSelect;
 
@@ -79,6 +83,8 @@ const PUBLIC_ORG_DETAIL_SELECT = {
       postalCode: true,
       country: true,
       phone: true,
+      latitude: true,
+      longitude: true,
     },
   },
   doctorProfiles: {
@@ -163,6 +169,10 @@ export async function listPublicOrganizations(
       : {}),
   };
 
+  if (q.lat !== undefined && q.lng !== undefined) {
+    return listPublicOrganizationsNear(q, where, q.lat, q.lng);
+  }
+
   const [data, total] = await Promise.all([
     db.organization.findMany({
       where,
@@ -175,6 +185,103 @@ export async function listPublicOrganizations(
   ]);
 
   return { data, total, page: q.page, pageSize: q.pageSize };
+}
+
+/**
+ * "Clinics near me": same filters and same public-field allowlist as the
+ * normal list, ordered by the great-circle distance (km) from the caller to
+ * each clinic's nearest active branch. Clinics without coordinates are still
+ * listed, after every clinic that has them. The caller's coordinates are only
+ * used for this query — never stored or logged.
+ */
+async function listPublicOrganizationsNear(
+  q: z.infer<typeof listPublicOrganizationsQuerySchema>,
+  where: Prisma.OrganizationWhereInput,
+  lat: number,
+  lng: number,
+) {
+  const filters: Prisma.Sql[] = [Prisma.sql`o."isActive" = true`, Prisma.sql`o."isPubliclyListed" = true`];
+  if (q.orgType) filters.push(Prisma.sql`o."orgType" = ${q.orgType}::"OrganizationType"`);
+  if (q.q) {
+    const like = `%${q.q}%`;
+    filters.push(Prisma.sql`(o."name" ILIKE ${like} OR o."tagline" ILIKE ${like})`);
+  }
+  if (q.city) {
+    filters.push(Prisma.sql`EXISTS (
+      SELECT 1 FROM "ClinicLocation" c
+      WHERE c."organizationId" = o."id" AND c."isActive" = true AND LOWER(c."city") = LOWER(${q.city})
+    )`);
+  }
+
+  const ranked = await db.$queryRaw<Array<{ id: string; distanceKm: number | null }>>(Prisma.sql`
+    SELECT o."id",
+           MIN(
+             6371 * 2 * ASIN(SQRT(
+               POWER(SIN(RADIANS(l."latitude" - ${lat}) / 2), 2) +
+               COS(RADIANS(${lat})) * COS(RADIANS(l."latitude")) *
+               POWER(SIN(RADIANS(l."longitude" - ${lng}) / 2), 2)
+             ))
+           ) AS "distanceKm"
+      FROM "Organization" o
+      LEFT JOIN "ClinicLocation" l
+        ON l."organizationId" = o."id" AND l."isActive" = true
+       AND l."latitude" IS NOT NULL AND l."longitude" IS NOT NULL
+     WHERE ${Prisma.join(filters, " AND ")}
+     GROUP BY o."id", o."name"
+     ORDER BY "distanceKm" ASC NULLS LAST, o."name" ASC
+     LIMIT ${q.pageSize} OFFSET ${(q.page - 1) * q.pageSize}
+  `);
+
+  const ids = ranked.map((r) => r.id);
+  const [rows, total] = await Promise.all([
+    db.organization.findMany({ where: { id: { in: ids } }, select: PUBLIC_ORG_SUMMARY_SELECT }),
+    db.organization.count({ where }),
+  ]);
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const data = ranked
+    .filter((r) => byId.has(r.id))
+    .map((r) => ({
+      ...byId.get(r.id)!,
+      distanceKm: r.distanceKm === null ? null : Math.round(Number(r.distanceKm) * 10) / 10,
+    }));
+
+  return { data, total, page: q.page, pageSize: q.pageSize };
+}
+
+/**
+ * The cities and specialties that actually exist in public discovery — for
+ * the app's filter chips, so it never offers a filter that returns nothing.
+ */
+export async function getPublicFilters() {
+  const [cities, specialties] = await Promise.all([
+    db.clinicLocation.findMany({
+      where: {
+        isActive: true,
+        city: { not: null },
+        organization: { isActive: true, isPubliclyListed: true },
+      },
+      select: { city: true },
+      distinct: ["city"],
+      orderBy: { city: "asc" },
+      take: 100,
+    }),
+    db.doctorProfile.findMany({
+      where: {
+        isActive: true,
+        isPubliclyListed: true,
+        specialty: { not: null },
+        organization: { isActive: true, isPubliclyListed: true },
+      },
+      select: { specialty: true },
+      distinct: ["specialty"],
+      orderBy: { specialty: "asc" },
+      take: 100,
+    }),
+  ]);
+  return {
+    cities: cities.map((c) => c.city!).filter((c) => c.trim().length > 0),
+    specialties: specialties.map((s) => s.specialty!).filter((s) => s.trim().length > 0),
+  };
 }
 
 export async function getPublicOrganization(slug: string) {

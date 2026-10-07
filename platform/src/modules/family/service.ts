@@ -196,6 +196,32 @@ export async function listMyAccessInOrg(userId: string, organizationId: string) 
 }
 
 /**
+ * Family members the caller can book for at `organizationId`, with the
+ * relation they recorded ("MOTHER", "CHILD"…). Same safety argument as
+ * `listMyAccessInOrg`: scoped to the authenticated caller's own grants.
+ */
+export async function listMyFamilyInOrg(userId: string, organizationId: string) {
+  const grants = await listMyAccessInOrg(userId, organizationId);
+  const relations = await db.familyRelationship.findMany({
+    where: {
+      organizationId,
+      guardianUserId: userId,
+      dependentPatientId: { in: grants.map((g) => g.patient.id) },
+    },
+    select: { dependentPatientId: true, relation: true },
+  });
+  const relationOf = new Map(relations.map((r) => [r.dependentPatientId, r.relation]));
+  return {
+    data: grants.map((g) => ({
+      patientId: g.patient.id,
+      firstName: g.patient.firstName,
+      lastName: g.patient.lastName,
+      relation: relationOf.get(g.patient.id) ?? null,
+    })),
+  };
+}
+
+/**
  * Does the caller hold an active, non-expired grant on this patient covering
  * `permission`? Used by other modules (patients, consultations) as the 4th
  * access path in MEDICAL_DATA_SECURITY.md's access model. `VIEW_MEDICATIONS`

@@ -38,6 +38,10 @@ export const updateSettingsSchema = z
   })
   .strict();
 
+/** WGS84 coordinates for "clinics near me". */
+const latitudeSchema = z.number().min(-90).max(90);
+const longitudeSchema = z.number().min(-180).max(180);
+
 export const createLocationSchema = z
   .object({
     name: z.string().min(1).max(160),
@@ -48,6 +52,8 @@ export const createLocationSchema = z
     country: z.string().max(80).optional(),
     phone: z.string().max(40).optional(),
     timezone: z.string().max(64).optional(),
+    latitude: latitudeSchema.optional(),
+    longitude: longitudeSchema.optional(),
   })
   .strict();
 
@@ -64,6 +70,8 @@ export const updateLocationSchema = z
     country: z.string().max(80).nullable().optional(),
     phone: z.string().max(40).nullable().optional(),
     timezone: z.string().max(64).nullable().optional(),
+    latitude: latitudeSchema.nullable().optional(),
+    longitude: longitudeSchema.nullable().optional(),
     isActive: z.boolean().optional(),
   })
   .strict();

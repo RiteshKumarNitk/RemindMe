@@ -40,6 +40,9 @@ const schema = z.object({
   NOTIFICATIONS_DISPATCH_BATCH: z.coerce.number().int().positive().default(100),
   NOTIFICATIONS_CLAIM_TIMEOUT_MIN: z.coerce.number().int().positive().default(10),
   NOTIFICATIONS_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  // Firebase service-account key (raw JSON or base64 of it). Empty = push
+  // notifications stay off; in-app notifications are unaffected.
+  FCM_SERVICE_ACCOUNT_JSON: z.string().default(""),
   NOTIFICATIONS_INPROCESS_DISPATCH: z
     .enum(["true", "false"])
     .default("false"),

@@ -276,6 +276,8 @@ export async function updateLocation(
       ...(input.country !== undefined ? { country: input.country?.trim() || null } : {}),
       ...(input.phone !== undefined ? { phone: input.phone?.trim() || null } : {}),
       ...(input.timezone !== undefined ? { timezone: input.timezone || null } : {}),
+      ...(input.latitude !== undefined ? { latitude: input.latitude } : {}),
+      ...(input.longitude !== undefined ? { longitude: input.longitude } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
     },
   });
