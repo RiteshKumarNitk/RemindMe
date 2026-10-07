@@ -32,6 +32,19 @@ export function json(
   });
 }
 
+/**
+ * Edge-cache headers for PUBLIC, unauthenticated reads only (discovery data
+ * that is the same for every caller). Vercel's CDN serves repeats for
+ * [seconds] and keeps serving a stale copy for [staleSeconds] while it
+ * refreshes in the background. Never use on anything personal: responses
+ * that vary by caller must stay `no-store`.
+ */
+export function publicCache(seconds: number, staleSeconds = seconds * 10) {
+  return {
+    "Cache-Control": `public, max-age=0, s-maxage=${seconds}, stale-while-revalidate=${staleSeconds}`,
+  };
+}
+
 export interface HandlerArgs<P extends Record<string, string> = Record<string, string>> {
   req: Request;
   ctx: RequestContext;

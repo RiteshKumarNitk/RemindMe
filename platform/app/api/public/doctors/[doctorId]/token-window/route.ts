@@ -1,4 +1,4 @@
-import { json, withApi } from "@/lib/http.js";
+import { json, publicCache, withApi } from "@/lib/http.js";
 import { getTokenWindow } from "@/modules/tokens/service.js";
 
 /**
@@ -15,5 +15,5 @@ import { getTokenWindow } from "@/modules/tokens/service.js";
  * client can render the reason without parsing prose.
  */
 export const GET = withApi({ auth: "none" }, async ({ params }) => {
-  return json(await getTokenWindow(params.doctorId!));
+  return json(await getTokenWindow(params.doctorId!), { headers: publicCache(10, 20) });
 });
