@@ -19,6 +19,15 @@ export function httpUrlSchema(maxLength: number) {
     });
 }
 
+/**
+ * `?page=&pageSize=` for paginated list endpoints. Query strings arrive as
+ * text, hence `coerce`. Same bounds as the public discovery lists.
+ */
+export const paginationSchema = z.object({
+  page: z.coerce.number().int().min(1).max(1000).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(20),
+});
+
 function issuesOf(err: z.ZodError) {
   return err.issues.map((i) => ({ path: i.path.join("."), message: i.message }));
 }

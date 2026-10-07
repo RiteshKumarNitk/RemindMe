@@ -22,6 +22,26 @@ class AuthService extends ChangeNotifier {
 
   bool get firebaseAvailable => _firebaseAvailable;
   bool get isSignedIn => user != null;
+
+  /// Signed in with a real Google account. Family sync signs in to Firebase
+  /// *anonymously* behind the scenes, so [isSignedIn] alone can't tell a
+  /// guest from a signed-in user — use this for login gating.
+  bool get isGoogleSignedIn {
+    final u = user;
+    return u != null && !u.isAnonymous;
+  }
+
+  /// Completes once Firebase has restored any persisted user (or after a
+  /// short timeout when Firebase is unavailable), so startup routing never
+  /// decides before the saved session is known.
+  Future<void> waitUntilRestored() async {
+    final auth = _auth;
+    if (auth == null) return;
+    try {
+      await auth.authStateChanges().first.timeout(const Duration(seconds: 3));
+    } catch (_) {}
+  }
+
   bool get hasError => _error != null;
   String? get error => _error;
   bool get initializing => _firebaseInitializing;
@@ -46,7 +66,8 @@ class AuthService extends ChangeNotifier {
       // Check if Firebase was actually initialized (by Firebase.initializeApp
       // in main.dart). Firebase.app() throws if not initialized.
       final app = Firebase.app();
-      _debugInfo = 'Firebase app: ${app.name}, project: ${app.options.projectId}';
+      _debugInfo =
+          'Firebase app: ${app.name}, project: ${app.options.projectId}';
 
       _auth = FirebaseAuth.instance;
       _google = GoogleSignIn(
@@ -107,7 +128,8 @@ class AuthService extends ChangeNotifier {
       final auth = await account.authentication;
       if (auth.accessToken == null || auth.idToken == null) {
         _error = 'Failed to get Google credentials. Please try again.';
-        _debugInfo = 'Auth tokens null: accessToken=${auth.accessToken != null}, idToken=${auth.idToken != null}';
+        _debugInfo =
+            'Auth tokens null: accessToken=${auth.accessToken != null}, idToken=${auth.idToken != null}';
         developer.log('Google auth tokens null', name: 'Auth');
         notifyListeners();
         return null;

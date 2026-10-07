@@ -1678,4 +1678,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hcMedications => 'Medications';
+
+  @override
+  String get splashTagline => 'Never miss a dose';
+
+  @override
+  String get loginTitle => 'Your medicines,\non time.';
+
+  @override
+  String get loginFeatureReminders => 'Reminders with sound and voice';
+
+  @override
+  String get loginFeatureFamily => 'Share your schedule with family';
+
+  @override
+  String get loginFeatureHistory => 'Track every dose and your progress';
+
+  @override
+  String get loginGuestNote =>
+      'Guests can explore the app. Sign in to add medicines.';
+
+  @override
+  String get signInRequiredTitle => 'Sign in to add medicines';
+
+  @override
+  String get signInRequiredBody =>
+      'Your medicines are saved to your Google account, so your reminders and family sharing stay safe.';
+
+  @override
+  String get signInNotNow => 'Not now';
 }

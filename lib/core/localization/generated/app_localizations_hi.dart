@@ -1673,4 +1673,33 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get hcMedications => 'Medications';
+
+  @override
+  String get splashTagline => 'कोई खुराक न छूटे';
+
+  @override
+  String get loginTitle => 'आपकी दवाएँ,\nसमय पर।';
+
+  @override
+  String get loginFeatureReminders => 'आवाज़ के साथ रिमाइंडर';
+
+  @override
+  String get loginFeatureFamily => 'परिवार के साथ शेड्यूल साझा करें';
+
+  @override
+  String get loginFeatureHistory => 'हर खुराक और प्रगति पर नज़र रखें';
+
+  @override
+  String get loginGuestNote =>
+      'मेहमान ऐप देख सकते हैं। दवा जोड़ने के लिए साइन इन करें।';
+
+  @override
+  String get signInRequiredTitle => 'दवा जोड़ने के लिए साइन इन करें';
+
+  @override
+  String get signInRequiredBody =>
+      'आपकी दवाएँ आपके Google खाते में सुरक्षित रहती हैं, ताकि रिमाइंडर और परिवार के साथ साझा करना सुरक्षित रहे।';
+
+  @override
+  String get signInNotNow => 'अभी नहीं';
 }

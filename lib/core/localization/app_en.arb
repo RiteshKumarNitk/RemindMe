@@ -689,5 +689,14 @@
   "hcNoRecords": "No medical records found.",
   "hcDownloadPDF": "Download PDF",
   "hcNotes": "Notes",
-  "hcMedications": "Medications"
+  "hcMedications": "Medications",
+  "splashTagline": "Never miss a dose",
+  "loginTitle": "Your medicines,\non time.",
+  "loginFeatureReminders": "Reminders with sound and voice",
+  "loginFeatureFamily": "Share your schedule with family",
+  "loginFeatureHistory": "Track every dose and your progress",
+  "loginGuestNote": "Guests can explore the app. Sign in to add medicines.",
+  "signInRequiredTitle": "Sign in to add medicines",
+  "signInRequiredBody": "Your medicines are saved to your Google account, so your reminders and family sharing stay safe.",
+  "signInNotNow": "Not now"
 }

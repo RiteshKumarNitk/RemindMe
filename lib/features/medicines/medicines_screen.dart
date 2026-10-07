@@ -6,6 +6,7 @@ import '../../core/theme/design_tokens.dart';
 import '../../data/models/medicine.dart';
 import '../../services/settings_controller.dart';
 import '../../state/app_state.dart';
+import '../login/sign_in_gate.dart';
 import '../widgets/app_buttons.dart';
 import '../widgets/app_dialogs.dart';
 import '../widgets/app_scaffold.dart';
@@ -37,7 +38,10 @@ class _MedicinesScreenState extends State<MedicinesScreen> {
     super.dispose();
   }
 
-  void _openForm({Medicine? medicine}) {
+  Future<void> _openForm({Medicine? medicine}) async {
+    // Adding needs a Google account; guests can still open existing ones.
+    if (medicine == null && !await ensureGoogleSignIn(context)) return;
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => MedicineFormScreen(medicine: medicine),
@@ -64,9 +68,7 @@ class _MedicinesScreenState extends State<MedicinesScreen> {
     final filtered = _query.isEmpty
         ? all
         : all
-              .where(
-                (m) => m.name.toLowerCase().contains(_query.toLowerCase()),
-              )
+              .where((m) => m.name.toLowerCase().contains(_query.toLowerCase()))
               .toList();
     final activeCount = all.where((m) => m.active).length;
 
@@ -147,7 +149,10 @@ class _MedicinesScreenState extends State<MedicinesScreen> {
                         onMenu: () => _openActions(filtered[i]),
                       ),
                       if (i != filtered.length - 1)
-                        const AppDivider(indent: AppSpacing.md + AppSizes.avatar + AppSpacing.sm),
+                        const AppDivider(
+                          indent:
+                              AppSpacing.md + AppSizes.avatar + AppSpacing.sm,
+                        ),
                     ],
                   ],
                 ),

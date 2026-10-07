@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import type { Prisma } from "@prisma/client";
-import { tenantDb } from "@/lib/db.js";
+import { tenantDb } from "@/lib/tenant.js";
 import { paginate } from "@/lib/pagination.js";
 import type { RequestContext } from "@/lib/context.js";
 import type { listConsultationsQuerySchema, listPrescriptionsQuerySchema } from "./schema.js";

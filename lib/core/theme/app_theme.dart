@@ -510,4 +510,13 @@ extension AppThemeX on ThemeData {
 
   /// 1px hairline used for cards, list rows and dividers.
   Color get cardBorder => palette.cardBorder;
+
+  /// Brand hero gradient — splash, login and the sign-in prompt.
+  LinearGradient get brandGradient => LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: brightness == Brightness.dark
+        ? const [Color(0xFF00695C), Color(0xFF00332D)]
+        : const [Color(0xFF00BFA5), Color(0xFF00796B)],
+  );
 }

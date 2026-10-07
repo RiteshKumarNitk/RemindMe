@@ -3109,6 +3109,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Medications'**
   String get hcMedications;
+
+  /// No description provided for @splashTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Never miss a dose'**
+  String get splashTagline;
+
+  /// No description provided for @loginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your medicines,\non time.'**
+  String get loginTitle;
+
+  /// No description provided for @loginFeatureReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders with sound and voice'**
+  String get loginFeatureReminders;
+
+  /// No description provided for @loginFeatureFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your schedule with family'**
+  String get loginFeatureFamily;
+
+  /// No description provided for @loginFeatureHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Track every dose and your progress'**
+  String get loginFeatureHistory;
+
+  /// No description provided for @loginGuestNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Guests can explore the app. Sign in to add medicines.'**
+  String get loginGuestNote;
+
+  /// No description provided for @signInRequiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to add medicines'**
+  String get signInRequiredTitle;
+
+  /// No description provided for @signInRequiredBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your medicines are saved to your Google account, so your reminders and family sharing stay safe.'**
+  String get signInRequiredBody;
+
+  /// No description provided for @signInNotNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get signInNotNow;
 }
 
 class _AppLocalizationsDelegate

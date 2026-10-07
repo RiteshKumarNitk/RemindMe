@@ -638,5 +638,14 @@
   "hcNoRecords": "No medical records found.",
   "hcDownloadPDF": "Download PDF",
   "hcNotes": "Notes",
-  "hcMedications": "Medications"
+  "hcMedications": "Medications",
+  "splashTagline": "कोई खुराक न छूटे",
+  "loginTitle": "आपकी दवाएँ,\nसमय पर।",
+  "loginFeatureReminders": "आवाज़ के साथ रिमाइंडर",
+  "loginFeatureFamily": "परिवार के साथ शेड्यूल साझा करें",
+  "loginFeatureHistory": "हर खुराक और प्रगति पर नज़र रखें",
+  "loginGuestNote": "मेहमान ऐप देख सकते हैं। दवा जोड़ने के लिए साइन इन करें।",
+  "signInRequiredTitle": "दवा जोड़ने के लिए साइन इन करें",
+  "signInRequiredBody": "आपकी दवाएँ आपके Google खाते में सुरक्षित रहती हैं, ताकि रिमाइंडर और परिवार के साथ साझा करना सुरक्षित रहे।",
+  "signInNotNow": "अभी नहीं"
 }

@@ -8,6 +8,7 @@ import 'features/history/history_screen.dart';
 import 'features/home/dose_alarm_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/login/login_screen.dart';
+import 'features/login/sign_in_gate.dart';
 import 'features/medicines/medicine_form_screen.dart';
 import 'features/medicines/medicines_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
@@ -77,25 +78,49 @@ class RootScreen extends StatefulWidget {
 class _RootScreenState extends State<RootScreen> {
   _AppStage _stage = _AppStage.splash;
 
+  /// True when this session entered through "Continue as guest". Guests are
+  /// never remembered: the next launch shows the login screen again.
+  bool _guest = false;
+  late final AuthService _auth = context.read<AuthService>();
+
   @override
   void initState() {
     super.initState();
+    _auth.addListener(_onAuthChanged);
     _init();
   }
 
+  @override
+  void dispose() {
+    _auth.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
   Future<void> _init() async {
-    // Show splash for at least 1.5 seconds for branding
-    await Future.delayed(const Duration(milliseconds: 1500));
+    // Branding splash for at least 1.8 s, while Firebase restores any saved
+    // Google session in parallel.
+    await Future.wait([
+      Future<void>.delayed(const Duration(milliseconds: 1800)),
+      _auth.waitUntilRestored(),
+    ]);
     if (!mounted) return;
 
-    final auth = context.read<AuthService>();
-    final settings = context.read<SettingsController>();
+    // Only a real Google account counts as signed in. Family sync's
+    // anonymous Firebase user used to skip this screen for guests.
+    setState(
+      () => _stage = _auth.isGoogleSignedIn ? _afterLogin() : _AppStage.login,
+    );
+  }
 
-    // Reminders are fully on-device: a signed-in user or a guest who finished
-    // onboarding goes straight in. No network check can bounce them to login.
-    if (auth.isSignedIn || settings.onboardingDone) {
-      setState(() => _stage = _AppStage.main);
-    } else {
+  _AppStage _afterLogin() => context.read<SettingsController>().onboardingDone
+      ? _AppStage.main
+      : _AppStage.onboarding;
+
+  /// Signing out of Google (from Settings) returns to the login screen.
+  void _onAuthChanged() {
+    // A guest who signs in from the add-medicine sheet is no longer a guest.
+    if (_auth.isGoogleSignedIn) _guest = false;
+    if (_stage == _AppStage.main && !_guest && !_auth.isGoogleSignedIn) {
       setState(() => _stage = _AppStage.login);
     }
   }
@@ -107,8 +132,14 @@ class _RootScreenState extends State<RootScreen> {
         return const SplashScreen();
       case _AppStage.login:
         return LoginScreen(
-          onSkip: () => setState(() => _stage = _AppStage.onboarding),
-          onSignedIn: () => setState(() => _stage = _AppStage.onboarding),
+          onSkip: () => setState(() {
+            _guest = true;
+            _stage = _afterLogin();
+          }),
+          onSignedIn: () => setState(() {
+            _guest = false;
+            _stage = _afterLogin();
+          }),
         );
       case _AppStage.onboarding:
         return OnboardingScreen(
@@ -160,7 +191,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     }
   }
 
-  void _openAddMedicine() {
+  Future<void> _openAddMedicine() async {
+    if (!await ensureGoogleSignIn(context)) return;
+    if (!mounted) return;
     Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => const MedicineFormScreen()));
@@ -175,8 +208,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final now = DateTime.now();
     final isDueNow =
         !next.dose.scheduledAt.isAfter(now.add(const Duration(minutes: 10))) &&
-        next.effectiveStatus(settings.graceDuration, now) ==
-            DoseStatus.pending;
+        next.effectiveStatus(settings.graceDuration, now) == DoseStatus.pending;
 
     // Only show the alarm once per dose, and only when it is actually due.
     if (isDueNow && next.dose.id != _lastAlarmId) {
@@ -257,18 +289,36 @@ class _AppNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(top: BorderSide(color: theme.cardBorder, width: 1)),
+    final scheme = theme.colorScheme;
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        AppSpacing.sm,
       ),
-      child: SafeArea(
-        top: false,
+      child: Container(
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg + 4),
+          border: Border.all(color: theme.cardBorder),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
         child: NavigationBar(
           selectedIndex: index,
           onDestinationSelected: onSelected,
           backgroundColor: Colors.transparent,
           surfaceTintColor: Colors.transparent,
+          indicatorColor: scheme.primaryContainer,
+          indicatorShape: const StadiumBorder(),
           elevation: 0,
           height: AppSizes.navBar,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -276,6 +326,7 @@ class _AppNavBar extends StatelessWidget {
             for (final (icon, label) in destinations)
               NavigationDestination(
                 icon: Icon(icon),
+                selectedIcon: Icon(icon, color: scheme.onPrimaryContainer),
                 label: label,
                 tooltip: label,
               ),
